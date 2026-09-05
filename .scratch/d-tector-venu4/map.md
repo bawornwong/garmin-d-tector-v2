@@ -19,6 +19,7 @@ A handoff-ready **spec + ADR set** for a faithful port of [kaisadilla/D-Tector-v
 
 - **Fidelity contract**: game *content* (593 Digimon, stats, rarity, worlds, battle math, evolution rules) and *visuals* (sprites, 32×32 layout) reproduced exactly. *Interaction* may be remapped — the watch has different hardware.
 - **Target**: `venu445mm` only (Venu 4 45mm). 41mm is not a target.
+- **Screen colours** are the physical device's reflective LCD, from `Preferences.cs`: background `#819376` (`Color32(129,147,118)`), active `#000000`. Not white-on-black — confirmed against a photo of a real D-Tector.
 - **Rendering**: game canvas scaled **10×** → 320×320 centred inside the 454×454 round display. Integer scale, no blur, no corner clipping.
 - **Frame rate ceiling: 20 fps** (50 ms timer floor, established by research). The original is a 60 fps Unity game. Everything animated is designed against 50 ms ticks.
 - **Distribution**: personal sideload only, educational, non-commercial, not distributed. No Connect IQ Store submission, so no store review constraints.
@@ -52,7 +53,7 @@ A handoff-ready **spec + ADR set** for a faithful port of [kaisadilla/D-Tector-v
 | Energies | 16 | 24×24 | 1.1 KB |
 | **Total** | **1,674** | | **119.5 KB** |
 
-A 24×24 sprite is 72 bytes packed, and the whole set ships as one 1-bpp atlas of ~120 KB — see the assets decision below.
+The full inventory is larger than this table: **749 sheet sub-sprites** (five Unity-sliced sheets, rects recoverable from the `.meta`) and **113 bitmap font glyphs** (three `.fontsettings`) were found later. Packed total: 2,423 sprites in 217 KB, plus fonts.
 
 ## Decisions so far
 
@@ -64,6 +65,7 @@ A 24×24 sprite is 72 bytes packed, and the whole set ships as one 1-bpp atlas o
 - [Connect IQ binary assets and blitting](./issues/01-ciq-binary-assets-and-blitting.md): Connect IQ has **no binary resource type**, and `jsonData` costs 5 bytes per number, so the packed-blob plan is dead. Ship instead a **single 1-bpp `<bitmap>` atlas** — measured at 119,904 bytes of `.prg` for 1,606 sprites — blitted per cell with `drawBitmap2` + `AffineTransform.setToScale(10,10)` at `FILTER_MODE_POINT`. Atlases live in the 4 MB graphics pool, costing 9 bytes of heap. The 1,674-drawable alternative compiles but costs 387 KB of resources plus 15 KB of resident table.
 - [Input abstraction layer](./issues/09-input-abstraction-layer.md): all 12 abstract events kept; `KEY_ENTER`→A, `KEY_ESC`→B, left/right screen halves held via `onDrag`→Left/Right — exactly the four sustained inputs Maze requires. Adapter synthesises touch down/up as a state machine and feeds an event queue the 20 fps loop drains. Shake is a faithful port of `ShakeDetector.cs` polling `Sensor.getInfo().accel`, live only inside Status.
 - [C# to Monkey C port rules](./issues/11-port-rules-csharp-to-monkeyc.md): the logic/presentation boundary is **`IEnumerator`, not the folder** — `Animations.cs` is 32% of `Logic/` and is pure presentation. Numeric rule: compute in `Float`, `.toNumber()` only after `Math.floor`. `C_Int`'s 30 operator overloads become named methods because it clamps every operation. RNG reproduces bounds and probabilities, not Unity's sequence. Layout is 1:1 per original file with provenance comments, modules annotated `(:extendedCode)`.
+- [Sprite atlas layout and index](./issues/05-sprite-atlas-layout.md): four atlases split by size class — 2,423 sprites in **222,454 bytes**, verified 2,423/2,423 by round-trip diff against the source PNGs. Addressing is arithmetic via a generated `DIGIMON_CELLS[dex][action]` table, no strings. Threshold on luma, not alpha. Sheet rects come from the Unity `.meta`, never guessed.
 
 ## Not yet specified
 
