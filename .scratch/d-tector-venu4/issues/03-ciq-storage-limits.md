@@ -41,3 +41,7 @@ Full findings: [research/03-ciq-storage-limits.md](../research/03-ciq-storage-li
 **Also**: `EncryptedPlayerPrefs.cs` is dead code — unreferenced by `SavedGame.cs`. Drop it rather than porting it.
 
 **Consequence for the map:** multiple save slots are affordable, so the original's structure is preserved. The real decision moving to [Save format mapping](./10-save-format-mapping.md) is the packed-ByteArray encoding and the save-checkpoint policy, not the slot count.
+
+## Follow-up: the quota, measured
+
+The per-device total was inferred here from `simulator.json`. [Save format mapping](./10-save-format-mapping.md) measured it: **9,214 KB written before `Toybox.Application.Storage.setValue() storage limit exceeded`**, confirming `appStorageCapacity: 10485760` and ruling out the Core Topics figure of 128 KB for this device. That ticket also found `setValue` far cheaper than the forum guidance suggested — 1 ms for a 1,024-byte value.
