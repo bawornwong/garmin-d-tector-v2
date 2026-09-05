@@ -1,7 +1,7 @@
 # Connect IQ binary assets and 1bpp blitting
 
 Type: research
-Status: open
+Status: claimed
 Blocked by: —
 
 ## Question
@@ -19,3 +19,7 @@ Answer all of:
 Prefer primary sources: the Connect IQ API docs, the SDK's own `venu445mm.api.debug.xml`, Garmin developer forum posts from Garmin staff. The SDK is installed at `~/Library/Application Support/Garmin/ConnectIQ/Sdks/connectiq-sdk-mac-9.2.0-2026-06-09-92a1605b2`.
 
 Ticket [Sprite blob format and index](./05-sprite-blob-format.md) and [Render pipeline prototype](./06-render-pipeline-prototype.md) both wait on this.
+
+## Context
+
+Findings land at `.scratch/d-tector-venu4/research/01-ciq-binary-assets-and-blitting.md`.

@@ -20,8 +20,9 @@ A handoff-ready **spec + ADR set** for a faithful port of [kaisadilla/D-Tector-v
 - **Fidelity contract**: game *content* (593 Digimon, stats, rarity, worlds, battle math, evolution rules) and *visuals* (sprites, 32×32 layout) reproduced exactly. *Interaction* may be remapped — the watch has different hardware.
 - **Target**: `venu445mm` only (Venu 4 45mm). 41mm is not a target.
 - **Rendering**: game canvas scaled **10×** → 320×320 centred inside the 454×454 round display. Integer scale, no blur, no corner clipping.
+- **Frame rate ceiling: 20 fps** (50 ms timer floor, established by research). The original is a 60 fps Unity game. Everything animated is designed against 50 ms ticks.
 - **Distribution**: personal sideload only, educational, non-commercial, not distributed. No Connect IQ Store submission, so no store review constraints.
-- **Input, for now**: physical button/touch mapping is **deferred**. Build against the SDK simulator's keyboard mapping first; decide real hardware mapping later.
+- **Input**: originally deferred to "simulator keyboard first, hardware later". ~~Deferred~~ — research showed the simulator exposes only two keys on this device, so there is no keyboard-only path. A real remap is decided in [Input abstraction layer](./issues/09-input-abstraction-layer.md).
 - **Port rule**: `Logic/` layer is translated close to line-for-line to preserve behaviour; presentation layer is rewritten natively for Connect IQ (Unity's MonoBehaviour/GameObject/coroutine model has no Connect IQ equivalent).
 
 ### Hard facts established while charting
@@ -55,14 +56,16 @@ A 24×24 sprite is 72 bytes packed. The whole sprite set fits in storage with ro
 
 <!-- one line per resolved ticket: gist + link -->
 
-_(none yet)_
+- [Connect IQ input events and simulator keyboard](./issues/02-ciq-input-and-simulator-keyboard.md): Venu 4 has only two keys (`KEY_ENTER`, `KEY_ESC`) and no menu pseudo-key; press/release separate but hold must be timed in app code; use `onDrag` not `onSwipe`; shake needs `Sensor.getInfo().accel` polled from the game timer, and the simulator cannot generate it. **Two keys cannot carry A/B/Left/Right, so the "defer input mapping" plan does not survive — a real remap must be decided now.**
+- [Connect IQ storage limits for save games](./issues/03-ciq-storage-limits.md): `Application.Storage` supports `ByteArray`; a packed index-keyed save is ~1.1 KB/slot against a quota of at least 128 KB, so 3–4 slots are affordable and storage is not a constraint. Writes are synchronous and expensive, so the original's save-on-every-setter must become checkpointed saves. Keep the `.prg` filename stable (≤8 chars) or saves are orphaned.
+- [Connect IQ memory and timing budget](./issues/04-ciq-memory-and-timing-budget.md): the 768 KB limit is enforced at **build time** against the whole `.prg`, but `(:extendedCode)` exempts annotated code (measured: a build rejected at 1,197,785 B succeeded once annotated), runtime `BufferedBitmap`s live in a separate **4 MB graphics pool**, and 12,000 LOC measures at ≈200 KB. **Timer floor is 50 ms — a hard 20 fps ceiling**, with full-screen redraw every frame and no partial update.
 
 ## Not yet specified
 
+- **Animation fidelity at 20 fps** — the original runs at 60 fps and its animations are written in frame counts. Whether they read correctly when resampled to 50 ms ticks, and what "visually identical" can even mean across a 3× frame-rate gap, is now an open fidelity question. Sharpens once the render pipeline is measured.
 - **Battle math parity** — how exactly `Battle.cs` (1,068 LOC) computes outcomes, and whether Monkey C's numeric model (no `float` vs `double` distinction the way C# has it, different rounding) can reproduce it bit-for-bit. Waits on the port-rules ticket.
 - **RNG parity** — Unity `Random` vs Monkey C `Math.rand`. Whether "content unchanged" demands identical distributions or merely identical rules.
 - **Per-minigame specs** — DigiHunter, Finder, JackpotBox, Maze, SpeedRunner each need their own timing and input treatment. Waits on the animation VM and the render pipeline.
-- **Physical input mapping** — real buttons/touch/shake on Venu 4. Deliberately deferred; simulator keyboard first.
 - **D-Tector frame art** — the 454 ring around the 320×320 canvas. Cosmetic, undecided, not in the original.
 - **Localization** — source has a `config_localization` setting; scope unknown.
 - **Evolution / D-Dock / spirit logic** — depth not yet surveyed.
