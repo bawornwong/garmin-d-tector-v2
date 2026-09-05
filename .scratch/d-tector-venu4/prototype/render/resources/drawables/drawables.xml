@@ -1,0 +1,4 @@
+<drawables>
+    <bitmap id="LauncherIcon" filename="launcher.png" />
+    <bitmap id="Atlas24" filename="atlas24.png" />
+</drawables>
