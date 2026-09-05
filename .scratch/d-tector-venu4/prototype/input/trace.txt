@@ -1,0 +1,113 @@
+49518 onKeyPressed KEY_ENTER
+50711 onSelect
+50711 onKeyReleased KEY_ENTER heldMs=1193
+68903 onKeyPressed KEY_ENTER
+68934 onSelect
+68934 onKeyReleased KEY_ENTER heldMs=31
+71167 onKeyPressed KEY_ENTER
+73406 onSelect
+73406 onKeyReleased KEY_ENTER heldMs=2239
+89583 onKeyPressed KEY_ESC
+89584 onBack (consumed)
+89584 onKeyReleased KEY_ESC heldMs=1
+115426 onSelect
+117170 onSelect
+117825 onSelect
+118593 onKeyPressed KEY_ENTER
+118705 onSelect
+118705 onKeyReleased KEY_ENTER heldMs=112
+119687 onKeyPressed KEY_ENTER
+119988 onSelect
+119989 onKeyReleased KEY_ENTER heldMs=302
+120218 onKeyPressed KEY_ENTER
+120326 onSelect
+120326 onKeyReleased KEY_ENTER heldMs=108
+121972 onNextPage
+122476 onPreviousPage
+123088 onSwipe LEFT
+123603 onBack (consumed)
+124205 onSwipe LEFT
+124578 onBack (consumed)
+125154 onBack (consumed)
+125753 onBack (consumed)
+126279 onBack (consumed)
+126923 onSwipe LEFT
+127532 onSwipe LEFT
+128658 onKeyPressed KEY_ENTER
+128658 onSelect
+128838 onKeyReleased KEY_ENTER heldMs=180
+129430 onKeyPressed KEY_ENTER
+129431 onSelect
+129616 onKeyReleased KEY_ENTER heldMs=186
+130078 onKeyPressed KEY_ENTER
+130079 onSelect
+130228 onKeyReleased KEY_ENTER heldMs=150
+131057 onKeyPressed KEY_ENTER
+131175 onSelect
+131175 onKeyReleased KEY_ENTER heldMs=118
+131673 onKeyPressed KEY_ENTER
+133452 onSelect
+133452 onKeyReleased KEY_ENTER heldMs=1779
+133967 onKeyPressed KEY_ENTER
+133967 onSelect
+135217 onKeyReleased KEY_ENTER heldMs=1250
+138256 onKeyPressed KEY_ESC
+138256 onBack (consumed)
+138446 onKeyReleased KEY_ESC heldMs=190
+138881 onKeyPressed KEY_ESC
+138882 onBack (consumed)
+139246 onKeyReleased KEY_ESC heldMs=365
+146426 onKeyPressed KEY_ESC
+146564 onBack (consumed)
+146564 onKeyReleased KEY_ESC heldMs=138
+146988 onKeyPressed KEY_ESC
+147126 onBack (consumed)
+147127 onKeyReleased KEY_ESC heldMs=139
+147405 onKeyPressed KEY_ESC
+147622 onBack (consumed)
+147622 onKeyReleased KEY_ESC heldMs=217
+166559 onKeyPressed KEY_ESC
+169052 onBack (consumed)
+169053 onKeyReleased KEY_ESC heldMs=2495
+186312 onDrag START (97,203) half=LEFT
+186313 onDrag CONTINUE (97,203) half=LEFT
+186436 onDrag CONTINUE (104,208) half=LEFT
+186562 onDrag CONTINUE (111,214) half=LEFT
+186685 onDrag CONTINUE (117,219) half=LEFT
+186810 onDrag CONTINUE (124,224) half=LEFT
+186936 onDrag CONTINUE (131,230) half=LEFT
+187059 onDrag STOP (131,230) half=LEFT
+190220 onHold (91,198)
+190726 onRelease (91,198)
+260978 onKeyPressed KEY_ENTER
+261067 onSelect
+261067 onKeyReleased KEY_ENTER heldMs=89
+277357 onDrag START (97,203) half=LEFT
+277358 onDrag CONTINUE (97,203) half=LEFT
+277483 onDrag CONTINUE (104,208) half=LEFT
+277609 onDrag CONTINUE (111,214) half=LEFT
+277732 onDrag CONTINUE (117,219) half=LEFT
+277854 onDrag CONTINUE (124,224) half=LEFT
+277974 onDrag CONTINUE (131,230) half=LEFT
+278100 onDrag STOP (131,230) half=LEFT
+282165 onDrag START (91,198) half=LEFT
+282554 onHold (91,198)
+282764 onDrag CONTINUE (92,198) half=LEFT
+283368 onDrag STOP (92,198) half=LEFT
+283370 onRelease (92,198)
+286877 onDrag START (349,198) half=RIGHT
+286878 onDrag CONTINUE (349,198) half=RIGHT
+286957 onDrag CONTINUE (308,198) half=RIGHT
+287015 onDrag CONTINUE (267,198) half=RIGHT
+287071 onDrag CONTINUE (226,198) half=LEFT
+287141 onDrag CONTINUE (184,198) half=LEFT
+287200 onDrag CONTINUE (143,198) half=LEFT
+287258 onDrag CONTINUE (102,198) half=LEFT
+287320 onDrag CONTINUE (61,198) half=LEFT
+287386 onDrag STOP (61,198) half=LEFT
+287386 onSwipe LEFT
+290861 onDrag START (267,198) half=RIGHT
+290861 onDrag CONTINUE (267,198) half=RIGHT
+290932 onDrag CONTINUE (143,198) half=LEFT
+290993 onDrag STOP (61,198) half=LEFT
+290994 onSwipe LEFT
