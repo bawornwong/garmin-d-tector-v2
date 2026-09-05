@@ -1,7 +1,7 @@
 # Coroutine conversion strategy
 
 Type: grilling
-Status: open
+Status: resolved
 Blocked by: 07
 
 ## Question

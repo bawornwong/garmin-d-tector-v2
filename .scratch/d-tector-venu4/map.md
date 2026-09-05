@@ -83,7 +83,6 @@ The full inventory is larger than this table: **749 sheet sub-sprites** (five Un
 - **Per-minigame specs** — DigiHunter, Finder, JackpotBox, Maze, SpeedRunner each need their own timing and input treatment. Waits on the animation VM and the render pipeline.
 - **D-Tector frame art** — the 454 ring around the 320×320 canvas. Cosmetic, undecided, not in the original.
 - **Hardware timing** — every render number so far is from the simulator. The frame budget, the row-fill cost and the sprite-per-frame ceiling all need re-measuring on a real Venu 4 before anything depends on them.
-- **Graphics-pool purges** — buffered bitmaps are not auto-restored. How the game notices a purged row buffer and refills it without a visible glitch is unspecified.
 - **Localization** — source has a `config_localization` setting; scope unknown.
 - **Evolution / D-Dock / spirit logic** — depth not yet surveyed.
 
