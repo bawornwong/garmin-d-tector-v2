@@ -22,7 +22,8 @@ A handoff-ready **spec + ADR set** for a faithful port of [kaisadilla/D-Tector-v
 - **Rendering**: game canvas scaled **10×** → 320×320 centred inside the 454×454 round display. Integer scale, no blur, no corner clipping.
 - **Frame rate ceiling: 20 fps** (50 ms timer floor, established by research). The original is a 60 fps Unity game. Everything animated is designed against 50 ms ticks.
 - **Distribution**: personal sideload only, educational, non-commercial, not distributed. No Connect IQ Store submission, so no store review constraints.
-- **Input**: originally deferred to "simulator keyboard first, hardware later". ~~Deferred~~ — research showed the simulator exposes only two keys on this device, so there is no keyboard-only path. A real remap is decided in [Input abstraction layer](./issues/09-input-abstraction-layer.md).
+- **Input**: two physical buttons carry A and B; the left and right screen halves, held, carry Left and Right. Decided in [Input abstraction layer](./issues/09-input-abstraction-layer.md) after research showed the simulator exposes only two keys, killing the original "keyboard first, hardware later" plan.
+- **The fidelity anchor is the emulator source, not the physical toy.** This is a port. Where the two differ, the source wins.
 - **Port rule**: `Logic/` layer is translated close to line-for-line to preserve behaviour; presentation layer is rewritten natively for Connect IQ (Unity's MonoBehaviour/GameObject/coroutine model has no Connect IQ equivalent).
 
 ### Hard facts established while charting
@@ -60,6 +61,7 @@ A 24×24 sprite is 72 bytes packed, and the whole set ships as one 1-bpp atlas o
 - [Connect IQ storage limits for save games](./issues/03-ciq-storage-limits.md): `Application.Storage` supports `ByteArray`; a packed index-keyed save is ~1.1 KB/slot against a quota of at least 128 KB, so 3–4 slots are affordable and storage is not a constraint. Writes are synchronous and expensive, so the original's save-on-every-setter must become checkpointed saves. Keep the `.prg` filename stable (≤8 chars) or saves are orphaned.
 - [Connect IQ memory and timing budget](./issues/04-ciq-memory-and-timing-budget.md): the 768 KB limit is enforced at **build time** against the whole `.prg`, but `(:extendedCode)` exempts annotated code (measured: a build rejected at 1,197,785 B succeeded once annotated), runtime `BufferedBitmap`s live in a separate **4 MB graphics pool**, and 12,000 LOC measures at ≈200 KB. **Timer floor is 50 ms — a hard 20 fps ceiling**, with full-screen redraw every frame and no partial update.
 - [Connect IQ binary assets and blitting](./issues/01-ciq-binary-assets-and-blitting.md): Connect IQ has **no binary resource type**, and `jsonData` costs 5 bytes per number, so the packed-blob plan is dead. Ship instead a **single 1-bpp `<bitmap>` atlas** — measured at 119,904 bytes of `.prg` for 1,606 sprites — blitted per cell with `drawBitmap2` + `AffineTransform.setToScale(10,10)` at `FILTER_MODE_POINT`. Atlases live in the 4 MB graphics pool, costing 9 bytes of heap. The 1,674-drawable alternative compiles but costs 387 KB of resources plus 15 KB of resident table.
+- [Input abstraction layer](./issues/09-input-abstraction-layer.md): all 12 abstract events kept; `KEY_ENTER`→A, `KEY_ESC`→B, left/right screen halves held via `onDrag`→Left/Right — exactly the four sustained inputs Maze requires. Adapter synthesises touch down/up as a state machine and feeds an event queue the 20 fps loop drains. Shake is a faithful port of `ShakeDetector.cs` polling `Sensor.getInfo().accel`, live only inside Status.
 
 ## Not yet specified
 
@@ -76,4 +78,5 @@ A 24×24 sprite is 72 bytes packed, and the whole set ships as one 1-bpp atlas o
 
 - **Audio (51 MP3s, 12 MB)** — Connect IQ watchApps cannot play audio files; only `Attention.playTone` profiles and vibration. This is a hardware ceiling, not a content change. Could become its own effort later.
 - **Venu 4 41mm (`venu441mm`, 390×390)** — different scale factor, needs a second asset treatment.
+- **Using the watch's real pedometer for in-game steps** — `ActivityMonitor.getInfo().steps` would echo the physical D-Tector toy, but the source only ever advances distance on shake. Ruled out in [Input abstraction layer](./issues/09-input-abstraction-layer.md); it would change gameplay.
 - **Connect IQ Store publication** — sideload only, so no store review, no IP clearance path.
