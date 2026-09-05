@@ -10,6 +10,8 @@ A handoff-ready **spec + ADR set** for a faithful port of [kaisadilla/D-Tector-v
 
 **Domain**: retro virtual-pet / Digimon D-Tector device emulation, ported from Unity/C# to Monkey C / Connect IQ.
 
+**Toolchain**: Connect IQ SDK 9.2.0 at `~/Library/Application Support/Garmin/ConnectIQ/Sdks/`; a self-signed dev key in the session scratchpad; .NET 9 for the golden-trace harness (`DOTNET_ROOT=$HOME/.dotnet`).
+
 **Skills every session should consult**: `mattpocock-skills:grilling` + `mattpocock-skills:domain-modeling` by default; `mattpocock-skills:research` for research tickets; `mattpocock-skills:prototype` for prototype tickets.
 
 **Source checkout** (throwaway, re-clone if gone):
@@ -68,6 +70,7 @@ The full inventory is larger than this table: **749 sheet sub-sprites** (five Un
 - [Sprite atlas layout and index](./issues/05-sprite-atlas-layout.md): four atlases split by size class — 2,423 sprites in **222,454 bytes**, verified 2,423/2,423 by round-trip diff against the source PNGs. Addressing is arithmetic via a generated `DIGIMON_CELLS[dex][action]` table, no strings. Threshold on luma, not alpha. Sheet rects come from the Unity `.meta`, never guessed.
 - [Render pipeline prototype](./issues/06-render-pipeline-prototype.md): **`drawBitmap2` rejects a palette source outright**, so the atlas ships as a 1-bpp resource (122,816 bytes measured) and is transferred into non-palette `BufferedBitmap` **row buffers** at runtime. Blit cost tracks source area, not output size: a 984×24 row costs **0.3 ms/sprite** against 6.8 ms from a whole-atlas buffer, so ~30 sprites fit a 50 ms frame. Rows fill lazily under an LRU. Colours are baked, not tinted. All timings are simulator, not hardware.
 - [Animation VM instruction set](./issues/07-animation-vm-instruction-set.md): the data-VM plan is replaced by a **state-machine transform** — `Animations.cs` carries 202 `for` loops, 105 `if`s and 267 locals, so a data VM would mean writing a language. Each coroutine becomes a `pc`-switch class; a fractional scheduler runs every step whose scheduled time has arrived within each 50 ms tick, so durations match exactly. Verified **150/150 events** against a golden trace across three structurally different coroutines.
+- [Coroutine conversion strategy](./issues/08-coroutine-conversion-strategy.md): a script emits the `pc`-case skeleton and lifts locals to fields, a human fills the statements. **Golden traces are generated from the true source, never transcribed** — 485 lines of stubs let the unmodified `Animations.cs` compile and run outside Unity: **53/53 coroutines traced, 0 failures, 6,911 events**. The runner gains fibers for the 32 `StartCoroutine`/`StopCoroutine` sites.
 
 ## Not yet specified
 
