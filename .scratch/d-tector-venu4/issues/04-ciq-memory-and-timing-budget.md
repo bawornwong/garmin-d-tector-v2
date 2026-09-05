@@ -44,5 +44,5 @@ Six open items needing hardware or a running simulator are listed at the end of 
 
 **Consequences for the map:**
 - **20 fps is a standing constraint.** [Render pipeline prototype](./06-render-pipeline-prototype.md) and [Animation VM instruction set](./07-animation-vm-instruction-set.md) must both assume a 50 ms tick. The original is a Unity game running at 60 fps; whether its animations read correctly at 20 fps is now a fidelity question, not just a performance one.
-- **The 4 MB graphics pool changes the asset picture** — runtime `BufferedBitmap`s do not count against the 768 KB. Feeds [Connect IQ binary assets and blitting](./01-ciq-binary-assets-and-blitting.md) and [Sprite blob format and index](./05-sprite-blob-format.md).
+- **The 4 MB graphics pool changes the asset picture** — runtime `BufferedBitmap`s do not count against the 768 KB. Feeds [Connect IQ binary assets and blitting](./01-ciq-binary-assets-and-blitting.md) and [Sprite atlas layout and index](./05-sprite-atlas-layout.md).
 - **`(:extendedCode)` makes 12k LOC comfortable**, removing the main feasibility doubt behind [C# to Monkey C port rules](./11-port-rules-csharp-to-monkeyc.md).

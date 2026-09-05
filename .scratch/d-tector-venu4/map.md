@@ -50,7 +50,7 @@ A handoff-ready **spec + ADR set** for a faithful port of [kaisadilla/D-Tector-v
 | Energies | 16 | 24×24 | 1.1 KB |
 | **Total** | **1,674** | | **119.5 KB** |
 
-A 24×24 sprite is 72 bytes packed. The whole sprite set fits in storage with room to spare, and one sprite in RAM is negligible against the 768 KB budget.
+A 24×24 sprite is 72 bytes packed, and the whole set ships as one 1-bpp atlas of ~120 KB — see the assets decision below.
 
 ## Decisions so far
 
@@ -59,9 +59,11 @@ A 24×24 sprite is 72 bytes packed. The whole sprite set fits in storage with ro
 - [Connect IQ input events and simulator keyboard](./issues/02-ciq-input-and-simulator-keyboard.md): Venu 4 has only two keys (`KEY_ENTER`, `KEY_ESC`) and no menu pseudo-key; press/release separate but hold must be timed in app code; use `onDrag` not `onSwipe`; shake needs `Sensor.getInfo().accel` polled from the game timer, and the simulator cannot generate it. **Two keys cannot carry A/B/Left/Right, so the "defer input mapping" plan does not survive — a real remap must be decided now.**
 - [Connect IQ storage limits for save games](./issues/03-ciq-storage-limits.md): `Application.Storage` supports `ByteArray`; a packed index-keyed save is ~1.1 KB/slot against a quota of at least 128 KB, so 3–4 slots are affordable and storage is not a constraint. Writes are synchronous and expensive, so the original's save-on-every-setter must become checkpointed saves. Keep the `.prg` filename stable (≤8 chars) or saves are orphaned.
 - [Connect IQ memory and timing budget](./issues/04-ciq-memory-and-timing-budget.md): the 768 KB limit is enforced at **build time** against the whole `.prg`, but `(:extendedCode)` exempts annotated code (measured: a build rejected at 1,197,785 B succeeded once annotated), runtime `BufferedBitmap`s live in a separate **4 MB graphics pool**, and 12,000 LOC measures at ≈200 KB. **Timer floor is 50 ms — a hard 20 fps ceiling**, with full-screen redraw every frame and no partial update.
+- [Connect IQ binary assets and blitting](./issues/01-ciq-binary-assets-and-blitting.md): Connect IQ has **no binary resource type**, and `jsonData` costs 5 bytes per number, so the packed-blob plan is dead. Ship instead a **single 1-bpp `<bitmap>` atlas** — measured at 119,904 bytes of `.prg` for 1,606 sprites — blitted per cell with `drawBitmap2` + `AffineTransform.setToScale(10,10)` at `FILTER_MODE_POINT`. Atlases live in the 4 MB graphics pool, costing 9 bytes of heap. The 1,674-drawable alternative compiles but costs 387 KB of resources plus 15 KB of resident table.
 
 ## Not yet specified
 
+- **`drawBitmap2` source-rect + transform composition** — unconfirmed by any primary source, and the atlas approach depends on it. Sharpens (or explodes) at the first simulator spike in [Render pipeline prototype](./issues/06-render-pipeline-prototype.md).
 - **Animation fidelity at 20 fps** — the original runs at 60 fps and its animations are written in frame counts. Whether they read correctly when resampled to 50 ms ticks, and what "visually identical" can even mean across a 3× frame-rate gap, is now an open fidelity question. Sharpens once the render pipeline is measured.
 - **Battle math parity** — how exactly `Battle.cs` (1,068 LOC) computes outcomes, and whether Monkey C's numeric model (no `float` vs `double` distinction the way C# has it, different rounding) can reproduce it bit-for-bit. Waits on the port-rules ticket.
 - **RNG parity** — Unity `Random` vs Monkey C `Math.rand`. Whether "content unchanged" demands identical distributions or merely identical rules.
