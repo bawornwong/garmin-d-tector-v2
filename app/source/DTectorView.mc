@@ -134,6 +134,15 @@ class DTectorView extends WatchUi.View {
         var saved = new SavedGame(_save, 0, record);
         _gm = new GameManager(_data, db, saved);
 
+        // GameManager.CreateNewGame runs WorldManager.SetupWorlds once, when a
+        // game is made; the port has no character-selection flow yet, so a
+        // save whose boss list is still empty gets set up here.
+        if (_gm.worldMgr.getBossOfCurrentArea() < 0) {
+            _gm.worldMgr.setupWorlds(
+                Kaisa.WellKnown.PLAYER_SPIRIT[record.gameChar]);
+            saved.commit();
+        }
+
         var screenMgr = new ScreenManager(_gm, root);
         _gm.attachScreenManager(screenMgr);
         // The three blinking overlays run forever and would interleave their

@@ -64,6 +64,7 @@ app/source/
               DigiHunter.mc       the 3x3 face-hunting minigame
               SpeedRunner.mc      the three-lane rocket minigame
               Maze.mc             the 15x12 maze minigame
+              Map.mc              the world map: pan, pick an area, travel
               Camp.mc             the smallest app; clears the defeated flag
 ```
 
@@ -95,6 +96,7 @@ Every check reads a frame back off the device or diffs two real implementations.
 | UI sprite resolution | 215 resolved, 1 unassigned in the scene | `tools/pack_ui_sprites.py` |
 | Numeric parity, original C# ↔ ported Monkey C | 16,211 values, 0 differences, floats bit-exact | `tools/verify_numeric.py` |
 | Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
+| Packed world layout vs `worlds.json` | 225 / 225 fields | `tools/verify_worlds.py` |
 | Converted animations vs a golden trace of the original | 9 / 9, 475 events | `tools/verify_anim.py` (a few minutes: it rebuilds and runs the app once per animation) |
 | Rendered sprite vs atlas (normal) | 576 / 576 | set `_probeIndex`, capture, `tools/verify_render.py <png> 8` |
 | Rendered sprite vs atlas (inverted) | 576 / 576 | also set `_probeInvert`, then `... --inverted` |
@@ -128,7 +130,8 @@ All measured, all already encoded in the code that depends on them — listed he
 **Then, in order:**
 
 - **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
-- **`Connect`**, the only untranslated app that does not depend on unsurveyed rules. `JackpotBox` is deliberately later: it pulls in the whole reward system (`ApplyReward`, `EnqueueRewardAnimation`, the data storm, spirit loss), which overlaps the unsurveyed spirit rules, and `Battle` and `Map` wait on those rules outright.
+- **The reward system** (`LogicManager.ApplyReward`, `GameManager.EnqueueRewardAnimation`), which `JackpotBox` needs and which reaches into spirit power, digicode unlocks and the data storm.
+- **`Battle`** (1,068 lines) and its animations, the last and heaviest surface. It still waits on the evolution and spirit rules, which are the only part of SPEC section 8 left unsurveyed.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
 
@@ -139,8 +142,7 @@ All measured, all already encoded in the code that depends on them — listed he
 - **`Animations.cs` is 9 of 60 translated.** `GameManager.enqueueAnimation` takes null from every call site whose animation is not converted yet, and each such site says so.
 - **Two `Kaisa.Sprites` fields can be the same cell** (`animDistance` and `games_distance` are one sprite), so the debug name lookup is ambiguous by nature; `verify_anim.py` canonicalises names to cells rather than trusting them.
 - **Every render timing in SPEC is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
-- **Worlds, areas and bosses are unsurveyed.** `WorldManager` carries only the two counters Status reads; the rest is deliberately absent rather than guessed, and SPEC section 8 lists what is unknown.
-- `SaveFormat`'s seeding of `bosses` and `semibossGroup` has not been checked against `WorldManager.cs`; the round-trip proves the format, not the initial values.
+- **The save format is version 2.** Version 1 slots are refused (and logged) rather than decoded: the world arrays are sized from the packed data, so an old slot would run off the end of the blob. There is no migration; the port has no released saves to migrate.
 - The 20-entry cap on `lostSpirits` is inferred, not verified.
 - Whether Unity draws *nothing* for a missing glyph or a blank box that consumes advance still wants confirming against a running original (ADR 10 chose "nothing").
 - `.scratch/d-tector-venu4/` is the wayfinder map that produced SPEC and the ADRs. It is **history**, not the current plan; read SPEC first.

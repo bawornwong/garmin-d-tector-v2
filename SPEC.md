@@ -141,6 +141,7 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 | Flipped blits (h, v, both) against the atlas | 576 / 576 each |
 | Text canvas against the font metrics, read back off the device | 102,400 / 102,400 device pixels, 5 strings |
 | Packed gallery order against the original's `OrderBy(order)` | 8 / 8 stages, 593 rows |
+| Packed world layout against `worlds.json` | 225 / 225 fields, 9 worlds, 52 areas |
 
 `tools/verify_numeric.py` runs the numeric-parity check on both sides at once: the C# side compiles the **original** `Logic/Models/Digimon.cs` against a Mathf shim, the Monkey C side compiles the **ported** `app/source/Logic/Digimon.mc` through its own jungle `sourcePath`, and the two sweeps are diffed line for line. Float results are compared as IEEE-754 bit patterns, so a one-ULP difference — the thing that moves a floor boundary elsewhere — cannot hide behind a decimal rendering. It covers `MaxExtraLevel`, `GetSpiritCost`, `GetCallCost`, `GetBossLevel`, `GetObeyChance`, `GetIdleChance`, `GetEvolveChance`, `GetBossStats`, `GetFriendlyStats` and `GetEnergyRank`. **`Mathf.RoundToInt` is half-to-even and Monkey C's `Math.round` is not**, so the port has its own `roundToInt`; this check is what would have caught the difference.
 
@@ -158,6 +159,5 @@ Nine of the sixty coroutines are converted: the four the survey called linear, t
 
 - **Every render timing here is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
 - Whether Unity draws *nothing* for a missing glyph, or a blank box that consumes advance, needs confirming against a running original.
-- `SaveFormat`'s seeding of `bosses` and `semibossGroup` has not been checked against `WorldManager.cs`; the round-trip proves the format, not the initial values.
 - The 20-entry cap on `lostSpirits` is inferred, not verified against the game's own maximum.
-- Per-minigame timing and input treatment, the D-Tector frame art around the canvas, localization, and the evolution/D-Dock/spirit rules are unsurveyed.
+- The evolution, D-Dock and spirit rules are unsurveyed, and `Battle` and `JackpotBox`'s reward system wait on them. The D-Tector frame art around the canvas and localization are also unsurveyed.

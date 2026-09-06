@@ -114,6 +114,45 @@ class SavedGame {
         touch();
     }
 
+    function currentWorld() as Number { return record.currentMap; }
+    function setCurrentWorld(v as Number) as Void {
+        record.currentMap = v;
+        touch();
+    }
+
+    function currentArea() as Number { return record.currentArea; }
+    function setCurrentArea(v as Number) as Void {
+        record.currentArea = v;
+        touch();
+    }
+
+    // The positional arrays SaveFormat packs across all worlds at once; the
+    // per-world offset comes from WorldManager, which is where the world
+    // layout lives.
+    function areaCompleted(flatIndex as Number) as Boolean {
+        return record.areasCompleted[flatIndex];
+    }
+    function setAreaCompleted(flatIndex as Number, v as Boolean) as Void {
+        record.areasCompleted[flatIndex] = v;
+        touch();
+    }
+
+    function bossAtSlot(flatIndex as Number) as Number {
+        return record.bosses[flatIndex];
+    }
+    function setBossAtSlot(flatIndex as Number, digimonIndex as Number) as Void {
+        record.bosses[flatIndex] = digimonIndex;
+        touch();
+    }
+
+    function semibossGroup(world as Number) as Number {
+        return record.semibossGroup[world];
+    }
+    function setSemibossGroup(world as Number, group as Number) as Void {
+        record.semibossGroup[world] = group;
+        touch();
+    }
+
     function digicodeUnlocked(digimonIndex as Number) as Boolean {
         return record.digicodeUnlocked[digimonIndex];
     }

@@ -27,7 +27,7 @@ class GameManager {
         db = dbIn;
         saved = savedIn;
         logicMgr = new LogicManager(savedIn, dbIn);
-        worldMgr = new WorldManager(savedIn);
+        worldMgr = new WorldManager(savedIn, dataIn);
         audioMgr = new AudioManager();
         runner = new Runner();
         appLoader = new AppLoader(self);
@@ -56,11 +56,9 @@ class GameManager {
         return logicMgr.isEventPending;
     }
 
-    // GameManager.cs:50 -- a per-world flag. The worlds section is packed but
-    // its reader belongs with the Map app (SPEC section 8), so this is the
-    // default the first world carries until then.
+    // GameManager.cs:50
     function showEyes() as Boolean {
-        return false;
+        return data.worldShowEyes(worldMgr.currentWorld());
     }
 
     // GameManager.cs:257
@@ -123,6 +121,28 @@ class GameManager {
             sprite = data.spriteRef(digimonIndex, data.ACTION_BASE);
         }
         return Kaisa.ScreenBuilder.buildDDockScreenElement(ddock, sprite, parent);
+    }
+
+    // GameManager.cs:281 BuildMapScreen -- a world's map art: one 32x32
+    // sprite, or a 64x64 sheet of four for a multi-map world.
+    function buildMapScreen(world as Number, parent as ScreenElement) as ContainerBuilder {
+        var cbMap = Kaisa.ScreenBuilder.buildContainer("Map Container", parent, true);
+        if (data.worldMultiMap(world)) {
+            cbMap.setSize(64, 64);
+            Kaisa.ScreenBuilder.buildSprite("Map 0", cbMap)
+                .setSprite(data.worldMapSprite(world, 0));
+            Kaisa.ScreenBuilder.buildSprite("Map 1", cbMap)
+                .setSprite(data.worldMapSprite(world, 1)).setPosition(0, 32);
+            Kaisa.ScreenBuilder.buildSprite("Map 2", cbMap)
+                .setSprite(data.worldMapSprite(world, 2)).setPosition(32, 32);
+            Kaisa.ScreenBuilder.buildSprite("Map 3", cbMap)
+                .setSprite(data.worldMapSprite(world, 3)).setPosition(32, 0);
+        } else {
+            cbMap.setSize(32, 32);
+            Kaisa.ScreenBuilder.buildSprite("Map 0", cbMap)
+                .setSprite(data.worldMapSprite(world, 0));
+        }
+        return cbMap;
     }
 
     // GameManager.GetAllDDockDigimons -- all four slots, empty ones included.

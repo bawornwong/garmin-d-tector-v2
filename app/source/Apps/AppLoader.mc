@@ -42,6 +42,7 @@ class AppLoader {
     // AppLoader.LoadApp<T>. `parent` is the screen root the app draws into,
     // which the original gets from gm.RootParent.
     function loadApp(app as Number, controller, parent as ScreenElement) as DigiviceApp? {
+        if (app == Kaisa.APP_MAP) { return new Map(gm, controller, parent); }
         if (app == Kaisa.APP_STATUS) { return new Status(gm, controller, parent); }
         if (app == Kaisa.APP_DATABASE) { return new DatabaseApp(gm, controller, parent); }
         if (app == Kaisa.APP_CAMP) { return new Camp(gm, controller, parent); }
@@ -56,8 +57,9 @@ class AppLoader {
         if (app == Kaisa.APP_SPEED_RUNNER) { return new SpeedRunner(gm, controller, parent); }
         if (app == Kaisa.APP_MAZE) { return new Maze(gm, controller, parent); }
 
-        // Map, Connect, Battle, JackpotBox, EnergyWars,
-        // DigiCatch, Asteroids -- steps 8 and 9
+        // Battle, JackpotBox, EnergyWars, DigiCatch, Asteroids -- step 8 and
+        // the reward system. (Connect has no implementation in the original
+        // either: the App enum has an entry, the Logic/Apps folder does not.)
         // of SPEC's order of work.
         System.println("AppLoader: app " + app + " is not translated yet");
         return null;

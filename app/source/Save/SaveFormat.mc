@@ -37,8 +37,11 @@ import Toybox.System;
 //   u8[digimonCount]                digimonLevel, positional
 //   bit[digimonCount]               digicodeUnlocked, positional
 //   bit[areaTotal]                  areasCompleted
-//   s16[bossSlotTotal]              bosses (assigned Digimon per slot)
-//   s16[semibossGroupTotal]         semibossGroup (assigned Digimon per group)
+//   s16[bossListTotal]              bosses (the assigned list per world, laid
+//                                     out world by world; a world's slice is
+//                                     its slot count plus the biggest semiboss
+//                                     group it can be filled with)
+//   s16[worldCount]                 semibossGroup (the chosen group per world)
 //
 // NOTE: the source assigns `bosses`/`semibossGroup` "from the Database when
 // the game was first created" (SavedGameFile's own comment) via logic in
@@ -46,7 +49,11 @@ import Toybox.System;
 // below seeds both from the STATIC per-world boss list already packed into
 // the data blob (tools/pack_data.py's `worlds` section) as a placeholder --
 // this needs checking against WorldManager.cs before it is trusted.
-const VERSION = 1;
+// Bumped when the byte layout changes. Version 2 resized the world arrays:
+// `bosses` is now the assigned LIST per world (slots plus the biggest semiboss
+// group that can fill it) and `semibossGroup` is one entry per world, matching
+// what WorldManager.SetupWorlds actually writes.
+const VERSION = 2;
 const MAX_LOST_SPIRITS = 20;
 const MAX_NAME = 16;
 
@@ -77,8 +84,8 @@ class SaveRecord {
     var digimonLevel as Array<Number> = [];       // positional, size = digimonCount
     var digicodeUnlocked as Array<Boolean> = [];  // positional, size = digimonCount
     var areasCompleted as Array<Boolean> = [];    // positional, size = areaTotal
-    var bosses as Array<Number> = [];             // positional, size = bossSlotTotal
-    var semibossGroup as Array<Number> = [];      // positional, size = semibossGroupTotal
+    var bosses as Array<Number> = [];             // positional, size = bossListTotal
+    var semibossGroup as Array<Number> = [];      // one per world
 }
 
 class SaveFormat {
@@ -205,11 +212,27 @@ class SaveFormat {
         Storage.setValue("slot" + slot, encode(r));
     }
 
+    // A slot written by an older layout is not readable: the arrays are sized
+    // from the packed data, so decoding it would run off the end of the blob.
+    // It is treated as absent, which is what the caller does with a missing
+    // save anyway -- and the version check happens before any of the
+    // length-dependent reads, so a stale slot costs one byte to reject.
     function readSlot(slot as Number) as SaveRecord? {
         var bytes = Storage.getValue("slot" + slot) as ByteArray?;
         if (bytes == null) { return null; }
+        if (bytes.size() < 1 || bytes[0] != VERSION) {
+            System.println("SaveFormat: slot " + slot + " is version "
+                + (bytes.size() > 0 ? bytes[0] : -1) + ", expected " + VERSION);
+            return null;
+        }
         var totals = _data.worldTotals();
-        return decode(bytes, _data.digimonCount(), totals[0], totals[1], totals[2]);
+        try {
+            return decode(bytes, _data.digimonCount(), totals[0], totals[1], totals[2]);
+        } catch (e) {
+            System.println("SaveFormat: slot " + slot + " did not decode: "
+                + e.getErrorMessage());
+            return null;
+        }
     }
 
     // --- byte helpers --------------------------------------------------------
