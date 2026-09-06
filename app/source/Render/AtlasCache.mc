@@ -16,6 +16,18 @@ import Toybox.WatchUi;
 // whole-atlas buffer. Rows are therefore the unit of caching, capped at 16
 // (ticket 16 measured the pool's real ceiling at ~829,000 px regardless of
 // buffer shape, and overcommitting throws rather than purging).
+//
+// The row buffer is created with NO :palette option, and that is load-bearing
+// twice over (both measured):
+//   - a BufferedBitmap created WITH a palette is itself a palettised bitmap,
+//     so drawBitmap2 rejects it as a source with the same "Source must not use
+//     a color palette" that rules out the resource. A palette-free buffer is
+//     the only kind that can be blitted from.
+//   - a palette-free buffer starts fully transparent and preserves the atlas's
+//     alpha through the copy, which is what lets a sprite composite over what
+//     is beneath it instead of stamping a rectangle of screen colour over it.
+//     Verified by drawing a cell over a blue field: 262 ink pixels landed,
+//     314 field pixels stayed blue.
 class AtlasCache {
     const CAP = 16;
 

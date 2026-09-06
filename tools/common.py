@@ -14,10 +14,28 @@ DT_SRC = os.environ.get(
 
 APP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app")
 
-# ADR 3: colours are baked into the atlas palette, not tinted at draw time.
+# ADR 3 (revised): art is packed as WHITE ink on a TRANSPARENT field, and the
+# colour is applied at draw time with drawBitmap2's :tintColor, which the
+# device applies as a MULTIPLY (measured: an opaque 0x819376 pixel tinted
+# 0xFF0000 came back 0x810000; white x tint == tint exactly). One atlas
+# therefore serves three things a baked two-colour atlas could not:
+#   - sprites that composite over what is beneath them, as the Unity original
+#     does; a baked LCD-coloured field erases it instead
+#   - InvertColors, which the source uses for every menu highlight and stat
+#     sign -- unreachable by tint from black ink, since black x anything is
+#     black
+#   - Preferences' configurable screen colours, which are now just a
+#     different tint
 LCD_BG = (0x81, 0x93, 0x76)   # Preferences.BackgroundColor default
 INK = (0x00, 0x00, 0x00)      # Preferences.ActiveColor default
+WHITE = (0xFF, 0xFF, 0xFF)    # what is actually stored in every atlas
 LUMA_ON = 128
+
+# index 0 is the transparent field, index 1 the ink. Index 0's colour never
+# reaches the screen (it is the tRNS entry), but the resource compiler still
+# quantises against it, so it stays black rather than a near-white that could
+# be confused with the ink.
+ATLAS_PALETTE = list(INK) + list(WHITE) + [0, 0, 0] * 254
 
 
 def src(*parts):
@@ -48,11 +66,23 @@ def load_mask(path, box=None):
     return mask
 
 
-def bake(mask):
-    """1-bit mask -> a 2-colour P-mode image: index 0 = LCD_BG, index 1 = INK."""
-    w, h = mask.size
+def new_atlas(w, h):
+    """An empty atlas: index 0 = transparent field, index 1 = white ink."""
     out = Image.new("P", (w, h), 0)
-    out.putpalette(list(LCD_BG) + list(INK) + [0, 0, 0] * 254)
+    out.putpalette(ATLAS_PALETTE)
+    return out
+
+
+def save_atlas(img, path):
+    """Save with index 0 marked transparent (tRNS), which is what makes the
+    ink composite over the screen instead of covering it."""
+    img.save(path, optimize=True, transparency=0)
+
+
+def bake(mask):
+    """1-bit mask -> a 2-colour P-mode image: index 0 = field, index 1 = ink."""
+    w, h = mask.size
+    out = new_atlas(w, h)
     op, mp = out.load(), mask.load()
     for y in range(h):
         for x in range(w):

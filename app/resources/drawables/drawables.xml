@@ -1,33 +1,39 @@
 <drawables>
     <bitmap id="LauncherIcon" filename="launcher.png" />
 
-    <!-- Both attributes are load-bearing, not decoration. Without an
-         explicit <palette> the resource compiler picks automaticPalette,
-         which on this 16 bpp device quantises to 4 bpp; without
-         dithering="none" it then Floyd-Steinbergs the result. Between them
-         they silently dropped 10 of the 576 pixels of one 24x24 cell:
-         isolated single ink pixels, the kind that make up a sprite's
-         outline. Measured by reading the rendered frame back off the
-         simulator and diffing it against the atlas PNG. -->
+    <!-- Every atlas holds WHITE ink on a transparent field; the ink colour
+         arrives at draw time as drawBitmap2's :tintColor, which the device
+         applies as a multiply (see ADR 3). Hence the single-colour palette:
+         the field is the PNG's tRNS entry and must stay transparent, so it
+         is deliberately NOT listed here.
+
+         dithering="none" and the explicit <palette> are both load-bearing.
+         Without a palette the compiler picks automaticPalette, which on this
+         16 bpp device quantises to 4 bpp; without dithering="none" it then
+         Floyd-Steinbergs the result. Between them they silently dropped 10
+         of the 576 pixels of one 24x24 cell: isolated single ink pixels, the
+         kind that make up a sprite's outline. Measured by reading the
+         rendered frame back off the simulator and diffing it against the
+         atlas PNG. -->
     <bitmap id="Atlas24" filename="atlas_24x24.png" dithering="none">
-        <palette><color>000000</color><color>819376</color></palette>
+        <palette><color>FFFFFF</color></palette>
     </bitmap>
     <bitmap id="Atlas32" filename="atlas_32x32.png" dithering="none">
-        <palette><color>000000</color><color>819376</color></palette>
+        <palette><color>FFFFFF</color></palette>
     </bitmap>
     <bitmap id="Atlas14x16" filename="atlas_14x16.png" dithering="none">
-        <palette><color>000000</color><color>819376</color></palette>
+        <palette><color>FFFFFF</color></palette>
     </bitmap>
     <bitmap id="AtlasOdd" filename="atlas_odd.png" dithering="none">
-        <palette><color>000000</color><color>819376</color></palette>
+        <palette><color>FFFFFF</color></palette>
     </bitmap>
     <bitmap id="FontBig" filename="font_big.png" dithering="none">
-        <palette><color>000000</color><color>819376</color></palette>
+        <palette><color>FFFFFF</color></palette>
     </bitmap>
     <bitmap id="FontRegular" filename="font_regular.png" dithering="none">
-        <palette><color>000000</color><color>819376</color></palette>
+        <palette><color>FFFFFF</color></palette>
     </bitmap>
     <bitmap id="FontSmall" filename="font_small.png" dithering="none">
-        <palette><color>000000</color><color>819376</color></palette>
+        <palette><color>FFFFFF</color></palette>
     </bitmap>
 </drawables>

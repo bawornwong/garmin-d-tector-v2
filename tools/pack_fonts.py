@@ -19,7 +19,8 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import src, app as app_path, load_mask, bake, unbake_to_mask, LCD_BG, INK
+from common import (src, app as app_path, load_mask, bake, new_atlas,
+                    save_atlas, unbake_to_mask)
 from PIL import Image
 
 BUILD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build")
@@ -62,8 +63,7 @@ def pack_strip(face_data):
     glyphs = face_data["glyphs"]
     H = max(g["h"] for g in glyphs)
     W = sum(g["w"] for g in glyphs)
-    atlas = Image.new("P", (W, H), 0)
-    atlas.putpalette(list(LCD_BG) + list(INK) + [0, 0, 0] * 254)
+    atlas = new_atlas(W, H)
 
     x = 0
     packed_glyphs = []
@@ -103,7 +103,7 @@ def main():
             sys.exit(1)
 
         fname = f"font_{face.lower()}"
-        atlas.save(app_path("resources/drawables", fname + ".png"), optimize=True)
+        save_atlas(atlas, app_path("resources/drawables", fname + ".png"))
         b = atlas.size[0] * atlas.size[1] // 8
         total_bytes += b
         print(f"  {face:8s} {len(packed):3d} glyphs  strip {atlas.size[0]}x{atlas.size[1]}px  "

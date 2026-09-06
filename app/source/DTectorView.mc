@@ -26,7 +26,8 @@ import Toybox.WatchUi;
 class DTectorView extends WatchUi.View {
     const CANVAS = 320;
     const SCALE = 10;
-    const LCD = 0x819376;
+    const LCD = 0x819376;   // Preferences.BackgroundColor
+    const INK = 0x000000;   // Preferences.ActiveColor
 
     var _data as GameData?;
     var _atlas as AtlasCache?;
@@ -38,6 +39,7 @@ class DTectorView extends WatchUi.View {
     var _demoAction as Number = 0;
     var _frame as Number = 0;
     var _probeIndex as Number = -1;   // see onUpdate; -1 disables
+    var _probeInvert as Boolean = false;
     var _lastEvent as String = "(none)";
     var _saveStatus as String = "";
 
@@ -124,9 +126,19 @@ class DTectorView extends WatchUi.View {
         // can be diffed against the atlas PNG pixel for pixel. -1 gives the
         // animated demo instead.
         if (_probeIndex >= 0) {
-            drawSprite(dc, _probeIndex, _data.ACTION_BASE, off + 40, off + 40);
+            // The inverted probe is the one that proves the atlas composites:
+            // ink LCD-coloured on a black box, so a field pixel that stays
+            // black is a field pixel the sprite did not paint over. The old
+            // baked atlas would have stamped its own LCD field across the box.
+            if (_probeInvert) {
+                dc.setColor(INK, INK);
+                dc.fillRectangle(off + 40, off + 40, 240, 240);
+                drawSprite(dc, _probeIndex, _data.ACTION_BASE, off + 40, off + 40, LCD);
+            } else {
+                drawSprite(dc, _probeIndex, _data.ACTION_BASE, off + 40, off + 40, INK);
+            }
         } else {
-            drawSprite(dc, _demoIndex, _demoAction, off + 40, off + 40);
+            drawSprite(dc, _demoIndex, _demoAction, off + 40, off + 40, INK);
         }
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
@@ -137,7 +149,7 @@ class DTectorView extends WatchUi.View {
     }
 
     function drawSprite(dc as Dc, digimonIndex as Number, action as Number,
-                         x as Number, y as Number) as Void {
+                         x as Number, y as Number, tint as Number) as Void {
         var ref = _data.spriteRef(digimonIndex, action);
         if (ref == null) { ref = _data.spriteRef(digimonIndex, _data.ACTION_BASE); }
         if (ref == null) { return; }
@@ -170,11 +182,20 @@ class DTectorView extends WatchUi.View {
         // The compensation therefore belongs to whoever owns the transform,
         // not to the atlas cache -- AtlasCache still returns honest source
         // coordinates.
+        //
+        // DEVICE BEHAVIOUR, measured here: :tintColor is a MULTIPLY over the
+        // source pixel, not a replacement. An opaque 0x819376 pixel tinted
+        // 0xFF0000 came back 0x810000; a black pixel tinted anything stayed
+        // black. That is why the atlas stores WHITE ink (white x tint == tint
+        // exactly) and the colour is chosen here -- and it is what makes
+        // InvertColors and Preferences' configurable screen colours reachable
+        // at all (ADR 3).
         var t = new Graphics.AffineTransform();
         t.setToScale(SCALE.toFloat(), SCALE.toFloat());
         dc.drawBitmap2(x - SCALE * lx, y - SCALE * ly, buf, {
             :bitmapX => lx, :bitmapY => ly, :bitmapWidth => w, :bitmapHeight => h,
-            :transform => t, :filterMode => Graphics.FILTER_MODE_POINT
+            :transform => t, :filterMode => Graphics.FILTER_MODE_POINT,
+            :tintColor => tint
         });
     }
 }

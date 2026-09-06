@@ -22,7 +22,8 @@ import struct
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import DT_SRC, app as app_path, load_mask, bake, unbake_to_mask, src
+from common import (DT_SRC, app as app_path, load_mask, bake, new_atlas,
+                    save_atlas, unbake_to_mask, src)
 
 BUILD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build")
 os.makedirs(BUILD, exist_ok=True)
@@ -123,9 +124,7 @@ def pack_grid(items, cols, groups_by_key=None):
 def build_atlas(name, items, cell_w, cell_h, cols, groups_by_key=None):
     from PIL import Image
     index, rows = pack_grid(items, cols, groups_by_key)
-    atlas = Image.new("P", (cols * cell_w, rows * cell_h), 0)
-    from common import LCD_BG, INK
-    atlas.putpalette(list(LCD_BG) + list(INK) + [0, 0, 0] * 254)
+    atlas = new_atlas(cols * cell_w, rows * cell_h)
 
     by_key = {key: (size, mask) for key, size, mask in items}
     for key, (row, col) in index.items():
@@ -176,7 +175,7 @@ def main():
             print(f"  ROUND-TRIP FAILURE in {name}: {bad[:5]} (+{len(bad)-5} more)")
             sys.exit(1)
 
-        atlas.save(app_path("resources/drawables", name + ".png"), optimize=True)
+        save_atlas(atlas, app_path("resources/drawables", name + ".png"))
         px = atlas.size[0] * atlas.size[1]
         print(f"  {name:16s} {len(items):5d} sprites  grid {cols}x{rows}  "
               f"{atlas.size[0]}x{atlas.size[1]}px  {px//8:,} bytes @1bpp  "
@@ -188,12 +187,9 @@ def main():
 
     # odd sizes: one strip, tight-packed left to right, no grid padding
     if odd_items:
-        from PIL import Image
-        from common import LCD_BG, INK
         W = sum(size[0] for _, size, _ in odd_items)
         H = max(size[1] for _, size, _ in odd_items)
-        atlas = Image.new("P", (W, H), 0)
-        atlas.putpalette(list(LCD_BG) + list(INK) + [0, 0, 0] * 254)
+        atlas = new_atlas(W, H)
         x = 0
         strip_index = {}
         for key, size, mask in odd_items:
@@ -212,7 +208,7 @@ def main():
             print(f"  ROUND-TRIP FAILURE in atlas_odd: {bad}")
             sys.exit(1)
 
-        atlas.save(app_path("resources/drawables/atlas_odd.png"), optimize=True)
+        save_atlas(atlas, app_path("resources/drawables/atlas_odd.png"))
         print(f"  {'atlas_odd':16s} {len(odd_items):5d} sprites  strip  "
               f"{atlas.size[0]}x{atlas.size[1]}px  round-trip OK")
         for key, (sx, sy, w, h) in strip_index.items():

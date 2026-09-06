@@ -4,3 +4,12 @@
 .scratch/d-tector-venu4/prototype/numeric/obj/
 
 tools/__pycache__/
+.scratch/keys/
+
+# monkeyc build output; the packers' committed artefacts (data.bin, the
+# *_index.json files) are the ones that matter, not the compiled app
+build/dtector.prg
+build/dtector.prg.debug.xml
+build/gen/
+build/mir/
+build/internal-mir/
