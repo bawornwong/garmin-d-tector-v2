@@ -1,6 +1,6 @@
 # D-Tector v2 → Garmin Venu 4: build specification
 
-Handoff document. Every number here was measured on `venu445mm` with Connect IQ SDK 9.2.0, or computed from the source assets — nothing is estimated. Terms are defined in [CONTEXT.md](CONTEXT.md); the reasoning behind each decision is in [docs/adr](docs/adr/), and the investigation that produced them is in the wayfinder map at `.scratch/d-tector-venu4/map.md`, with runnable prototypes under `.scratch/d-tector-venu4/prototype/`.
+Handoff document. The *state* of the build -- what is done, what is next, and how to set the environment up -- is in [HANDOFF.md](HANDOFF.md); this file is the specification and changes only when a decision does. Every number here was measured on `venu445mm` with Connect IQ SDK 9.2.0, or computed from the source assets — nothing is estimated. Terms are defined in [CONTEXT.md](CONTEXT.md); the reasoning behind each decision is in [docs/adr](docs/adr/), and the investigation that produced them is in the wayfinder map at `.scratch/d-tector-venu4/map.md`, with runnable prototypes under `.scratch/d-tector-venu4/prototype/`.
 
 ## 1. Scope
 
