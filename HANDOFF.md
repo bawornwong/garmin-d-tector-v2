@@ -39,6 +39,8 @@ app/source/
   Input/      InputAdapter.mc     twelve abstract events + the queue (ADR 9)
   Save/       SaveFormat.mc       the positional save blob (ADR 8)
   Anim/       Runner.mc           Routine / Fiber / Runner (ADR 4 + ADR 5)
+              Animations.mc       the converted coroutines, 4 of 60 so far
+              Trace.mc            the debug-only event trace the goldens read
   Render/     AtlasCache.mc       row buffers, LRU of 16 (ADR 3)
               Blit.mc             the drawBitmap2 rules: transform offset, tint, flips
               Renderer.mc         walks the display list once per frame
@@ -72,7 +74,7 @@ Against SPEC section 6's order of work:
 | 4. Logic layer | **in progress** — the foundation and the Status/Database dependencies are translated; everything else is not |
 | 5. Text renderer | done |
 | 6. Vertical slice: Status + Database | **done** — both apps run, opened from the real main menu |
-| 7. Runner + fibers, then the 4 linear coroutines | **runner done** (concurrent fibers, ADR 5 schedule); 3 coroutines converted (DatabaseApp's), the 4 linear ones from `Animations.cs` not yet |
+| 7. Runner + fibers, then the 4 linear coroutines | **done** — runner with concurrent fibers, the 4 linear coroutines converted and diffed against the original, plus 6 app-local ones |
 | 8. Battle | not started |
 | 9. The remaining apps and minigames | not started |
 | 10. `StartGameAnimation` | not started |
@@ -88,6 +90,7 @@ Every check reads a frame back off the device or diffs two real implementations.
 | UI sprite resolution | 215 resolved, 1 unassigned in the scene | `tools/pack_ui_sprites.py` |
 | Numeric parity, original C# ↔ ported Monkey C | 16,211 values, 0 differences, floats bit-exact | `tools/verify_numeric.py` |
 | Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
+| Converted animations vs a golden trace of the original | 4 / 4, 80 events | `tools/verify_anim.py` (takes ~4 min: it rebuilds and runs the app per animation) |
 | Rendered sprite vs atlas (normal) | 576 / 576 | set `_probeIndex`, capture, `tools/verify_render.py <png> 8` |
 | Rendered sprite vs atlas (inverted) | 576 / 576 | also set `_probeInvert`, then `... --inverted` |
 | Text canvas vs font metrics | 102,400 / 102,400 device px | set `_probeText`, capture, `tools/verify_text.py <png>` |
@@ -97,7 +100,7 @@ Capture is `tools/sim_capture.sh /abs/path.png` — it drives the simulator's ow
 
 The probe flags live at the top of `DTectorView.mc` (`_probeIndex`, `_probeInvert`, `_probeText`, `_probeStatusScreen`). Set one, rebuild, run, capture. **Reset them to `-1` / `false` / `0` afterwards.**
 
-Still to build: **per-coroutine golden diffs**, one per coroutine as each of the 60 is converted (step 7 blocks on the runner existing).
+The animation check is per coroutine: add the new one to `CONVERTED` in `tools/verify_anim.py` and to the probe list in `DTectorView.startAnimProbe`, and it is checked against the original from then on. 4 of 60 are converted.
 
 ## 4. Device facts that cost time to find
 
@@ -115,7 +118,7 @@ All measured, all already encoded in the code that depends on them — listed he
 
 ## 5. What to do next
 
-**Immediately: the four linear coroutines from `Animations.cs`**, each with its golden diff, to finish step 7 — the conversion pipeline is currently validated only against app-local animations, not against the reference trace. `.scratch/d-tector-venu4/prototype/anim/golden.py` is the shape the check takes.
+**Immediately: `Battle` (step 8)**, the heaviest surface: `Battle.cs` is 1,068 lines and its animations are the hardest in `Animations.cs` (`AttackCollision` alone has 35 `if`s and five nested coroutines). Everything it needs now exists — the runner handles parallel fibers, the display list is verified, and `verify_anim.py` will check each converted animation as it lands.
 
 **Then, in order:**
 
@@ -128,7 +131,8 @@ All measured, all already encoded in the code that depends on them — listed he
 
 - **`DTectorView` still carries scaffolding**, though it now boots the real host: `seedSkeletonStats` writes demo stats and a spread of unlocked Digimon into the save record in RAM (never committed) so the screens have something to show; `_sliceApp` can open one app directly instead of starting on the character screen; `_probeInputs` replays a scripted press sequence so a capture can reach a screen several presses deep.
 - **The character screen shows a character but nothing else.** `CreateNewGame`, the pending-event machinery and `TakeAStep` are not translated, so `isEventPending` is never set and the event/eyes overlays never show.
-- **`Animations.cs` is not translated at all.** `GameManager.enqueueAnimation` takes null from every call site that would play one, and each such site says so. The three coroutines that exist are DatabaseApp's own.
+- **`Animations.cs` is 4 of 60 translated.** `GameManager.enqueueAnimation` takes null from every call site whose animation is not converted yet, and each such site says so.
+- **Two `Kaisa.Sprites` fields can be the same cell** (`animDistance` and `games_distance` are one sprite), so the debug name lookup is ambiguous by nature; `verify_anim.py` canonicalises names to cells rather than trusting them.
 - **`Database.indexOfCode` will trip the watchdog** the way `indexOfName` did: it decodes 593 strings. Compare at the byte level before CodeInput ships.
 - **Every render timing in SPEC is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
 - **Worlds, areas and bosses are unsurveyed.** `WorldManager` carries only the two counters Status reads; the rest is deliberately absent rather than guessed, and SPEC section 8 lists what is unknown.

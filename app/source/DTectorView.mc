@@ -66,6 +66,11 @@ class DTectorView extends WatchUi.View {
     // rather than reaching around it.
     var _probeInputs as Array<Number> = [];
     var _probeInputAt as Number = 0;
+    // Which converted animation to play, traced, for tools/verify_anim.py:
+    // -1 plays none. The arguments match the ones the C# harness synthesises
+    // (every int is 1), so the two traces are of the same run.
+    var _probeAnim as Number = -1;
+    var _probeAnimDone as Boolean = false;
 
     function initialize() {
         View.initialize();
@@ -131,7 +136,15 @@ class DTectorView extends WatchUi.View {
 
         var screenMgr = new ScreenManager(_gm, root);
         _gm.attachScreenManager(screenMgr);
-        screenMgr.startFlashRoutines();
+        // The three blinking overlays run forever and would interleave their
+        // events into an animation trace, so the animation probe leaves them
+        // off; nothing else in the port depends on them running.
+        if (_probeAnim < 0) { screenMgr.startFlashRoutines(); }
+
+        if (_probeAnim >= 0) {
+            startAnimProbe();
+            return;
+        }
 
         // The character screen is where the original starts, and _sliceApp
         // still lets a capture open one app directly.
@@ -142,6 +155,32 @@ class DTectorView extends WatchUi.View {
         } else if (_sliceApp == 3) {
             _gm.logicMgr.openApp(Kaisa.APP_CAMP);
         }
+    }
+
+    // Plays one converted animation through the real queue -- so it draws
+    // into the same animParent the game gives it -- with the trace on.
+    function startAnimProbe() as Void {
+        var name = "?";
+        var routine = null;
+        if (_probeAnim == 0) {
+            name = "ChangeDistance";
+            routine = new ChangeDistance(_gm, 1, 1);
+        } else if (_probeAnim == 1) {
+            name = "RewardEmpty";
+            routine = new RewardEmpty(_gm);
+        } else if (_probeAnim == 2) {
+            name = "PaySpiritPower";
+            routine = new PaySpiritPower(_gm, 1, 1);
+        } else if (_probeAnim == 3) {
+            name = "AWardSpiritPower";
+            routine = new AWardSpiritPower(_gm, 1);
+        }
+        System.println("=== " + name + " ===");
+        // Enqueueing builds the Anim Parent container the animation draws
+        // into; the trace goes on after that, so what it records is the
+        // animation and nothing of the host around it.
+        _gm.enqueueAnimation(routine);
+        Kaisa.Trace.enabled = true;
     }
 
     // SKELETON SCAFFOLDING, in RAM only and never committed: a fresh save is
@@ -208,8 +247,12 @@ class DTectorView extends WatchUi.View {
             _save.writeSlot(0, fresh);
             existing = _save.readSlot(0);
         }
+        // What this proves is the round trip -- the record comes back with the
+        // right name and the right positional array sizes. It deliberately
+        // does not assert particular values: the game now writes to the same
+        // slot at its own checkpoints.
         var ok = (existing != null) && existing.name.equals("PLAYER")
-            && existing.digimonLevel[_demoIndex] == 4;
+            && existing.digimonLevel.size() == _data.digimonCount();
         _saveStatus = ok ? "SAVE OK (" + existing.digimonLevel.size() + " digimon)"
                          : "SAVE MISMATCH";
         System.println("SaveFormat: " + _saveStatus);
@@ -236,6 +279,15 @@ class DTectorView extends WatchUi.View {
         if (_probeInputAt < _probeInputs.size() && _frame > 4) {
             dispatch(_probeInputs[_probeInputAt]);
             _probeInputAt += 1;
+        }
+        if (_gm != null && _probeAnim >= 0) {
+            _gm.runner.advance(TICK_MS.toFloat());
+            _gm.screenMgr.updateQueue();
+            if (!_probeAnimDone && !_gm.screenMgr.playingAnimations) {
+                _probeAnimDone = true;
+                System.println("ANIMEND");
+            }
+            return;
         }
         if (_gm != null) {
             _gm.runner.advance(TICK_MS.toFloat());

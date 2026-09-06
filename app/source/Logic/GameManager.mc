@@ -193,8 +193,11 @@ class AudioManager {
     function initialize() {
     }
 
-    function playButtonA() as Void {}
-    function playButtonB() as Void {}
-    function playCharHappy() as Void {}
-    function playCharSad() as Void {}
+    // The trace calls are what the golden animation diffs compare against;
+    // they compile away in release along with the rest of Kaisa.Trace.
+    function playButtonA() as Void { Kaisa.Trace.event("sound buttonA"); }
+    function playButtonB() as Void { Kaisa.Trace.event("sound buttonB"); }
+    function playCharHappy() as Void { Kaisa.Trace.event("sound charHappy"); }
+    function playCharSad() as Void { Kaisa.Trace.event("sound charSad"); }
+    function playSound(s as String) as Void { Kaisa.Trace.event("sound " + s); }
 }

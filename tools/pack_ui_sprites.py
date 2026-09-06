@@ -111,8 +111,14 @@ def scene_component(fields):
 
 
 def const_name(field, index=None):
-    # camelCase / snake_case field -> SCREAMING_SNAKE constant
-    s = re.sub(r"(?<!^)(?=[A-Z])", "_", field).upper().replace("__", "_")
+    """camelCase / snake_case field -> SCREAMING_SNAKE constant.
+
+    Acronym runs stay together: `battle_gainingSP` is BATTLE_GAINING_SP, not
+    BATTLE_GAINING_S_P, which is what a naive split produces and what silently
+    left that sprite unreachable until an animation asked for it.
+    """
+    s = re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", field)
+    s = s.upper().replace("__", "_")
     return s if index is None else f"{s}_{index}"
 
 
@@ -142,6 +148,7 @@ def main():
 
     resolved = 0
     missing = []
+    trace_names = []       # (name the original prints, cell) for the debug table
     for name, count in fields:
         refs = assigned.get(name, [])
 
@@ -163,6 +170,7 @@ def main():
                 lines.append(f"        const {const_name(name)} = null;")
             else:
                 resolved += 1
+                trace_names.append((name, cell))
                 lines.append(f"        const {const_name(name)} = {cell};")
         else:                                   # Sprite[]
             cells = []
@@ -173,6 +181,7 @@ def main():
                     cells.append("null")
                 else:
                     resolved += 1
+                    trace_names.append((f"{name}_{i}", cell))
                     cells.append(str(cell))
             if not cells:
                 missing.append(name)
@@ -181,6 +190,32 @@ def main():
             lines.append(f"            {body}")
             lines.append("        ];")
 
+    # The reverse table, debug builds only: the animation golden diffs print a
+    # sprite by its SpriteDatabase field name, exactly as the C# reference
+    # does, and nothing else in the port ever needs a sprite's name.
+    lines += [
+        "        // GENERATED reverse lookup, debug only: [atlasClass, x, y, w, h]",
+        "        // -> the SpriteDatabase field name the original would print.",
+        "        // Array fields print as `field_index`, matching the reference.",
+        "        (:debug) const TRACE_NAMES = [",
+    ]
+    for key, cell in trace_names:
+        lines.append(f'            ["{key}", {cell[0]}, {cell[1]}, {cell[2]}],')
+    lines += [
+        "        ];",
+        "",
+        "        (:debug)",
+        "        function nameOf(ref as Array<Number>?) as String {",
+        '            if (ref == null) { return "null"; }',
+        "            for (var i = 0; i < TRACE_NAMES.size(); i += 1) {",
+        "                var e = TRACE_NAMES[i];",
+        "                if (e[1] == ref[0] && e[2] == ref[1] && e[3] == ref[2]) {",
+        "                    return e[0];",
+        "                }",
+        "            }",
+        '            return "sprite(" + ref[0] + "," + ref[1] + "," + ref[2] + ")";',
+        "        }",
+    ]
     lines += ["    }", "}", ""]
     open(app_path("source/Render/SpriteDatabase.mc"), "w").write("\n".join(lines))
 

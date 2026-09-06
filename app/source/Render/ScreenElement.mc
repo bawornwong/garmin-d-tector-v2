@@ -46,6 +46,7 @@ class ScreenElement {
     }
 
     function dispose() as Void {
+        Kaisa.Trace.el(name, "dispose");
         if (parent != null) {
             parent.children.remove(self);
             parent = null;
@@ -53,32 +54,39 @@ class ScreenElement {
     }
 
     function baseSetActive(a as Boolean) as Void {
+        Kaisa.Trace.el1(name, "setActive", a);
         active = a;
     }
 
     function baseSetTransparent(val as Boolean) as Void {
+        Kaisa.Trace.el1(name, "setTransparent", val);
         transparent = val;
     }
 
     function baseInvertColors(val as Boolean) as Void {
+        Kaisa.Trace.el1(name, "invertColors", val);
         inverted = val;
     }
 
     function baseSetSize(w as Number, h as Number) as Void {
+        Kaisa.Trace.el2(name, "setSize", w, h);
         width = w;
         height = h;
     }
 
     function baseSetPosition(px as Number, py as Number) as Void {
+        Kaisa.Trace.el2(name, "setPosition", px, py);
         x = px;
         y = py;
     }
 
     function baseSetX(px as Number) as Void {
+        Kaisa.Trace.el1(name, "setX", px);
         x = px;
     }
 
     function baseSetY(py as Number) as Void {
+        Kaisa.Trace.el1(name, "setY", py);
         y = py;
     }
 
@@ -86,11 +94,13 @@ class ScreenElement {
     // (SCREEN - size) here is even for the sizes the game centres, so plain
     // integer division matches. Sizes are small and non-negative.
     function baseCenter() as Void {
+        Kaisa.Trace.el(name, "center");
         baseSetPosition((Kaisa.Constants.SCREEN_WIDTH - width) / 2,
                         (Kaisa.Constants.SCREEN_HEIGHT - height) / 2);
     }
 
     function basePlaceOutside(direction as Number) as Void {
+        Kaisa.Trace.el1(name, "placeOutside", direction);
         if (direction == Kaisa.DIR_UP) { baseSetY(-height); }
         else if (direction == Kaisa.DIR_DOWN) { baseSetY(Kaisa.Constants.SCREEN_HEIGHT); }
         else if (direction == Kaisa.DIR_LEFT) { baseSetX(-width); }
@@ -98,6 +108,7 @@ class ScreenElement {
     }
 
     function baseMove(direction as Number, amount as Number) as Void {
+        Kaisa.Trace.el2(name, "move", direction, amount);
         if (direction == Kaisa.DIR_UP) { y -= amount; }
         else if (direction == Kaisa.DIR_DOWN) { y += amount; }
         else if (direction == Kaisa.DIR_LEFT) { x -= amount; }
@@ -145,7 +156,8 @@ class SpriteBuilder extends ScreenElement {
 
     function initialize() {
         ScreenElement.initialize();
-        baseSetSize(32, 32);
+        width = 32;                 // the prefab's own size, not a mutation:
+        height = 32;                // it predates the element having a name
     }
 
     // BaseSetSize is overridden in the source to resize the component too.
@@ -166,17 +178,20 @@ class SpriteBuilder extends ScreenElement {
     function setY(py as Number) as SpriteBuilder { baseSetY(py); return self; }
 
     function setSprite(ref as Array<Number>?) as SpriteBuilder {
+        Kaisa.Trace.sprite(name, "setSprite", ref);
         sprite = ref;
         return self;
     }
 
     function setComponentSize(w as Number, h as Number) as SpriteBuilder {
+        Kaisa.Trace.el2(name, "setComponentSize", w, h);
         componentWidth = w;
         componentHeight = h;
         return self;
     }
 
     function setComponentPosition(px as Number, py as Number) as SpriteBuilder {
+        Kaisa.Trace.el2(name, "setComponentPosition", px, py);
         componentX = px;
         componentY = py;
         return self;
@@ -193,11 +208,13 @@ class SpriteBuilder extends ScreenElement {
     }
 
     function centerComponent() as SpriteBuilder {
+        Kaisa.Trace.el(name, "centerComponent");
         return setComponentPosition((width - componentWidth) / 2,
                                     (height - componentHeight) / 2);
     }
 
     function snapComponentToSide(side as Number, center as Boolean) as SpriteBuilder {
+        Kaisa.Trace.el1(name, "snapToSide", side);
         if (center) { centerComponent(); }
         if (side == Kaisa.DIR_LEFT) { setComponentX(0); }
         else if (side == Kaisa.DIR_RIGHT) { setComponentX(width - componentWidth); }
@@ -213,6 +230,7 @@ class SpriteBuilder extends ScreenElement {
     // unaffected -- which is also why the source's "TODO: fix a bug in which
     // CenterComponent bugs if used after FlipHorizontal" has no counterpart.
     function flipHorizontal(flip as Boolean) as SpriteBuilder {
+        Kaisa.Trace.el1(name, "flip", flip);
         flipH = flip;
         return self;
     }
@@ -239,7 +257,8 @@ class TextBoxBuilder extends ScreenElement {
 
     function initialize() {
         ScreenElement.initialize();
-        baseSetSize(32, 5);
+        width = 32;
+        height = 5;
     }
 
     function setSize(w as Number, h as Number) as TextBoxBuilder {
@@ -259,6 +278,7 @@ class TextBoxBuilder extends ScreenElement {
     function setY(py as Number) as TextBoxBuilder { baseSetY(py); return self; }
 
     function setText(t as String) as TextBoxBuilder {
+        Kaisa.Trace.el1(name, "setText", t);
         text = t;
         return self;
     }
@@ -269,17 +289,20 @@ class TextBoxBuilder extends ScreenElement {
     }
 
     function setAlignment(a as Number) as TextBoxBuilder {
+        Kaisa.Trace.el1(name, "setAlignment", a);
         alignment = a;
         return self;
     }
 
     function setComponentPosition(px as Number, py as Number) as TextBoxBuilder {
+        Kaisa.Trace.el2(name, "setComponentPosition", px, py);
         componentX = px;
         componentY = py;
         return self;
     }
 
     function setComponentSize(w as Number, h as Number) as TextBoxBuilder {
+        Kaisa.Trace.el2(name, "setComponentSize", w, h);
         componentWidth = w;
         componentHeight = h;
         return self;
@@ -312,7 +335,8 @@ class RectangleBuilder extends ScreenElement {
 
     function initialize() {
         ScreenElement.initialize();
-        baseSetSize(1, 1);      // Rectangle.prefab, 24 Unity units square
+        width = 1;              // Rectangle.prefab, 24 Unity units square
+        height = 1;
     }
 
     function center() as RectangleBuilder { baseCenter(); return self; }
@@ -327,6 +351,7 @@ class RectangleBuilder extends ScreenElement {
     function setY(py as Number) as RectangleBuilder { baseSetY(py); return self; }
 
     function setColor(useActiveColor as Boolean) as RectangleBuilder {
+        Kaisa.Trace.el(name, "setColor");
         activeColor = useActiveColor;
         return self;
     }
@@ -334,6 +359,7 @@ class RectangleBuilder extends ScreenElement {
     // The source takes seconds as a float; milliseconds are exact at 20 fps
     // and avoid a float compare in the frame loop.
     function setFlickPeriodMs(periodMs as Number, startEnabled as Boolean) as RectangleBuilder {
+        Kaisa.Trace.el1(name, "setFlickPeriod", periodMs);
         flickPeriodMs = periodMs;
         flickOn = startEnabled;
         return self;
@@ -368,7 +394,8 @@ class ContainerBuilder extends ScreenElement {
 
     function initialize() {
         ScreenElement.initialize();
-        baseSetSize(1, 1);      // Container.prefab, 24 Unity units square
+        width = 1;              // Container.prefab, 24 Unity units square
+        height = 1;
     }
 
     function center() as ContainerBuilder { baseCenter(); return self; }
@@ -393,6 +420,7 @@ class ContainerBuilder extends ScreenElement {
     }
 
     function setMaskActive(a as Boolean) as ContainerBuilder {
+        Kaisa.Trace.el1(name, "setMaskActive", a);
         maskActive = a;
         return self;
     }

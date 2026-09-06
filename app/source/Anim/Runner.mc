@@ -91,20 +91,32 @@ class Runner {
     var budgetMs as Float = 0.0;    // time the display has actually reached
     var tick as Number = 0;
     var steps as Number = 0;
+    var _inStep as Boolean = false;   // true while a routine's step is running
 
     function initialize() {
     }
 
-    // StartCoroutine. The fiber's first step is due immediately -- Unity runs
-    // a coroutine's body up to its first yield inside StartCoroutine itself.
+    // StartCoroutine. Unity runs the new coroutine's body up to its first
+    // yield inside StartCoroutine itself, so a fiber started from INSIDE a
+    // step begins at that step's scheduled time -- not at the frame budget,
+    // which is up to a whole tick later and made every event of a background
+    // animation land 50 ms late against the reference trace. A fiber started
+    // between frames (an app reacting to a press) has no scheduled time to
+    // inherit and begins at the budget.
     function start(r as Routine) as Fiber {
-        var f = new Fiber(r, self, budgetMs);
+        // The original's StartCoroutine and StopCoroutine are traced events in
+        // their own right -- an animation that starts a background loop is
+        // doing something observable -- so the port records them where the
+        // fiber is actually created and dropped.
+        Kaisa.Trace.event("startCoroutine");
+        var f = new Fiber(r, self, _inStep ? nowMs : budgetMs);
         fibers.add(f);
         return f;
     }
 
     function stop(f as Fiber?) as Void {
         if (f == null) { return; }
+        Kaisa.Trace.event("stopCoroutine");
         f.stop();
         fibers.remove(f);
     }
@@ -119,12 +131,23 @@ class Runner {
 
     (:debug)
     function emit(ev as String) as Void {
-        System.println("TRACE " + nowMs.format("%9.4f") + " " + ev
-            + "  [tick " + tick + "]");
+        Kaisa.Trace.event(ev);
     }
 
     (:release)
     function emit(ev as String) as Void {
+    }
+
+    // An event's timestamp is the step's SCHEDULED time, not the frame's:
+    // that is the clock the C# reference prints, and the whole point of ADR
+    // 5's scheduler is that the two agree.
+    (:debug)
+    function setTraceClock(t as Float) as Void {
+        Kaisa.Trace.nowMs = t;
+    }
+
+    (:release)
+    function setTraceClock(t as Float) as Void {
     }
 
     // Advances the whole runtime by one display frame.
@@ -147,8 +170,11 @@ class Runner {
             if (due == null) { return; }
 
             nowMs = due.nextMs;
+            setTraceClock(nowMs);
             var top = due.stack[due.stack.size() - 1];
+            _inStep = true;
             var w = top.step(due);
+            _inStep = false;
             steps += 1;
 
             if (w == Routine.DONE) {

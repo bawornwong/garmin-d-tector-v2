@@ -135,6 +135,7 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 | Numeric parity, C# ↔ Monkey C | 16,211 values, 0 differences (floats bit-exact) |
 | Animation events against the golden trace | 150 / 150 |
 | Coroutines traceable from the real source | 53 / 53, 6,911 events |
+| Converted animations against a golden trace of the original | 4 / 4, 80 events, end times exact |
 | Rendered frame against the atlas, read back off the device | 576 / 576 pixels per cell, two cells |
 | Same, drawn inverted (tinted ink over a black box) | 576 / 576 |
 | Flipped blits (h, v, both) against the atlas | 576 / 576 each |
@@ -147,7 +148,11 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 
 `tools/verify_text.py` is the font-metrics check: `tools/text_probe.json` holds a fixed string set covering all three faces, every anchor the source uses, the vertical bearing, a line break, a name with parentheses (no glyph, so it must vanish) and inversion; `tools/gen_text_probe.py` generates the scene the app draws from that spec and the checker computes the expected 320 × 320 canvas from the same spec, so neither side can drift. It caught the half-pixel centring rule above.
 
-One check still to be built: **per-coroutine golden diffs** as each of the 60 is converted.
+`tools/verify_anim.py` is the per-coroutine golden diff, and it runs on both sides of the conversion: the reference compiles the **original** `Animations.cs` against display-list stubs and executes it with Unity's coroutine semantics (parallel `StartCoroutine` fibers included, interleaved by scheduled time), while the port runs the converted routine in the simulator through the **real** display list and the real runner with a debug-only trace switched on. Nothing in the port exists for the check's benefit: the events come out of the builders every screen already uses.
+
+It has already earned its keep twice — it caught the runner starting a nested fiber at the frame budget rather than at the parent's scheduled time (every background-animation event 50 ms late), and it caught two places where the stubs under-reported what the original does to the display.
+
+Four of the sixty coroutines are converted: the four the survey called linear, plus the two they depend on. The remaining 56 arrive with the apps that use them.
 
 ## 8. Known open items
 

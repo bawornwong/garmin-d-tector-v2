@@ -11,6 +11,7 @@ module Kaisa {
         function buildSprite(name as String, parent as ScreenElement) as SpriteBuilder {
             var sb = new SpriteBuilder();
             sb.setName(name);
+            Kaisa.Trace.event("build sprite " + name);
             parent.addChild(sb);
             return sb;
         }
@@ -18,6 +19,7 @@ module Kaisa {
         function buildRectangle(name as String, parent as ScreenElement) as RectangleBuilder {
             var rb = new RectangleBuilder();
             rb.setName(name);
+            Kaisa.Trace.event("build rectangle " + name);
             parent.addChild(rb);
             return rb;
         }
@@ -26,6 +28,7 @@ module Kaisa {
                               font as Number) as TextBoxBuilder {
             var tb = new TextBoxBuilder();
             tb.setName(name);
+            Kaisa.Trace.event("build textBox " + name);
             tb.setFont(font);
             parent.addChild(tb);
             return tb;
@@ -37,6 +40,7 @@ module Kaisa {
                                 transparent as Boolean) as ContainerBuilder {
             var cb = new ContainerBuilder();
             cb.setName(name);
+            Kaisa.Trace.event("build container " + name);
             cb.setTransparent(transparent);
             parent.addChild(cb);
             return cb;
