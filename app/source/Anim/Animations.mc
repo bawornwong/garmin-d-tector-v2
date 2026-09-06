@@ -4388,3 +4388,946 @@ class LoseSpirit extends Routine {
         return Routine.DONE;
     }
 }
+
+// port of Animations.cs:668  AwardDistance -- the minigame score screen: the
+// score, then the distance it bought, counted from the old value to the new.
+class AwardDistance extends Routine {
+    var gm as GameManager;
+    var score as Number;
+    var distanceBefore as Number;
+    var distanceAfter as Number;
+
+    var tbDistance as TextBoxBuilder?;
+
+    function initialize(gmIn as GameManager, scoreIn as Number,
+                        distanceBeforeIn as Number, distanceAfterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        score = scoreIn;
+        distanceBefore = distanceBeforeIn;
+        distanceAfter = distanceAfterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                gm.audioMgr.playButtonA();
+                Kaisa.ScreenBuilder.buildSprite("Score", parent)
+                    .setSize(32, 5).setPosition(1, 1).setSprite(Kaisa.Sprites.GAMES_SCORE);
+                pc = 1;
+                return 1.0;
+            case 1:
+                gm.audioMgr.playButtonA();
+                Kaisa.ScreenBuilder.buildTextBox("ScoreText", parent, Kaisa.Font.REGULAR)
+                    .setText(score.toString()).setSize(31, 5).setPosition(1, 9)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_RIGHT);
+                pc = 2;
+                return 1.0;
+            case 2:
+                gm.audioMgr.playButtonA();
+                Kaisa.ScreenBuilder.buildSprite("Distance", parent)
+                    .setSize(32, 5).setPosition(1, 18).setSprite(Kaisa.Sprites.GAMES_DISTANCE);
+                pc = 3;
+                return 1.0;
+            case 3:
+                gm.audioMgr.playButtonA();
+                tbDistance = Kaisa.ScreenBuilder.buildTextBox("DistanceText", parent, Kaisa.Font.REGULAR)
+                    .setText(distanceBefore.toString()).setSize(31, 5).setPosition(1, 26)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_RIGHT);
+                pc = 4;
+                return 1.0;
+            case 4:
+                gm.audioMgr.playCharHappy();
+                tbDistance.setText(distanceAfter.toString());
+                pc = 5;
+                return 2.0;
+            case 5:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:698  TravelMap -- the map scrolls from one quadrant of
+// a multi-map world to another. Adjacent quadrants slide once; opposite ones
+// slide twice, each half taking half the duration.
+class TravelMap extends Routine {
+    var gm as GameManager;
+    var world as Number;
+    var mapBefore as Number;
+    var mapAfter as Number;
+    var animDuration as Float;
+
+    var cbMap as ContainerBuilder?;
+    var animationDir as Number = Kaisa.DIR_RIGHT;
+    var firstDir as Number = Kaisa.DIR_UP;
+    var secondDir as Number = Kaisa.DIR_LEFT;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, worldIn as Number, mapBeforeIn as Number,
+                        mapAfterIn as Number, animDurationIn as Float) {
+        Routine.initialize();
+        gm = gmIn;
+        world = worldIn;
+        mapBefore = mapBeforeIn;
+        mapAfter = mapAfterIn;
+        animDuration = animDurationIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                cbMap = gm.buildMapScreen(world, parent);
+
+                if (mapBefore == 0) { cbMap.setPosition(0, 0); }
+                else if (mapBefore == 1) { cbMap.setPosition(0, -32); }
+                else if (mapBefore == 2) { cbMap.setPosition(-32, -32); }
+                else if (mapBefore == 3) { cbMap.setPosition(-32, 0); }
+
+                // Both areas are on the same map.
+                if (mapBefore == mapAfter) { pc = 5; return animDuration; }
+
+                // The maps are consecutive.
+                if ((mapBefore - mapAfter).abs() == 1
+                        || (mapBefore == 0 && mapAfter == 3)
+                        || (mapBefore == 3 && mapAfter == 0)) {
+                    animationDir = Kaisa.DIR_RIGHT;
+                    if (mapBefore == 0 && mapAfter == 3) { animationDir = Kaisa.DIR_LEFT; }
+                    else if (mapBefore == 0 && mapAfter == 1) { animationDir = Kaisa.DIR_UP; }
+                    else if (mapBefore == 1 && mapAfter == 0) { animationDir = Kaisa.DIR_DOWN; }
+                    else if (mapBefore == 1 && mapAfter == 2) { animationDir = Kaisa.DIR_LEFT; }
+                    else if (mapBefore == 2 && mapAfter == 1) { animationDir = Kaisa.DIR_RIGHT; }
+                    else if (mapBefore == 2 && mapAfter == 3) { animationDir = Kaisa.DIR_DOWN; }
+                    else if (mapBefore == 3 && mapAfter == 2) { animationDir = Kaisa.DIR_UP; }
+                    else if (mapBefore == 3 && mapAfter == 0) { animationDir = Kaisa.DIR_RIGHT; }
+                    i = 0;
+                    pc = 1;
+                    return 0.0;
+                }
+
+                // Opposite corners: two slides. The four cases differ only in
+                // which way each half goes.
+                if (mapBefore == 0 && mapAfter == 2) {
+                    firstDir = Kaisa.DIR_UP; secondDir = Kaisa.DIR_LEFT;
+                } else if (mapBefore == 2 && mapAfter == 0) {
+                    firstDir = Kaisa.DIR_DOWN; secondDir = Kaisa.DIR_RIGHT;
+                } else if (mapBefore == 1 && mapAfter == 3) {
+                    firstDir = Kaisa.DIR_LEFT; secondDir = Kaisa.DIR_DOWN;
+                } else if (mapBefore == 3 && mapAfter == 1) {
+                    firstDir = Kaisa.DIR_RIGHT; secondDir = Kaisa.DIR_UP;
+                } else {
+                    pc = 5;                     // no branch matched, as in the source
+                    return 0.0;
+                }
+                i = 0;
+                pc = 3;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 5; return 0.0; }
+                cbMap.move(animationDir, 1);
+                pc = 2;
+                return animDuration / 32;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:                                 // the first half
+                if (i >= 32) { i = 0; pc = 6; return 0.0; }
+                cbMap.move(firstDir, 1);
+                pc = 4;
+                return animDuration / 64;
+            case 4:
+                i += 1; pc = 3; return 0.0;
+            case 5:
+                cbMap.dispose();
+                return Routine.DONE;
+            case 6:                                 // the second half
+                if (i >= 32) { pc = 5; return 0.0; }
+                cbMap.move(secondDir, 1);
+                pc = 7;
+                return animDuration / 64;
+            case 7:
+                i += 1; pc = 6; return 0.0;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:808  ForcedTravelMap -- the map slide the game plays
+// when it moves the player itself, then the new area's screen.
+class ForcedTravelMap extends Routine {
+    var gm as GameManager;
+    var world as Number;
+    var areaBefore as Number;
+    var areaAfter as Number;
+    var newDistance as Number;
+
+    function initialize(gmIn as GameManager, worldIn as Number, areaBeforeIn as Number,
+                        areaAfterIn as Number, newDistanceIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        world = worldIn;
+        areaBefore = areaBeforeIn;
+        areaAfter = areaAfterIn;
+        newDistance = newDistanceIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                var mapBefore = gm.data.worldArea(world, areaBefore)[1];
+                var mapAfter = gm.data.worldArea(world, areaAfter)[1];
+                gm.audioMgr.playSound("travelMap");
+                pc = 1;
+                rt.call(new TravelMap(gm, world, mapBefore, mapAfter, 3.5));
+                return 0.0;
+            case 1:
+                pc = 2;
+                rt.call(new DisplayNewArea(gm, world, areaAfter, newDistance));
+                return 0.0;
+            case 2:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2263  DestroyBox -- the Jackpot Box explodes and is
+// left broken. The box draws from the Digimon sheet but has no Digimon row, so
+// its cells are named constants (tools/pack_ui_sprites.py).
+class DestroyBox extends Routine {
+    var gm as GameManager;
+    var sbBox as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager) {
+        Routine.initialize();
+        gm = gmIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                // SOURCE ODDITY, reproduced: the box is named "Loser".
+                sbBox = Kaisa.ScreenBuilder.buildSprite("Loser", parent)
+                    .setSize(24, 24).center().flipHorizontal(true)
+                    .setSprite(Kaisa.Sprites.JACKPOT);
+                gm.audioMgr.stopSound();
+                pc = 1;
+                return 0.5;
+            case 1:
+                gm.audioMgr.playSound("explosion");
+                sbBox.flipHorizontal(false);
+                sbBox.center();
+                i = 0;
+                pc = 2;
+                return 0.0;
+            case 2:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 5; return 0.15; }
+                sbBox.setSprite(Kaisa.Sprites.BATTLE_EXPLOSION[0]);
+                pc = 3;
+                return 0.5;
+            case 3:
+                sbBox.setSprite(Kaisa.Sprites.BATTLE_EXPLOSION[1]);
+                pc = 4;
+                return 0.5;
+            case 4:
+                i += 1; pc = 2; return 0.0;
+            case 5:
+                sbBox.flipHorizontal(true).setSprite(Kaisa.Sprites.JACKPOT_SPIRIT);
+                pc = 6;
+                return 0.85;
+            case 6:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2285  BoxResists -- the box shrugs the attack off and
+// the player's crush sprite is sent flying past it.
+class BoxResists extends Routine {
+    var gm as GameManager;
+    var friendlyIndex as Number;
+
+    var sbBox as SpriteBuilder?;
+    var sbGivePower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, friendlyIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        friendlyIndex = friendlyIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbBox = Kaisa.ScreenBuilder.buildSprite("Loser", parent)
+                    .setSize(24, 24).center().setSprite(Kaisa.Sprites.JACKPOT)
+                    .flipHorizontal(true);
+                sbGivePower = Kaisa.ScreenBuilder.buildSprite("Loser", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED)
+                    .setTransparent(true).setActive(false);
+                gm.audioMgr.stopSound();
+                pc = 1;
+                return 0.5;
+            case 1:
+                sbBox.center();
+                i = 0;
+                pc = 2;
+                return 0.0;
+            case 2:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 5; return 0.25; }
+                sbGivePower.setActive(true);
+                pc = 3;
+                return 0.15;
+            case 3:
+                sbGivePower.setActive(false);
+                pc = 4;
+                return 0.35;
+            case 4:
+                i += 1; pc = 2; return 0.0;
+            case 5:
+                gm.audioMgr.playSound("attackTravelVeryLong");
+                sbBox.flipHorizontal(false)
+                    .setSprite(gm.digimonSprite(friendlyIndex, gm.data.ACTION_CR))
+                    .placeOutside(Kaisa.DIR_LEFT);
+                i = 0;
+                pc = 6;
+                return 0.0;
+            case 6:                                 // for (i = 0; i < 64; i++)
+                if (i >= 64) { pc = 8; return 0.0; }
+                sbBox.move(Kaisa.DIR_RIGHT, 1);
+                pc = 7;
+                return 0.6 / 16;
+            case 7:
+                i += 1; pc = 6; return 0.0;
+            case 8:
+                gm.audioMgr.stopSound();
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1814  BoostFailed -- the sacrifice flashes and is
+// erased, and nothing comes of it.
+class BoostFailed extends Routine {
+    var gm as GameManager;
+    var sacrifice as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbGivePower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, sacrificeIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        sacrifice = sacrificeIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                gm.audioMgr.playSound("digiPowerFailed");
+                // SOURCE ODDITY, reproduced: both elements are "GivePower".
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("GivePower", parent)
+                    .setSize(24, 24)
+                    .setSprite(gm.digimonSprite(sacrifice, gm.data.ACTION_BASE)).center();
+                sbGivePower = Kaisa.ScreenBuilder.buildSprite("GivePower", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 5; return 0.4; }
+                sbGivePower.setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED).setActive(true);
+                pc = 2;
+                return 0.2;
+            case 2:
+                sbGivePower.setSprite(Kaisa.Sprites.GIVE_POWER);
+                pc = 3;
+                return 0.2;
+            case 3:
+                sbGivePower.setActive(false);
+                pc = 4;
+                return 0.45;
+            case 4:
+                i += 1; pc = 1; return 0.0;
+            case 5:
+                sbDigimon.setActive(false);
+                i = 0;
+                pc = 6;
+                return 0.0;
+            case 6:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 9; return 0.0; }
+                pc = 7;
+                return 0.60;
+            case 7:
+                sbDigimon.setActive(true);
+                pc = 8;
+                return 0.45;
+            case 8:
+                sbDigimon.setActive(false);
+                i += 1; pc = 6; return 0.0;
+            case 9:                                 // for (i = 0; i < 5; i++)
+                if (i >= 5) { pc = 12; return 0.5; }
+                pc = 10;
+                return 0.30;
+            case 10:
+                sbDigimon.setActive(true);
+                pc = 11;
+                return 0.1;
+            case 11:
+                sbDigimon.setActive(false);
+                i += 1; pc = 9; return 0.0;
+            case 12:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1851  BoostSucceed -- the same opening, then a curtain
+// wipes the sacrifice away and the boosted Digimon is behind it.
+class BoostSucceed extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+    var sacrifice as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbGivePower as SpriteBuilder?;
+    var sbCurtain as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number,
+                        sacrificeIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+        sacrifice = sacrificeIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                gm.audioMgr.playSound("digiPowerSucceed");
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("GivePower", parent)
+                    .setSize(24, 24)
+                    .setSprite(gm.digimonSprite(sacrifice, gm.data.ACTION_BASE)).center();
+                sbGivePower = Kaisa.ScreenBuilder.buildSprite("GivePower", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 5; return 0.4; }
+                sbGivePower.setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED).setActive(true);
+                pc = 2;
+                return 0.2;
+            case 2:
+                sbGivePower.setSprite(Kaisa.Sprites.GIVE_POWER);
+                pc = 3;
+                return 0.2;
+            case 3:
+                sbGivePower.setActive(false);
+                pc = 4;
+                return 0.45;
+            case 4:
+                i += 1; pc = 1; return 0.0;
+            case 5:
+                sbCurtain = Kaisa.ScreenBuilder.buildSprite("GivePower", parent)
+                    .setSprite(Kaisa.Sprites.CURTAIN).placeOutside(Kaisa.DIR_UP);
+                i = 0;
+                pc = 6;
+                return 0.0;
+            case 6:                                 // for (i = 0; i < 64; i++)
+                if (i >= 64) { pc = 8; return 0.0; }
+                if (i == 32) { sbDigimon.setActive(false); }
+                sbCurtain.move(Kaisa.DIR_DOWN, 1);
+                pc = 7;
+                return 3.5 / 64;
+            case 7:
+                i += 1; pc = 6; return 0.0;
+            case 8:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE))
+                         .setActive(true);
+                pc = 9;
+                return 0.5;
+            case 9:
+                sbCurtain.setTransparent(true);
+                i = 0;
+                pc = 10;
+                return 0.0;
+            case 10:                                // for (i = 0; i < 64; i++)
+                if (i >= 64) { i = 0; pc = 12; return 0.4; }
+                if (i == 32) { sbDigimon.setActive(true); }
+                sbCurtain.move(Kaisa.DIR_UP, 1);
+                pc = 11;
+                return 3.5 / 64;
+            case 11:
+                i += 1; pc = 10; return 0.0;
+            case 12:
+                sbCurtain.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED)
+                         .setPosition(0, 0);
+                i = 0;
+                pc = 13;
+                return 0.0;
+            case 13:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 16; return 0.1; }
+                pc = 14;
+                return 0.1;
+            case 14:
+                sbCurtain.setActive(false);
+                pc = 15;
+                return 0.4;
+            case 15:
+                sbCurtain.setActive(true);
+                i += 1; pc = 13; return 0.0;
+            case 16:
+                sbCurtain.setActive(false);
+                pc = 17;
+                return 1.0;
+            case 17:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2720  EnemyEscapes -- the enemy looks around, bolts,
+// and the player's Digimon is left standing there.
+class EnemyEscapes extends Routine {
+    var gm as GameManager;
+    var enemyIndex as Number;
+    var friendlyIndex as Number;
+
+    var sEnemy as Array = [];
+    var sFriendly as Array = [];
+    var sbEnemy as SpriteBuilder?;
+    var sbDisobey as SpriteBuilder?;
+    var sbFriendly as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, enemyIndexIn as Number,
+                        friendlyIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        enemyIndex = enemyIndexIn;
+        friendlyIndex = friendlyIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sEnemy = gm.getAllDigimonSprites(enemyIndex);
+                sFriendly = gm.getAllDigimonSprites(friendlyIndex);
+                sbEnemy = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
+                    .setSize(24, 24).center().setSprite(sEnemy[0]).flipHorizontal(true);
+                pc = 1;
+                return 0.65;
+            case 1:
+                sbEnemy.flipHorizontal(false);
+                pc = 2;
+                return 0.65;
+            case 2:
+                sbEnemy.flipHorizontal(true);
+                pc = 3;
+                return 0.3;
+            case 3:
+                sbEnemy.flipHorizontal(false);
+                pc = 4;
+                return 0.3;
+            case 4:
+                sbEnemy.flipHorizontal(true);
+                pc = 5;
+                return 0.3;
+            case 5:
+                sbEnemy.flipHorizontal(false);
+                sbDisobey = Kaisa.ScreenBuilder.buildSprite("Disobey", parent)
+                    .setSize(3, 9).setPosition(1, 1).setSprite(Kaisa.Sprites.BATTLE_DISOBEY);
+                pc = 6;
+                return 0.3;
+            case 6:
+                sbDisobey.setActive(false);
+                pc = 7;
+                return 0.3;
+            case 7:
+                gm.audioMgr.playSound("launchAttack");
+                sbEnemy.setSprite(sEnemy[2]);
+                i = 0;
+                pc = 8;
+                return 0.0;
+            case 8:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 10; return 0.75; }
+                sbEnemy.move(Kaisa.DIR_LEFT, 1);
+                pc = 9;
+                return 0.8 / 32;
+            case 9:
+                i += 1; pc = 8; return 0.0;
+            case 10:
+                // SOURCE ODDITY, reproduced: the player's Digimon is built as
+                // "Enemy" as well.
+                sbFriendly = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
+                    .setSize(24, 24).center().setSprite(sFriendly[0]);
+                pc = 11;
+                return 0.5;
+            case 11:
+                pc = 12;
+                return 0.45;
+            case 12:
+                sbFriendly.flipHorizontal(true);
+                pc = 13;
+                return 0.45;
+            case 13:
+                sbFriendly.flipHorizontal(false);
+                pc = 14;
+                return 0.85;
+            case 14:
+                sbFriendly.setSprite(sFriendly[1]);
+                sbDisobey.setActive(true);
+                pc = 15;
+                return 0.3;
+            case 15:
+                sbFriendly.setSprite(sFriendly[0]);
+                pc = 16;
+                return 0.3;
+            case 16:
+                sbDisobey.dispose();
+                pc = 17;
+                return 0.5;
+            case 17:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2665  TransitionToMap1 -- the screen blinks out, seven
+// silent seconds pass, and the player wakes up somewhere else.
+class TransitionToMap1 extends Routine {
+    var gm as GameManager;
+    var character as Number;
+
+    var sCharacter as Array = [];
+    var sbCharacter as SpriteBuilder?;
+    var sbBlackScreen as SpriteBuilder?;
+    var sbCurtain as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sCharacter = gm.characterSprites(character);
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Character", parent)
+                    .setSprite(sCharacter[0]);
+                sbBlackScreen = Kaisa.ScreenBuilder.buildSprite("Black Screen", parent)
+                    .setSprite(Kaisa.Sprites.BLACK_SCREEN).setActive(false);
+                sbCurtain = Kaisa.ScreenBuilder.buildSprite("Curtain", parent)
+                    .setSprite(Kaisa.Sprites.CURTAIN).placeOutside(Kaisa.DIR_UP);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 4; return 0.0; }
+                pc = 2;
+                return 0.5;
+            case 2:
+                sbBlackScreen.setActive(true);
+                pc = 3;
+                return 0.1;
+            case 3:
+                sbBlackScreen.setActive(false);
+                i += 1; pc = 1; return 0.0;
+            case 4:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 7; return 0.2; }
+                pc = 5;
+                return 0.3;
+            case 5:
+                sbBlackScreen.setActive(true);
+                pc = 6;
+                return 0.1;
+            case 6:
+                sbBlackScreen.setActive(false);
+                i += 1; pc = 4; return 0.0;
+            case 7:
+                sbBlackScreen.setActive(true);
+                pc = 8;
+                return 0.5;
+            case 8:
+                gm.audioMgr.playSound("unpleasantBeep");
+                sbCharacter.setActive(false);
+                pc = 9;
+                return 7.0;
+            case 9:
+                sbBlackScreen.setActive(false);
+                pc = 10;
+                return 0.1;
+            case 10:
+                sbBlackScreen.setActive(true);
+                i = 0;
+                pc = 11;
+                return 0.0;
+            case 11:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 14; return 0.1; }
+                pc = 12;
+                return 0.2;
+            case 12:
+                sbBlackScreen.setActive(false);
+                pc = 13;
+                return 0.1;
+            case 13:
+                sbBlackScreen.setActive(true);
+                i += 1; pc = 11; return 0.0;
+            case 14:
+                sbBlackScreen.setActive(false);
+                pc = 15;
+                return 0.2;
+            case 15:
+                sbBlackScreen.setActive(true);
+                pc = 16;
+                return 0.1;
+            case 16:
+                sbBlackScreen.setActive(false);
+                pc = 17;
+                return 0.3;
+            case 17:
+                sbBlackScreen.setActive(true);
+                pc = 18;
+                return 0.1;
+            case 18:
+                sbBlackScreen.setActive(false);
+                i = 0;
+                pc = 19;
+                return 0.0;
+            case 19:                                // for (i = 0; i < 64; i++)
+                if (i >= 64) { pc = 21; return 0.5; }
+                if (i == 32) { sbCharacter.setSprite(sCharacter[7]).setActive(true); }
+                sbCurtain.move(Kaisa.DIR_DOWN, 1);
+                pc = 20;
+                return 4.0 / 64;
+            case 20:
+                i += 1; pc = 19; return 0.0;
+            case 21:
+                pc = 22;
+                rt.call(new DisplayNewArea(gm, gm.worldMgr.currentWorld(),
+                                           gm.worldMgr.currentArea(),
+                                           gm.worldMgr.currentDistance()));
+                return 0.0;
+            case 22:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:24  LoadCharacterSelection -- the opening flicker
+// before the character-selection screen.
+class LoadCharacterSelection extends Routine {
+    var gm as GameManager;
+
+    var sbCurtain as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager) {
+        Routine.initialize();
+        gm = gmIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                Kaisa.ScreenBuilder.buildSprite("Character", parent)
+                    .setSprite(Kaisa.Sprites.TAKUYA[0]);
+                // SOURCE ODDITY, reproduced: the curtain is a second
+                // "Character".
+                sbCurtain = Kaisa.ScreenBuilder.buildSprite("Character", parent);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 4; return 0.0; }
+                sbCurtain.setSprite(Kaisa.Sprites.BLACK_SCREEN);
+                pc = 2;
+                return 0.15;
+            case 2:
+                sbCurtain.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
+                pc = 3;
+                return 0.25;
+            case 3:
+                i += 1; pc = 1; return 0.0;
+            case 4:
+                sbCurtain.setSprite(Kaisa.Sprites.CURTAIN);
+                i = 0;
+                pc = 5;
+                return 0.0;
+            case 5:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { i = 0; pc = 8; return 0.0; }
+                pc = 6;
+                return 0.15;
+            case 6:
+                sbCurtain.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
+                pc = 7;
+                return 0.25;
+            case 7:
+                sbCurtain.setSprite(Kaisa.Sprites.CURTAIN);
+                i += 1; pc = 5; return 0.0;
+            case 8:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 10; return 1.0; }
+                sbCurtain.move(Kaisa.DIR_UP, 1);
+                pc = 9;
+                return 2.0 / 32;
+            case 9:
+                i += 1; pc = 8; return 0.0;
+            case 10:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2601  StartAppDigiHunter -- the minigame's opening: a
+// loading bar, the arrows flashing, then the board of faces and START.
+//
+// The original takes a callback and calls it at the end; the port takes the
+// app and sets its flag, which is the only thing that callback ever does.
+class StartAppDigiHunter extends Routine {
+    var gm as GameManager;
+    var app as DigiHunter?;
+
+    var rbLoadingBar as RectangleBuilder?;
+    var sbArrows as Array<SpriteBuilder?> = [null, null, null, null, null, null];
+    var sbWhiteFaces as Array<SpriteBuilder?> = [null, null, null, null];
+    var sbBlackFaces as Array<SpriteBuilder?> = [null, null, null, null, null];
+    var tbStart as TextBoxBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, appIn as DigiHunter?) {
+        Routine.initialize();
+        gm = gmIn;
+        app = appIn;
+    }
+
+    function setArrows(active as Boolean) as Void {
+        for (var n = 0; n < sbArrows.size(); n += 1) { sbArrows[n].setActive(active); }
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                gm.audioMgr.playSound("digiHunter_Start");
+                pc = 1;
+                return 0.5;
+            case 1:
+                rbLoadingBar = Kaisa.ScreenBuilder.buildRectangle("Loading Bar", parent)
+                    .setSize(1, 4).setPosition(30, 0);
+                i = 0;
+                pc = 2;
+                return 0.0;
+            case 2:                                 // for (i = 0; i < 29; i++)
+                if (i >= 29) { pc = 4; return 0.0; }
+                rbLoadingBar.move(Kaisa.DIR_LEFT, 1).setSize(i + 2, 4);
+                pc = 3;
+                return 1.25 / 29;
+            case 3:
+                i += 1; pc = 2; return 0.0;
+            case 4:
+                for (var n = 0; n < 3; n += 1) {
+                    sbArrows[n] = Kaisa.ScreenBuilder.buildSprite("Vertical Arrow", parent)
+                        .setSize(3, 6).setPosition(2, 9 + (n * 8))
+                        .setSprite(Kaisa.Sprites.DIGI_HUNTER_ARROWS[0]);
+                }
+                for (var n = 0; n < 3; n += 1) {
+                    sbArrows[3 + n] = Kaisa.ScreenBuilder.buildSprite("Horizontal Arrow", parent)
+                        .setSize(6, 3).setPosition(6 + (n * 8), 5)
+                        .setSprite(Kaisa.Sprites.DIGI_HUNTER_ARROWS[1]);
+                }
+                i = 0;
+                pc = 5;
+                return 0.0;
+            case 5:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { i = 0; pc = 8; return 0.0; }
+                setArrows(true);
+                pc = 6;
+                return 0.2;
+            case 6:
+                setArrows(false);
+                pc = 7;
+                return 0.2;
+            case 7:
+                i += 1; pc = 5; return 0.0;
+            case 8:
+                sbWhiteFaces[0] = face(parent, true, 13, 8);
+                sbWhiteFaces[1] = face(parent, true, 5, 16);
+                sbWhiteFaces[2] = face(parent, true, 21, 16);
+                sbWhiteFaces[3] = face(parent, true, 13, 24);
+                sbBlackFaces[0] = face(parent, false, 5, 8);
+                sbBlackFaces[1] = face(parent, false, 21, 8);
+                sbBlackFaces[2] = face(parent, false, 13, 16);
+                sbBlackFaces[3] = face(parent, false, 5, 24);
+                sbBlackFaces[4] = face(parent, false, 21, 24);
+                i = 0;
+                pc = 9;
+                return 0.0;
+            case 9:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 12; return 0.0; }
+                setFaces(sbWhiteFaces, true);
+                setFaces(sbBlackFaces, false);
+                pc = 10;
+                return 0.2;
+            case 10:
+                setFaces(sbWhiteFaces, false);
+                setFaces(sbBlackFaces, true);
+                pc = 11;
+                return 0.2;
+            case 11:
+                i += 1; pc = 9; return 0.0;
+            case 12:
+                setFaces(sbBlackFaces, false);
+                sbArrows[0].setActive(true);
+                sbArrows[3].setActive(true);
+                tbStart = Kaisa.ScreenBuilder.buildTextBox("Start", parent, Kaisa.Font.SMALL)
+                    .setText("START").setPosition(6, 17);
+                pc = 13;
+                return 0.5;
+            case 13:
+                tbStart.setActive(false);
+                pc = 14;
+                return 0.5;
+            case 14:
+                tbStart.setActive(true);
+                pc = 15;
+                return 0.5;
+            case 15:
+                if (app != null) { app.markEnded(true); }
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+
+    function face(parent as ScreenElement, white as Boolean, x as Number,
+                  y as Number) as SpriteBuilder {
+        return Kaisa.ScreenBuilder.buildSprite(white ? "White face" : "Black face", parent)
+            .setSize(8, 8).setPosition(x, y)
+            .setSprite(Kaisa.Sprites.DIGI_HUNTER_FACES[white ? 0 : 1]);
+    }
+
+    function setFaces(faces as Array<SpriteBuilder?>, active as Boolean) as Void {
+        for (var n = 0; n < faces.size(); n += 1) { faces[n].setActive(active); }
+    }
+}

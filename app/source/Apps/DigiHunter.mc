@@ -62,14 +62,16 @@ class DigiHunter extends DigiviceApp {
         if (timeRemaining >= 0) { moveX(); }
     }
 
+    // The `markEnded` callback StartAppDigiHunter is given.
+    function markEnded(ended as Boolean) as Void {
+        gameStarted = ended;
+    }
+
     function startApp() as Void {
-        // Animations.StartAppDigiHunter(mark => gameStarted = mark) is the
-        // intro: a loading bar, the arrows flashing, then the faces. It is not
-        // converted yet, and its only effect on the game is the callback that
-        // starts the clock -- so the clock starts immediately here, and the
-        // game is playable while the animation waits to be written.
-        gm.enqueueAnimation(null);
-        gameStarted = true;
+        // Animations.StartAppDigiHunter(mark => gameStarted = mark): the
+        // intro plays, and its callback -- the one thing it does to the game
+        // -- starts the clock when it ends.
+        gm.enqueueAnimation(new StartAppDigiHunter(gm, self));
 
         Kaisa.ScreenBuilder.buildTextBox("Time", screen, Kaisa.Font.SMALL)
             .setText("TIME").setSize(18, 5).setPosition(1, 0);

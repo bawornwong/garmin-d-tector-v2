@@ -33,6 +33,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(ROOT, "build")
 SCENE = "Assets/Scenes/DigiviceFrontier.unity"
 SPRITE_DB_CS = "Assets/Scripts/SpriteDatabase.cs"
+ANIMATIONS_CS = "Assets/Scripts/Logic/Data/Animations.cs"
+DIGIMON_DB = "Assets/Resources/digimonDB.json"
+
+# The actions GetDigimonSprite can ask for, and the suffix each one uses.
+SPRITE_ACTIONS = [("", "Default"), ("_at", "Attack"), ("_cr", "Crush"),
+                  ("_sp", "Spirit"), ("_sm", "SpiritSmall"), ("_bl", "Black")]
 
 ATLAS_CLASS = {"atlas_24x24": 0, "atlas_32x32": 1, "atlas_14x16": 2, "atlas_odd": 3}
 
@@ -122,6 +128,34 @@ def const_name(field, index=None):
     return s if index is None else f"{s}_{index}"
 
 
+def code_named_sprites(index):
+    """Art the C# fetches by name for something that is not a Digimon row.
+
+    `GetDigimonSprite("jackpot")` is the only case: the Jackpot Box draws from
+    the Digimon sheet but has no row in digimonDB.json, so the port cannot
+    reach it through an index (ADR 7). Its cells become named constants here,
+    resolved at build time like every other UI sprite.
+    """
+    rows = {r["name"].lower() for r in json.load(open(src(DIGIMON_DB)))}
+    anims = open(src(ANIMATIONS_CS), encoding="utf-8-sig", errors="replace").read()
+    names = []
+    for name in re.findall(r'GetDigimonSprite\("(\w+)"', anims):
+        if name.lower() not in rows and name not in names:
+            names.append(name)
+
+    out = []
+    for name in names:
+        for suffix, action in SPRITE_ACTIONS:
+            key = "Digimon/" + name + suffix
+            if key not in index:
+                continue
+            e = index[key]
+            out.append((name.upper() + ("" if action == "Default" else "_" + action.upper()),
+                        [ATLAS_CLASS[e["atlas"]], e["x"], e["y"], e["w"], e["h"]],
+                        key))
+    return out
+
+
 def main():
     fields = declared_fields()
     sheets = sheet_tables()
@@ -148,7 +182,7 @@ def main():
 
     resolved = 0
     missing = []
-    trace_names = []       # (name the original prints, cell) for the debug table
+    names = {}             # SpriteDatabase field name -> cell, for the verifier
     for name, count in fields:
         refs = assigned.get(name, [])
 
@@ -170,7 +204,7 @@ def main():
                 lines.append(f"        const {const_name(name)} = null;")
             else:
                 resolved += 1
-                trace_names.append((name, cell))
+                names[name] = cell
                 lines.append(f"        const {const_name(name)} = {cell};")
         else:                                   # Sprite[]
             cells = []
@@ -181,7 +215,7 @@ def main():
                     cells.append("null")
                 else:
                     resolved += 1
-                    trace_names.append((f"{name}_{i}", cell))
+                    names[f"{name}_{i}"] = cell
                     cells.append(str(cell))
             if not cells:
                 missing.append(name)
@@ -190,37 +224,45 @@ def main():
             lines.append(f"            {body}")
             lines.append("        ];")
 
-    # The reverse table, debug builds only: the animation golden diffs print a
-    # sprite by its SpriteDatabase field name, exactly as the C# reference
-    # does, and nothing else in the port ever needs a sprite's name.
+    named = code_named_sprites(index)
+    if named:
+        lines += [
+            "",
+            "        // Art the C# fetches by name for something with no Digimon",
+            "        // row -- the Jackpot Box. Resolved here so nothing addresses",
+            "        // a sprite by name at runtime (ADR 7).",
+        ]
+        for const, cell, key in named:
+            resolved += 1
+            names[key.split("/")[-1]] = cell
+            lines.append(f"        const {const} = {cell};   // {key}")
+
+    # No reverse name table: the port prints a sprite as its CELL, and
+    # verify_anim.py canonicalises the reference's field names to cells
+    # anyway. Carrying 218 names cost the debug build several kilobytes of a
+    # 786 KB budget that is nearly spent, and bought nothing the diff uses.
     lines += [
-        "        // GENERATED reverse lookup, debug only: [atlasClass, x, y, w, h]",
-        "        // -> the SpriteDatabase field name the original would print.",
-        "        // Array fields print as `field_index`, matching the reference.",
-        "        (:debug) const TRACE_NAMES = [",
-    ]
-    for key, cell in trace_names:
-        lines.append(f'            ["{key}", {cell[0]}, {cell[1]}, {cell[2]}],')
-    lines += [
-        "        ];",
-        "",
+        "        // A sprite prints as its cell. The original prints a",
+        "        // SpriteDatabase field name instead; verify_anim.py maps those",
+        "        // to cells, so both sides of a diff say the same thing.",
         "        (:debug)",
         "        function nameOf(ref as Array<Number>?) as String {",
         '            if (ref == null) { return "null"; }',
-        "            for (var i = 0; i < TRACE_NAMES.size(); i += 1) {",
-        "                var e = TRACE_NAMES[i];",
-        "                if (e[1] == ref[0] && e[2] == ref[1] && e[3] == ref[2]) {",
-        "                    return e[0];",
-        "                }",
-        "            }",
         '            return "sprite(" + ref[0] + "," + ref[1] + "," + ref[2] + ")";',
         "        }",
     ]
     lines += ["    }", "}", ""]
     open(app_path("source/Render/SpriteDatabase.mc"), "w").write("\n".join(lines))
 
+    # The field-name table the port no longer carries. tools/verify_anim.py
+    # needs it to canonicalise what the C# reference prints; the device does
+    # not, and it was several kilobytes of a debug build.
+    json.dump(names, open(os.path.join(BUILD, "ui_sprite_names.json"), "w"),
+              indent=1, sort_keys=True)
+
     print(f"wrote app/source/Render/SpriteDatabase.mc "
-          f"({len(fields)} fields, {resolved} sprites resolved)")
+          f"({len(fields)} fields, {resolved} sprites resolved) "
+          f"and build/ui_sprite_names.json")
     if missing:
         print(f"  {len(missing)} unassigned in the scene: {', '.join(missing[:12])}"
               + (" ..." if len(missing) > 12 else ""))

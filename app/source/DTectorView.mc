@@ -70,7 +70,7 @@ class DTectorView extends WatchUi.View {
     // Which converted animation to play, traced, for tools/verify_anim.py:
     // -1 plays none. The arguments match the ones the C# harness synthesises
     // (every int is 1), so the two traces are of the same run.
-    var _probeAnim as Number = 32;
+    var _probeAnim as Number = 1;
     var _probeAnimDone as Boolean = false;
     // The roll the animation probe pins Kaisa.Rand to, so an animation whose
     // length depends on one can be diffed; -1 leaves the RNG alone.
@@ -321,6 +321,45 @@ class DTectorView extends WatchUi.View {
         } else if (_probeAnim == 39) {
             name = "LoseSpirit";
             routine = new LoseSpirit(_gm, _demoIndex, _demoIndex);
+        } else if (_probeAnim == 40) {
+            name = "AwardDistance";
+            routine = new AwardDistance(_gm, 1, 1, 1);
+        } else if (_probeAnim == 41) {
+            name = "TravelMap";
+            routine = new TravelMap(_gm, 0, 1, 1, 1.0);
+        } else if (_probeAnim == 42) {
+            name = "ForcedTravelMap";
+            routine = new ForcedTravelMap(_gm, 0, 1, 1, 1);
+        } else if (_probeAnim == 43) {
+            name = "DestroyBox";
+            routine = new DestroyBox(_gm);
+        } else if (_probeAnim == 44) {
+            name = "BoxResists";
+            routine = new BoxResists(_gm, _demoIndex);
+        } else if (_probeAnim == 45) {
+            name = "BoostFailed";
+            routine = new BoostFailed(_gm, _demoIndex);
+        } else if (_probeAnim == 46) {
+            name = "BoostSucceed";
+            routine = new BoostSucceed(_gm, _demoIndex, _demoIndex);
+        } else if (_probeAnim == 47) {
+            name = "EnemyEscapes";
+            routine = new EnemyEscapes(_gm, _demoIndex, _demoIndex);
+        } else if (_probeAnim == 48) {
+            name = "TransitionToMap1";
+            // The animation reads the player's position out of WorldManager,
+            // so the probe puts it where the reference's stub keeps it:
+            // world 0, area 0, 100 km to go.
+            _gm.saved.record.currentMap = 0;
+            _gm.saved.record.currentArea = 0;
+            _gm.saved.record.currentDistance = 100;
+            routine = new TransitionToMap1(_gm, Kaisa.CHAR_TAKUYA);
+        } else if (_probeAnim == 49) {
+            name = "LoadCharacterSelection";
+            routine = new LoadCharacterSelection(_gm);
+        } else if (_probeAnim == 50) {
+            name = "StartAppDigiHunter";
+            routine = new StartAppDigiHunter(_gm, null);
         } else if (_probeAnim == 8) {
             name = "SwapDDock";
             // The animation reads the dock it is about to overwrite, so the

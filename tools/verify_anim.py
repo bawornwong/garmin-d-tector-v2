@@ -89,6 +89,17 @@ CONVERTED = {
     "DeportSpirit": 37,
     "ReceiveSpirit": 38,
     "LoseSpirit": 39,
+    "AwardDistance": 40,
+    "TravelMap": 41,
+    "ForcedTravelMap": 42,
+    "DestroyBox": 43,
+    "BoxResists": 44,
+    "BoostFailed": 45,
+    "BoostSucceed": 46,
+    "EnemyEscapes": 47,
+    "TransitionToMap1": 48,
+    "LoadCharacterSelection": 49,
+    "StartAppDigiHunter": 50,
 }
 
 # The roll both sides are pinned to: an animation that rolls for a length
@@ -115,9 +126,9 @@ def sprite_cells():
     `games_distance` are wired to one cell in the Unity scene.
     """
     out = {}
-    text = open(SPRITE_DB).read()
-    for name, cls, x, y in re.findall(r'\["(\w+)", (\d+), (\d+), (\d+)\]', text):
-        out[name] = f"cell({cls},{x},{y})"
+    ui = json.load(open(os.path.join(ROOT, "build/ui_sprite_names.json")))
+    for name, cell in ui.items():
+        out[name] = f"cell({cell[0]},{cell[1]},{cell[2]})"
 
     index = json.load(open(os.path.join(ROOT, "build/sprite_index.json")))["sprites"]
     for key, e in index.items():

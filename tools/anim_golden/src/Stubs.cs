@@ -112,7 +112,9 @@ namespace Kaisa.Digivice {
         public SpriteSet(string n) { this.n = n; }
         public Sprite this[int i] { get { return new Sprite(n + "_" + i); } }
         public int Length { get { return 16; } }
-        public static implicit operator Sprite(SpriteSet s) { return new Sprite(s.n); }
+        public static implicit operator Sprite(SpriteSet s) {
+            return (s == null) ? null : new Sprite(s.n);
+        }
         public static implicit operator Sprite[](SpriteSet s) {
             var a = new Sprite[16];
             for (int i = 0; i < 16; i++) { a[i] = new Sprite(s.n + "_" + i); }
@@ -183,7 +185,10 @@ namespace Kaisa.Digivice {
             digiHunter_arrows = new SpriteSet("digiHunter_arrows");
             digiHunter_faces = new SpriteSet("digiHunter_faces");
             digistorm = new SpriteSet("digistorm");
-            emptySprite = new SpriteSet("emptySprite");
+            // Left unassigned in the Unity scene, so it really is null at
+            // runtime -- and the port emits null for it. Naming it here made
+            // the reference draw a sprite the game does not have.
+            emptySprite = null;
             gameStart_clouds = new SpriteSet("gameStart_clouds");
             gameStart_spiritPlatform = new SpriteSet("gameStart_spiritPlatform");
             gameStart_trailmon = new SpriteSet("gameStart_trailmon");
