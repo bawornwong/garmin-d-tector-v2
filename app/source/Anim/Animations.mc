@@ -3343,3 +3343,465 @@ class DataStorm extends Routine {
         return Routine.DONE;
     }
 }
+
+// port of Animations.cs:54  StartGameAnimation
+//
+// The opening: the character runs on, rides the Trailmon in, is ambushed by
+// the enemy Digimon, takes the spirit and destroys it, and the D-Tector takes
+// the power. Fifty-three seconds, and the longest coroutine in the game.
+class StartGameAnimation extends Routine {
+    var gm as GameManager;
+    var character as Number;
+    var spiritIndex as Number;
+    var spiritEnergy as Number;
+    var enemyIndex as Number;
+    var enemyEnergy as Number;
+
+    var sCharacter as Array = [];
+    var sSpirit as Array = [];
+    var sEnemyDigimon as Array = [];
+    var sSpiritEnergy as Array<Number>?;
+    var sEnemyEnergy as Array<Number>?;
+
+    var sbCharacter as SpriteBuilder?;
+    var sbClouds as SpriteBuilder?;
+    var sbTrailmon as SpriteBuilder?;
+    var sbWindow1 as RectangleBuilder?;
+    var sbWindow2 as RectangleBuilder?;
+    var sbWindow3 as RectangleBuilder?;
+    var sbDisobey as SpriteBuilder?;
+    var sbAttack as SpriteBuilder?;
+    var sbEnemy as SpriteBuilder?;
+    var cbSpirit as ContainerBuilder?;
+    var sbSpiritEmerging as SpriteBuilder?;
+    var sbSpirit as SpriteBuilder?;
+    var sbCurtain as SpriteBuilder?;
+    var sbPower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Number,
+                        spiritIndexIn as Number, spiritEnergyIn as Number,
+                        enemyIndexIn as Number, enemyEnergyIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+        spiritIndex = spiritIndexIn;
+        spiritEnergy = spiritEnergyIn;
+        enemyIndex = enemyIndexIn;
+        enemyEnergy = enemyEnergyIn;
+    }
+
+    // The run cycle: two frames, each held for two steps.
+    function runFrame(n as Number) as Void {
+        sbCharacter.setSprite((Kaisa.MathExt.floorToInt(n / 2.0) % 2 == 0)
+                              ? sCharacter[4] : sCharacter[5]);
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sCharacter = gm.characterSprites(character);
+                sSpirit = gm.getAllDigimonSprites(spiritIndex);
+                sEnemyDigimon = gm.getAllDigimonSprites(enemyIndex);
+                sSpiritEnergy = gm.data.energySpriteRef(spiritEnergy);
+                sEnemyEnergy = gm.data.energySpriteRef(enemyEnergy);
+
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Character", parent)
+                    .setSprite(sCharacter[0]).placeOutside(Kaisa.DIR_RIGHT);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 3; return 0.0; }
+                runFrame(i);
+                sbCharacter.move(Kaisa.DIR_LEFT, 1);
+                pc = 2;
+                return 2.0 / 32;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:
+                pc = 4;
+                rt.call(new CharHappy(gm));
+                return 0.0;
+            case 4:
+                sbCharacter.placeOutside(Kaisa.DIR_RIGHT);
+                gm.audioMgr.playSound("gameStart");
+                // SOURCE ODDITY, reproduced: the clouds and the Trailmon are
+                // both named "Character".
+                sbClouds = Kaisa.ScreenBuilder.buildSprite("Character", parent)
+                    .setSize(76, 32).setSprite(Kaisa.Sprites.GAME_START_CLOUDS);
+                sbTrailmon = Kaisa.ScreenBuilder.buildSprite("Character", parent)
+                    .setSize(118, 15).setSprite(Kaisa.Sprites.GAME_START_TRAILMON)
+                    .setY(9).placeOutside(Kaisa.DIR_RIGHT);
+                i = 0;
+                pc = 5;
+                return 0.0;
+            case 5:                                 // for (i = 0; i < 75; i++)
+                if (i >= 75) { i = 0; pc = 7; return 0.0; }
+                if (i % 2 == 0) { sbClouds.move(Kaisa.DIR_LEFT, 1); }
+                sbTrailmon.move(Kaisa.DIR_LEFT, 1);
+                pc = 6;
+                return 4.2 / 75;
+            case 6:
+                i += 1; pc = 5; return 0.0;
+            case 7:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { i = 0; pc = 9; return 0.0; }
+                if (i < 12 && i % 2 == 0) { sbClouds.move(Kaisa.DIR_LEFT, 1); }
+                sbTrailmon.move(Kaisa.DIR_LEFT, 1);
+                pc = 8;
+                return 3.4 / 32;
+            case 8:
+                i += 1; pc = 7; return 0.0;
+            case 9:                                 // for (i = 0; i < 11; i++)
+                if (i >= 11) { i = 0; pc = 11; return 0.0; }
+                sbTrailmon.move(Kaisa.DIR_LEFT, 1);
+                pc = 10;
+                return 2.6 / 11;
+            case 10:
+                i += 1; pc = 9; return 0.0;
+            case 11:
+                // SOURCE ODDITY, reproduced: all three windows are named
+                // "Window1".
+                sbWindow1 = Kaisa.ScreenBuilder.buildRectangle("Window1", parent)
+                    .setSize(0, 5).setPosition(7, 14);
+                sbWindow2 = Kaisa.ScreenBuilder.buildRectangle("Window1", parent)
+                    .setSize(0, 5).setPosition(17, 14);
+                sbWindow3 = Kaisa.ScreenBuilder.buildRectangle("Window1", parent)
+                    .setSize(0, 5).setPosition(27, 14);
+                i = 0;
+                pc = 12;
+                return 0.0;
+            case 12:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 14; return 0.0; }
+                sbWindow1.setSize(i + 1, 5).move(Kaisa.DIR_LEFT, 1);
+                sbWindow2.setSize(i + 1, 5).move(Kaisa.DIR_LEFT, 1);
+                sbWindow3.setSize(i + 1, 5).move(Kaisa.DIR_LEFT, 1);
+                pc = 13;
+                return 0.8 / 2;
+            case 13:
+                i += 1; pc = 12; return 0.0;
+            case 14:
+                sbClouds.dispose();
+                sbTrailmon.dispose();
+                sbWindow1.dispose();
+                sbWindow2.dispose();
+                sbWindow3.dispose();
+                i = 0;
+                pc = 15;
+                return 0.5;
+            case 15:                                // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 17; return 0.0; }
+                runFrame(i);
+                sbCharacter.move(Kaisa.DIR_LEFT, 1);
+                pc = 16;
+                return 2.0 / 32;
+            case 16:
+                i += 1; pc = 15; return 0.0;
+            case 17:
+                sbCharacter.setSprite(sCharacter[0]);
+                sbDisobey = Kaisa.ScreenBuilder.buildSprite("Disobey", parent)
+                    .setSize(3, 9).setPosition(1, 1).setSprite(Kaisa.Sprites.BATTLE_DISOBEY);
+                pc = 18;
+                return 0.5;
+            case 18:
+                sbDisobey.dispose();
+                sbCharacter.setActive(false);
+                pc = 19;
+                return 0.4;
+            case 19:
+                sbAttack = Kaisa.ScreenBuilder.buildSprite("Attack", parent)
+                    .setSize(24, 24).setSprite(sEnemyEnergy).center()
+                    .move(Kaisa.DIR_LEFT, 3).flipHorizontal(true).setActive(false);
+                sbEnemy = Kaisa.ScreenBuilder.buildSprite(gm.data.name(enemyIndex), parent)
+                    .setSize(24, 24).setSprite(sEnemyDigimon[0]).flipHorizontal(true).center();
+                pc = 20;
+                return 0.15;
+            case 20:
+                sbEnemy.setActive(false);
+                pc = 21;
+                return 0.4;
+            case 21:
+                sbEnemy.setActive(true);
+                pc = 22;
+                return 0.15;
+            case 22:
+                sbEnemy.setActive(false);
+                pc = 23;
+                return 0.4;
+            case 23:
+                sbEnemy.setSprite(sEnemyDigimon[1]).move(Kaisa.DIR_LEFT, 3).setActive(true);
+                sbAttack.setActive(true);
+                i = 0;
+                pc = 24;
+                return 0.0;
+            case 24:                                // for (i = 0; i < 38; i++)
+                if (i >= 38) { i = 0; pc = 26; return 0.0; }
+                pc = 25;
+                return 1.7 / 38;
+            case 25:
+                sbAttack.move(Kaisa.DIR_RIGHT, 1);
+                i += 1; pc = 24; return 0.0;
+            case 26:
+                sbEnemy.setActive(false);
+                sbAttack.placeOutside(Kaisa.DIR_LEFT);
+                i = 0;
+                pc = 27;
+                return 0.0;
+            case 27:                                // for (i = 0; i < 32; i++)
+                if (i >= 32) { i = 0; pc = 29; return 0.0; }
+                pc = 28;
+                return 1.5 / 32;
+            case 28:
+                sbAttack.move(Kaisa.DIR_RIGHT, 1);
+                i += 1; pc = 27; return 0.0;
+            case 29:
+                sbAttack.placeOutside(Kaisa.DIR_LEFT);
+                cbSpirit = Kaisa.ScreenBuilder.buildContainer("Spirit", parent, true)
+                    .setSize(24, 24).setPosition(8, 4).setMaskActive(true);
+                // SOURCE ODDITY, reproduced: the emerging spirit is named
+                // after the ENEMY.
+                sbSpiritEmerging = Kaisa.ScreenBuilder.buildSprite(gm.data.name(enemyIndex), cbSpirit)
+                    .setSize(24, 24).setPosition(0, 21).setSprite(sSpirit[3]);
+                Kaisa.ScreenBuilder.buildSprite("Platform", cbSpirit)
+                    .setSize(22, 3).setPosition(1, 21)
+                    .setSprite(Kaisa.Sprites.GAME_START_SPIRIT_PLATFORM);
+                i = 0;
+                pc = 30;
+                return 0.0;
+            case 30:                                // for (i = 0; i < 21; i++)
+                if (i >= 21) { i = 0; pc = 32; return 0.0; }
+                sbSpiritEmerging.move(Kaisa.DIR_UP, 1);
+                pc = 31;
+                return 1.0 / 21;
+            case 31:
+                i += 1; pc = 30; return 0.0;
+            case 32:                                // for (i = 0; i < 8; i++)
+                if (i >= 8) { pc = 34; return 0.0; }
+                pc = 33;
+                return 0.4 / 8;
+            case 33:
+                sbAttack.move(Kaisa.DIR_RIGHT, 1);
+                i += 1; pc = 32; return 0.0;
+            case 34:
+                sbAttack.dispose();
+                sbAttack = Kaisa.ScreenBuilder.buildSprite("Collision", parent)
+                    .setSprite(Kaisa.Sprites.BATTLE_ATTACK_COLLISION_SMALL)
+                    .setSize(7, 15).setPosition(0, 8);
+                pc = 35;
+                return 0.4;
+            case 35:
+                sbAttack.dispose();
+                cbSpirit.setPosition(4, 4);
+                i = 0;
+                pc = 36;
+                return 0.15;
+            case 36:                                // for (i = 0; i < 24; i++)
+                if (i >= 24) { i = 0; pc = 38; return 0.0; }
+                pc = 37;
+                return 1.5 / 24;
+            case 37:
+                cbSpirit.move(Kaisa.DIR_UP, 1);
+                i += 1; pc = 36; return 0.0;
+            case 38:
+                cbSpirit.dispose();
+                sbSpirit = Kaisa.ScreenBuilder.buildSprite("Spirit", parent)
+                    .setSize(24, 24).setSprite(sSpirit[3]).center()
+                    .placeOutside(Kaisa.DIR_LEFT).setTransparent(true);
+                sbCharacter.center().placeOutside(Kaisa.DIR_RIGHT)
+                    .setTransparent(true).setActive(true);
+                i = 0;
+                pc = 39;
+                return 0.0;
+            case 39:                                // for (i = 0; i < 30; i++)
+                if (i >= 30) { pc = 41; return 0.0; }
+                sbSpirit.move(Kaisa.DIR_RIGHT, 1);
+                sbCharacter.move(Kaisa.DIR_LEFT, 1);
+                pc = 40;
+                return 2.8 / 30;
+            case 40:
+                i += 1; pc = 39; return 0.0;
+            case 41:
+                sbSpirit.setTransparent(false);
+                pc = 42;
+                return 0.25;
+            case 42:
+                sbSpirit.setActive(false);
+                pc = 43;
+                return 0.25;
+            case 43:
+                sbSpirit.setActive(true);
+                pc = 44;
+                return 0.25;
+            case 44:
+                sbSpirit.setActive(false);
+                pc = 45;
+                return 0.25;
+            case 45:
+                sbSpirit.dispose();
+                sbCharacter.setSize(24, 24).center().setSprite(sSpirit[0]);
+                pc = 46;
+                return 0.5;
+            case 46:
+                sbCharacter.move(Kaisa.DIR_RIGHT, 3).setSprite(sSpirit[1]);
+                pc = 47;
+                return 0.3;
+            case 47:
+                sbCharacter.move(Kaisa.DIR_LEFT, 3).setSprite(sSpirit[0]);
+                pc = 48;
+                return 0.3;
+            case 48:
+                sbCharacter.move(Kaisa.DIR_RIGHT, 3);
+                pc = 49;
+                return 0.15;
+            case 49:
+                sbCharacter.move(Kaisa.DIR_RIGHT, 3).setSprite(sSpirit[1]);
+                sbAttack = Kaisa.ScreenBuilder.buildSprite("Attack", parent)
+                    .setSize(24, 24).setSprite(sSpiritEnergy).setPosition(10, 4);
+                sbCharacter.setTransparent(false);
+                sbCharacter.setAsLastSibling();
+                i = 0;
+                pc = 50;
+                return 0.0;
+            case 50:                                // for (i = 0; i < 38; i++)
+                if (i >= 38) { i = 0; pc = 52; return 0.0; }
+                pc = 51;
+                return 1.5 / 38;
+            case 51:
+                sbAttack.move(Kaisa.DIR_LEFT, 1);
+                i += 1; pc = 50; return 0.0;
+            case 52:
+                sbCharacter.setActive(false);
+                sbAttack.placeOutside(Kaisa.DIR_RIGHT);
+                i = 0;
+                pc = 53;
+                return 0.0;
+            case 53:                                // for (i = 0; i < 32; i++)
+                if (i >= 32) { i = 0; pc = 55; return 0.0; }
+                pc = 54;
+                return 1.4 / 32;
+            case 54:
+                sbAttack.move(Kaisa.DIR_LEFT, 1);
+                i += 1; pc = 53; return 0.0;
+            case 55:
+                sbAttack.placeOutside(Kaisa.DIR_RIGHT);
+                sbEnemy.setActive(true).center().setSprite(sEnemyDigimon[0]);
+                i = 0;
+                pc = 56;
+                return 0.0;
+            case 56:                                // for (i = 0; i < 4; i++)
+                if (i >= 4) { i = 0; pc = 58; return 0.0; }
+                pc = 57;
+                return 0.4 / 4;
+            case 57:
+                sbAttack.move(Kaisa.DIR_LEFT, 1);
+                i += 1; pc = 56; return 0.0;
+            case 58:
+                sbAttack.dispose();
+                sbEnemy.flipHorizontal(false);
+                i = 0;
+                pc = 59;
+                return 0.0;
+            case 59:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 62; return 0.0; }
+                sbEnemy.setSprite(Kaisa.Sprites.BATTLE_EXPLOSION[0]);
+                pc = 60;
+                return 0.5;
+            case 60:
+                sbEnemy.setSprite(Kaisa.Sprites.BATTLE_EXPLOSION[1]);
+                pc = 61;
+                return 0.5;
+            case 61:
+                i += 1; pc = 59; return 0.0;
+            case 62:
+                sbEnemy.setActive(false);
+                sbCharacter.setSize(32, 32).setPosition(0, 0)
+                    .setSprite(sCharacter[0]).setActive(true);
+                pc = 63;
+                return 0.3;
+            case 63:
+                sbSpirit = Kaisa.ScreenBuilder.buildSprite("Spirit", parent)
+                    .setSize(24, 24).center().setSprite(sSpirit[0]);
+                pc = 64;
+                return 0.3;
+            case 64:
+                sbSpirit.setActive(false);
+                pc = 65;
+                return 0.3;
+            case 65:
+                sbSpirit.setActive(true);
+                pc = 66;
+                return 0.3;
+            case 66:
+                sbSpirit.setActive(false);
+                pc = 67;
+                return 0.3;
+            case 67:
+                sbEnemy.flipHorizontal(true).setSprite(sEnemyDigimon[0])
+                    .placeOutside(Kaisa.DIR_LEFT).setActive(true);
+                sbCharacter.setSprite(sCharacter[9]);
+                i = 0;
+                pc = 68;
+                return 0.15;
+            case 68:                                // for (i = 0; i < 26; i++)
+                if (i >= 26) { pc = 70; return 0.0; }
+                sbEnemy.move(Kaisa.DIR_RIGHT, 1);
+                sbCharacter.move(Kaisa.DIR_RIGHT, 1);
+                pc = 69;
+                return 3.3 / 32;
+            case 69:
+                i += 1; pc = 68; return 0.0;
+            case 70:
+                sbEnemy.setActive(false);
+                pc = 71;
+                return 0.6;
+            case 71:
+                sbCharacter.setActive(false);
+                sbEnemy.flipHorizontal(false).center().setActive(true);
+                pc = 72;
+                return 0.45;
+            case 72:
+                sbCurtain = Kaisa.ScreenBuilder.buildSprite("Curtain", parent)
+                    .setSprite(Kaisa.Sprites.CURTAIN).placeOutside(Kaisa.DIR_DOWN)
+                    .setTransparent(true);
+                i = 0;
+                pc = 73;
+                return 0.0;
+            case 73:                                // for (i = 0; i < 64; i++)
+                if (i >= 64) { i = 0; pc = 75; return 0.0; }
+                if (i > 31) { sbEnemy.move(Kaisa.DIR_UP, 1); }
+                sbCurtain.move(Kaisa.DIR_UP, 1);
+                pc = 74;
+                return 3.4 / 64;
+            case 74:
+                i += 1; pc = 73; return 0.0;
+            case 75:
+                Kaisa.ScreenBuilder.buildSprite("DTector", parent)
+                    .setSprite(Kaisa.Sprites.D_TECTOR);
+                sbPower = Kaisa.ScreenBuilder.buildSprite("Power", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED)
+                    .setTransparent(true);
+                i = 0;
+                pc = 76;
+                return 0.0;
+            case 76:                                // for (i = 0; i < 5; i++)
+                if (i >= 5) { pc = 79; return 0.0; }
+                sbPower.setActive(true);
+                pc = 77;
+                return 0.15;
+            case 77:
+                sbPower.setActive(false);
+                pc = 78;
+                return 0.15;
+            case 78:
+                i += 1; pc = 76; return 0.0;
+            case 79:
+                pc = 80;
+                rt.call(new CharHappy(gm));
+                return 0.0;
+            case 80:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}

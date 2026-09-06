@@ -80,6 +80,7 @@ CONVERTED = {
     "RewardCode": 28,
     "DisplayNewArea": 29,
     "DataStorm": 30,
+    "StartGameAnimation": 31,
 }
 
 # The roll both sides are pinned to: an animation that rolls for a length

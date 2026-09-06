@@ -448,6 +448,16 @@ class GameData {
         return total;
     }
 
+    // The initial Digimon a new game can start the player's enemy as:
+    // initials.json, packed as a u16 count and a u16 index each.
+    function initialCount() as Number {
+        return u16(_secOff[SEC_INITIALS]);
+    }
+
+    function initial(i as Number) as Number {
+        return u16(_secOff[SEC_INITIALS] + 2 + i * 2);
+    }
+
     function name(idx as Number) as String {
         return readString(_secOff[SEC_NAMES], idx);
     }

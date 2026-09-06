@@ -53,6 +53,41 @@ class GameManager {
         saved.touch();
     }
 
+    // GameManager.cs:131 CreateNewGame -- everything a fresh save needs, and
+    // the opening animation.
+    //
+    // The original's `Random.Range(0, 2147483647)` seeds are the three battle
+    // seeds AttackChooser reads; Math.rand() is the port's source for them
+    // (ticket 11 decision 4).
+    function createNewGame(chosenGameChar as Number) as Void {
+        var randomInitial = data.initial(Kaisa.Rand.rangeInt(0, data.initialCount()));
+        var playerSpirit = Kaisa.WellKnown.PLAYER_SPIRIT[chosenGameChar];
+
+        saved.record.gameChar = chosenGameChar;
+
+        for (var i = 0; i < saved.record.battleSeed.size(); i += 1) {
+            saved.record.battleSeed[i] = Kaisa.Rand.rangeInt(0, 2147483647);
+        }
+
+        saved.record.cheatsUsed = false;
+        saved.record.stepsToNextEvent = 300;
+        saved.touch();
+        worldMgr.moveToArea(0, 0);
+        logicMgr.setDigimonUnlocked(playerSpirit, true);
+        logicMgr.setDigimonUnlocked(randomInitial, true);
+        logicMgr.setSpiritPower(99);
+
+        worldMgr.setupWorlds(playerSpirit);
+
+        var spiritEnergy = db.getDigimon(playerSpirit).getBossStats(1).getEnergyRank();
+        var enemyEnergy = db.getDigimon(randomInitial).getRegularStats().getEnergyRank();
+
+        enqueueAnimation(new StartGameAnimation(self, chosenGameChar, playerSpirit,
+                                                spiritEnergy, randomInitial, enemyEnergy));
+
+        logicMgr.currentScreen = Kaisa.SCREEN_CHARACTER;
+    }
+
     // GameManager.cs:446 EnqueueRewardAnimation -- every reward's animation,
     // and the character's reaction after it.
     //

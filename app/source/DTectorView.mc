@@ -75,6 +75,7 @@ class DTectorView extends WatchUi.View {
     // The roll the animation probe pins Kaisa.Rand to, so an animation whose
     // length depends on one can be diffed; -1 leaves the RNG alone.
     var _probeRand as Number = -1;
+    const PROBE_STEPS_PER_FRAME = 10;
 
     function initialize() {
         View.initialize();
@@ -133,22 +134,31 @@ class DTectorView extends WatchUi.View {
         var db = new Database(_data);
         db.load();
         var record = _save.readSlot(0);
+        var isNewGame = (record == null);
         if (record == null) { record = _save.createDefault("PLAYER"); }
         seedSkeletonStats(record);
         var saved = new SavedGame(_save, 0, record);
         _gm = new GameManager(_data, db, saved);
 
-        // GameManager.CreateNewGame runs WorldManager.SetupWorlds once, when a
-        // game is made; the port has no character-selection flow yet, so a
-        // save whose boss list is still empty gets set up here.
-        if (_gm.worldMgr.getBossOfCurrentArea() < 0) {
+        var screenMgr = new ScreenManager(_gm, root);
+        _gm.attachScreenManager(screenMgr);
+
+        // A save that did not exist is a new game, which is what
+        // GameManager.CreateNewGame is for: it seeds the save, sets the worlds
+        // up and plays the opening animation. The character-selection screen
+        // that would choose the character is not converted yet, so the default
+        // record's character stands in.
+        //
+        // The animation probe wants an empty display, so it skips all of it
+        // and only makes sure the worlds are set up.
+        if (isNewGame && _probeAnim < 0) {
+            _gm.createNewGame(record.gameChar);
+            saved.commit();
+        } else if (_gm.worldMgr.getBossOfCurrentArea() < 0) {
             _gm.worldMgr.setupWorlds(
                 Kaisa.WellKnown.PLAYER_SPIRIT[record.gameChar]);
             saved.commit();
         }
-
-        var screenMgr = new ScreenManager(_gm, root);
-        _gm.attachScreenManager(screenMgr);
         // The three blinking overlays run forever and would interleave their
         // events into an animation trace, so the animation probe leaves them
         // off; nothing else in the port depends on them running.
@@ -281,6 +291,10 @@ class DTectorView extends WatchUi.View {
         } else if (_probeAnim == 30) {
             name = "DataStorm";
             routine = new DataStorm(_gm, _gm.characterSprites(Kaisa.CHAR_TAKUYA), false);
+        } else if (_probeAnim == 31) {
+            name = "StartGameAnimation";
+            routine = new StartGameAnimation(_gm, Kaisa.CHAR_TAKUYA, _demoIndex, 1,
+                                             _demoIndex, 1);
         } else if (_probeAnim == 8) {
             name = "SwapDDock";
             // The animation reads the dock it is about to overwrite, so the
@@ -397,8 +411,14 @@ class DTectorView extends WatchUi.View {
             _probeInputAt += 1;
         }
         if (_gm != null && _probeAnim >= 0) {
-            _gm.runner.advance(TICK_MS.toDouble());
-            _gm.screenMgr.updateQueue();
+            // The probe steps the runner several times per frame. Every event
+            // is timestamped with its SCHEDULED time and the step size is
+            // unchanged, so the trace is identical -- but a 52-second
+            // animation no longer takes 52 seconds of the verifier's time.
+            for (var n = 0; n < PROBE_STEPS_PER_FRAME; n += 1) {
+                _gm.runner.advance(TICK_MS.toDouble());
+                _gm.screenMgr.updateQueue();
+            }
             if (!_probeAnimDone && !_gm.screenMgr.playingAnimations) {
                 _probeAnimDone = true;
                 System.println("ANIMEND");
