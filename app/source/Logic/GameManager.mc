@@ -41,6 +41,26 @@ class GameManager {
         screenMgr = sm;
     }
 
+    // GameManager.cs:40 -- the jackpot's odds improve the longer the game
+    // goes unplayed: IncreaseJackpotValue ticks it up every five minutes to a
+    // maximum of 20.
+    function jackpotValue() as Number {
+        return saved.record.jackpotValue;
+    }
+
+    function setJackpotValue(v as Number) as Void {
+        saved.record.jackpotValue = v;
+        saved.touch();
+    }
+
+    // GameManager.cs:446 EnqueueRewardAnimation. Every reward has its own
+    // animation and none of them are converted yet (step 7); the call site is
+    // kept so the switch lands in one place when they are.
+    function enqueueRewardAnimation(reward as Number, objective as Number,
+                                    resultBefore as Number, resultAfter as Number) as Void {
+        enqueueAnimation(null);
+    }
+
     // GameManager.cs:44
     function isCharacterDefeated() as Boolean {
         return saved.record.isPlayerDefeated;

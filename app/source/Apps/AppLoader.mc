@@ -56,9 +56,10 @@ class AppLoader {
         if (app == Kaisa.APP_DIGI_HUNTER) { return new DigiHunter(gm, controller, parent); }
         if (app == Kaisa.APP_SPEED_RUNNER) { return new SpeedRunner(gm, controller, parent); }
         if (app == Kaisa.APP_MAZE) { return new Maze(gm, controller, parent); }
+        if (app == Kaisa.APP_JACKPOT_BOX) { return new JackpotBox(gm, controller, parent); }
 
-        // Battle, JackpotBox, EnergyWars, DigiCatch, Asteroids -- step 8 and
-        // the reward system. (Connect has no implementation in the original
+        // Battle, EnergyWars, DigiCatch, Asteroids -- step 8, and two games
+        // the original never implemented. (Connect has no implementation in the original
         // either: the App enum has an entry, the Logic/Apps folder does not.)
         // of SPEC's order of work.
         System.println("AppLoader: app " + app + " is not translated yet");

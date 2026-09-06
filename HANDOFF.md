@@ -65,6 +65,7 @@ app/source/
               SpeedRunner.mc      the three-lane rocket minigame
               Maze.mc             the 15x12 maze minigame
               Map.mc              the world map: pan, pick an area, travel
+              JackpotBox.mc       the pattern-repeating reward minigame
               Camp.mc             the smallest app; clears the defeated flag
 ```
 
@@ -130,8 +131,8 @@ All measured, all already encoded in the code that depends on them — listed he
 **Then, in order:**
 
 - **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
-- **The reward system** (`LogicManager.ApplyReward`, `GameManager.EnqueueRewardAnimation`), which `JackpotBox` needs and which reaches into spirit power, digicode unlocks and the data storm.
-- **`Battle`** (1,068 lines) and its animations, the last and heaviest surface. It still waits on the evolution and spirit rules, which are the only part of SPEC section 8 left unsurveyed.
+- **`Battle`** (1,068 lines) and its animations: the last app, the heaviest surface, and the only one left that needs the evolution and spirit rules SPEC section 8 still lists as unsurveyed. Survey those first, the way the world rules were surveyed before `Map`.
+- **The remaining 51 animations.** Every `enqueueAnimation(null)` in the port names the one it is waiting for; `tools/verify_anim.py` checks each as it lands.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
 
