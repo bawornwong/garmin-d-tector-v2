@@ -62,6 +62,7 @@ app/source/
               CodeInput.mc        the five-character code entry
               Finder.mc           the battle-search minigame
               DigiHunter.mc       the 3x3 face-hunting minigame
+              SpeedRunner.mc      the three-lane rocket minigame
               Camp.mc             the smallest app; clears the defeated flag
 ```
 
@@ -126,7 +127,7 @@ All measured, all already encoded in the code that depends on them — listed he
 **Then, in order:**
 
 - **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
-- **`Connect`**, and the three remaining minigames (`JackpotBox`, `SpeedRunner`, `Maze`), none of which depend on the unsurveyed world rules.
+- **`Maze`** (423 lines) and **`Connect`**. `JackpotBox` is deliberately later: it pulls in the whole reward system (`ApplyReward`, `EnqueueRewardAnimation`, the data storm, spirit loss), which overlaps the unsurveyed spirit rules.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
 
