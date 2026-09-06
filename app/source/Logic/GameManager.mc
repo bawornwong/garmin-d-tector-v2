@@ -103,6 +103,17 @@ class GameManager {
         }
     }
 
+    // GameManager.cs:268 -- applies a minigame's score to the distance and
+    // plays the animation for beating it. Animations.AwardDistance is not
+    // converted yet.
+    function submitGameScore(score as Number) as Void {
+        var oldDistance = worldMgr.currentDistance();
+        worldMgr.reduceDistance(score);
+        var newDistance = worldMgr.currentDistance();
+        worldMgr.takeSteps(Kaisa.MathExt.roundToInt(score / 5.0));
+        enqueueAnimation(null);     // Animations.AwardDistance(score, old, new)
+    }
+
     // GameManager.GetDDockScreenElement -- the dock plate with its Digimon.
     // The dock stores a Digimon index, -1 when empty (ADR 7).
     function buildDDockScreenElement(ddock as Number, parent as ScreenElement) as SpriteBuilder {

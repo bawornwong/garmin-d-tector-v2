@@ -75,6 +75,18 @@ class SavedGame {
         touch();
     }
 
+    function stepsToNextEvent() as Number { return record.stepsToNextEvent; }
+    function setStepsToNextEvent(v as Number) as Void {
+        record.stepsToNextEvent = v;
+        touch();
+    }
+
+    function savedEvent() as Number { return record.pendingEvent; }
+    function setSavedEvent(v as Number) as Void {
+        record.pendingEvent = v;
+        touch();
+    }
+
     function steps() as Number { return record.steps; }
     function setSteps(v as Number) as Void {
         record.steps = v;
