@@ -326,6 +326,26 @@ class DTectorView extends WatchUi.View {
         Kaisa.Trace.disable();
         System.println("--- DigiHunterStart end=0.0000ms");
 
+        // Camp: the tent it builds while the character walks off.
+        var camp = new Camp(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        System.println("=== CampStart ===");
+        Kaisa.Trace.enable();
+        camp.startApp();
+        Kaisa.Trace.disable();
+        System.println("--- CampStart end=0.0000ms");
+
+        // The Jackpot Box's two screens: the keypad, and the blank it shows
+        // while the pattern plays.
+        var jackpot = new JackpotBox(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        for (var screen = 0; screen < 2; screen += 1) {
+            jackpot.currentScreen = screen;
+            System.println("=== Jackpot" + screen + " ===");
+            Kaisa.Trace.enable();
+            jackpot.drawScreen();
+            Kaisa.Trace.disable();
+            System.println("--- Jackpot" + screen + " end=0.0000ms");
+        }
+
         System.println("SCREENEND");
     }
 

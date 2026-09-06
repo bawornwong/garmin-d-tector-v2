@@ -103,7 +103,7 @@ Every check reads a frame back off the device or diffs two real implementations.
 | Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
 | Packed world layout vs `worlds.json` | 225 / 225 fields | `tools/verify_worlds.py` |
 | Converted animations vs a golden trace of the original | 53 / 53 | `tools/verify_anim.py` (~20 minutes: it rebuilds and runs the app once per animation) |
-| App screens vs the original's | 23 / 23 screens, 311 events | `tools/verify_screens.py` -- six apps: Status, the Database's data pages, the Map, Battle's menus, the code input, the DigiHunter board |
+| App screens vs the original's | 26 / 26 screens, 321 events | `tools/verify_screens.py` -- eight apps: Status, the Database's data pages, the Map, Battle's menus, the code input, the DigiHunter board, Camp, the Jackpot Box |
 | Rendered sprite vs atlas (normal) | 576 / 576 | set `_probeIndex`, capture, `tools/verify_render.py <png> 8` |
 | Rendered sprite vs atlas (inverted) | 576 / 576 | also set `_probeInvert`, then `... --inverted` |
 | Text canvas vs font metrics | 102,400 / 102,400 device px | set `_probeText`, capture, `tools/verify_text.py <png>` |
@@ -174,9 +174,10 @@ translation.
    energy, crush and ability, and its code), the Map's three, which draw a
    world's four-quadrant sheet and its area markers, eight of Battle's -- its
    main menu, the D-Dock chooser, the combat and attack menus, and the
-   call-point bar -- the code input's underscores, and the DigiHunter board.
-   The remaining minigames can follow the same way when they are worth the
-   stubs.
+   call-point bar -- the code input's underscores, the DigiHunter board,
+   Camp's tent and the Jackpot Box's keypad. Only the Maze and the
+   SpeedRunner, which draw their worlds into a runtime bitmap rather than the
+   display list, are not covered this way.
 
    What is left for a person is the feel: the input mapping, the pacing, and a
    watch to judge them on.

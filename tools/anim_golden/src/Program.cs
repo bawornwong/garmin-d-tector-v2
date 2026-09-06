@@ -213,6 +213,43 @@ public static class Program {
             Trace.Log.Events.Count));
     }
 
+    // Camp: the tent it builds while the character walks off to the left.
+    static void TraceCampScreen() {
+        var gm = new GameManager(db);
+        var app = new Kaisa.Digivice.Apps.Camp();
+        app.Setup(gm, null);
+        app.AttachScreen("Screen");
+
+        Trace.Log.Now = 0.0;
+        Trace.Log.Events.Clear();
+        ScreenElement.AnimParent.Clear();
+        app.StartApp();
+        Console.WriteLine("=== CampStart ===");
+        foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+        Console.WriteLine(string.Format("--- CampStart end=0.0000ms events={0}",
+            Trace.Log.Events.Count));
+    }
+
+    // The Jackpot Box's two screens: the keypad and the blank it shows while
+    // the pattern plays.
+    static void TraceJackpotScreens() {
+        var gm = new GameManager(db);
+        var app = new Kaisa.Digivice.Apps.JackpotBox();
+        app.Setup(gm, null);
+        app.AttachScreen("Screen");
+
+        for (int screen = 0; screen < 2; screen++) {
+            app.SetPrivate("currentScreen", screen);
+            Trace.Log.Now = 0.0;
+            Trace.Log.Events.Clear();
+            app.Draw();
+            Console.WriteLine("=== Jackpot" + screen + " ===");
+            foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+            Console.WriteLine(string.Format("--- Jackpot{0} end=0.0000ms events={1}",
+                screen, Trace.Log.Events.Count));
+        }
+    }
+
     public static int Main(string[] args) {
         db = new SpriteDatabase();
         var audio = new AudioManager();
@@ -260,6 +297,8 @@ public static class Program {
         TraceBattleScreens();
         TraceCodeInputScreen();
         TraceDigiHunterScreen();
+        TraceCampScreen();
+        TraceJackpotScreens();
 
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");

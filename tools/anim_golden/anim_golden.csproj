@@ -24,6 +24,9 @@
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/AttackChooser.cs" />
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/CodeInput.cs" />
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Games/DigiHunter.cs" />
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Camp.cs" />
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Games/Finder.cs" />
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Games/JackpotBox.cs" />
     <!-- CircularAdd, which Status walks its screens with: the original's own
          arithmetic rather than a copy of it. -->
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Extensions/MathExt.cs" />

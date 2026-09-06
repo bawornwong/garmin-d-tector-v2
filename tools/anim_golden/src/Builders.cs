@@ -333,6 +333,11 @@ namespace Kaisa.Digivice {
         public void IncreaseTotalBattles() { }
         public void IncreaseTotalWins() { }
         public bool IsAnySpiritLost { get { return false; } }
+        public float GetPlayerLevelProgression() { return 0.5f; }
+        public void CallRandomBattle(bool reduceDistance) { }
+        public bool ApplyReward(Reward r, string objective, out object before, out object after) {
+            before = 0; after = 0; return true;
+        }
         public string RecoverSpirit() { return AppFixture.PageDigimon; }
         public bool RewardDigimon(string d, out int a, out int b) { a = 0; b = 0; return false; }
         public bool PunishDigimon(string d, out int a, out int b) { a = 0; b = 0; return false; }
@@ -376,6 +381,11 @@ namespace Kaisa.Digivice {
         public void DisableLeaverBuster() { }
         public void CompleteWorld(int world) { }
         public void SubmitGameScore(int score) { }
+        public int JackpotValue { get; set; }
+        public void EnqueueRewardAnimation(Reward r, string objective,
+                                          object before, object after) {
+            Trace.Log.E("enqueueRewardAnimation");
+        }
         public AppLoader appLoader = new AppLoader();
         public void LockInput() { Trace.Log.E("lockInput"); }
         public void EnqueueAnimation(IEnumerator a) { Trace.Log.E("enqueueAnimation"); }

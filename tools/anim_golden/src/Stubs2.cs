@@ -142,8 +142,8 @@ namespace Kaisa.Digivice {
     // Tools.GetRandomElement, which Battle uses to pick an area; the harness
     // never runs that path, and a deterministic first element keeps it so.
     public static class ListExt {
-        public static int GetRandomElement(this List<int> list) {
-            return (list.Count == 0) ? 0 : list[0];
+        public static T GetRandomElement<T>(this IList<T> list) {
+            return (list.Count == 0) ? default(T) : list[0];
         }
     }
 
