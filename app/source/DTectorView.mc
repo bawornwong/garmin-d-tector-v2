@@ -72,6 +72,9 @@ class DTectorView extends WatchUi.View {
     // (every int is 1), so the two traces are of the same run.
     var _probeAnim as Number = 1;
     var _probeAnimDone as Boolean = false;
+    // The roll the animation probe pins Kaisa.Rand to, so an animation whose
+    // length depends on one can be diffed; -1 leaves the RNG alone.
+    var _probeRand as Number = -1;
 
     function initialize() {
         View.initialize();
@@ -240,6 +243,44 @@ class DTectorView extends WatchUi.View {
         } else if (_probeAnim == 18) {
             name = "AncientEvolution";
             routine = new AncientEvolution(_gm, Kaisa.CHAR_TAKUYA, _demoIndex);
+        } else if (_probeAnim == 19) {
+            name = "CharSadShort";
+            routine = new CharSadShort(_gm);
+        } else if (_probeAnim == 20) {
+            name = "CharSad";
+            routine = new CharSad(_gm);
+        } else if (_probeAnim == 21) {
+            name = "LevelUp";
+            routine = new LevelUp(_gm, 1, 1);
+        } else if (_probeAnim == 22) {
+            name = "LevelDown";
+            routine = new LevelDown(_gm, 1, 1);
+        } else if (_probeAnim == 23) {
+            name = "RewardDistance";
+            routine = new RewardDistance(_gm, false, 1, 1);
+        } else if (_probeAnim == 24) {
+            name = "RewardSpiritPower";
+            routine = new RewardSpiritPower(_gm, false, 1, 1);
+        } else if (_probeAnim == 25) {
+            name = "LevelUpDigimon";
+            routine = new LevelUpDigimon(_gm, _demoIndex);
+        } else if (_probeAnim == 26) {
+            name = "EraseDigimon";
+            routine = new EraseDigimon(_gm, _demoIndex);
+        } else if (_probeAnim == 27) {
+            name = "LevelDownDigimon";
+            routine = new LevelDownDigimon(_gm, _demoIndex);
+        } else if (_probeAnim == 28) {
+            name = "RewardCode";
+            // The harness synthesises the code the same way: a `code`
+            // parameter is the literal "vsjk1".
+            routine = new RewardCode(_gm, _demoIndex, "vsjk1");
+        } else if (_probeAnim == 29) {
+            name = "DisplayNewArea";
+            routine = new DisplayNewArea(_gm, 0, 1, 1);
+        } else if (_probeAnim == 30) {
+            name = "DataStorm";
+            routine = new DataStorm(_gm, _gm.characterSprites(Kaisa.CHAR_TAKUYA), false);
         } else if (_probeAnim == 8) {
             name = "SwapDDock";
             // The animation reads the dock it is about to overwrite, so the
@@ -248,6 +289,7 @@ class DTectorView extends WatchUi.View {
             _gm.logicMgr.setDDockDigimon(1, _demoIndex);
             routine = new SwapDDock(_gm, 1, _demoIndex);
         }
+        if (_probeRand >= 0) { Kaisa.Rand.forced = _probeRand; }
         System.println("=== " + name + " ===");
         // Enqueueing builds the Anim Parent container the animation draws
         // into; the trace goes on after that, so what it records is the

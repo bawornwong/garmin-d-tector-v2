@@ -76,7 +76,22 @@ namespace UnityEngine {
     public static class Random {
         // deterministic, so goldens are reproducible
         static System.Random r = new System.Random(12345);
-        public static int Range(int min, int max) { return r.Next(min, max); }
+        // DTECTOR_RNG pins every roll to one number, which is how a coroutine
+        // whose length depends on a roll (DataStorm's escape attempt) can be
+        // diffed at all: the port's probe is told the same number and applies
+        // it the same way (Kaisa.Rand.forced).
+        static int? Fixed {
+            get {
+                var v = System.Environment.GetEnvironmentVariable("DTECTOR_RNG");
+                int n;
+                return (v != null && int.TryParse(v, out n)) ? (int?)n : null;
+            }
+        }
+        public static int Range(int min, int max) {
+            var f = Fixed;
+            if (f != null && max > min) { return min + (f.Value % (max - min)); }
+            return r.Next(min, max);
+        }
         public static float Range(float min, float max) { return min + (float)r.NextDouble() * (max - min); }
     }
     public class WaitForSeconds {
@@ -264,6 +279,7 @@ namespace Kaisa.Digivice {
         }
         public Sprite[] GetCharacterSprites(GameChar c) { return MakeArr(c.ToString()); }
         public Sprite GetEnergySprite(int rank) { return Resolve("Energies/energy_" + rank); }
+        public Sprite GetWorldSprite(string world, int map) { return Resolve("Maps/" + world + "_" + map); }
         public Sprite GetAbilitySprite(string abilityName) { return Resolve("Abilities/" + abilityName); }
         public Sprite GetInvertedSprite(Sprite s) { return new Sprite("inv:" + s.name); }
     }

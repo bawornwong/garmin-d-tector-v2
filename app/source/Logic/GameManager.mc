@@ -53,12 +53,78 @@ class GameManager {
         saved.touch();
     }
 
-    // GameManager.cs:446 EnqueueRewardAnimation. Every reward has its own
-    // animation and none of them are converted yet (step 7); the call site is
-    // kept so the switch lands in one place when they are.
+    // GameManager.cs:446 EnqueueRewardAnimation -- every reward's animation,
+    // and the character's reaction after it.
+    //
+    // `objective` is a Digimon index rather than a name (ADR 7), and the two
+    // results are the numbers the reward changed; where the original passes
+    // them as `object` and casts, they are Numbers here, with -1 standing for
+    // the null the PunishDigimon and RewardDigimon branches test for.
     function enqueueRewardAnimation(reward as Number, objective as Number,
                                     resultBefore as Number, resultAfter as Number) as Void {
-        enqueueAnimation(null);
+        if (reward == Kaisa.REWARD_EMPTY) {
+            enqueueAnimation(new RewardEmpty(self));
+            enqueueAnimation(new CharSad(self));
+        } else if (reward == Kaisa.REWARD_INCREASE_DISTANCE_300
+                || reward == Kaisa.REWARD_INCREASE_DISTANCE_500
+                || reward == Kaisa.REWARD_INCREASE_DISTANCE_2000) {
+            enqueueAnimation(new RewardDistance(self, true, resultBefore, resultAfter));
+            enqueueAnimation(new CharSad(self));
+        } else if (reward == Kaisa.REWARD_REDUCE_DISTANCE_500
+                || reward == Kaisa.REWARD_REDUCE_DISTANCE_1000) {
+            enqueueAnimation(new RewardDistance(self, false, resultBefore, resultAfter));
+            enqueueAnimation(new CharHappy(self));
+        } else if (reward == Kaisa.REWARD_PUNISH_DIGIMON) {
+            if (resultAfter == -1) {
+                enqueueAnimation(new EraseDigimon(self, objective));
+            } else {
+                enqueueAnimation(new LevelDownDigimon(self, objective));
+            }
+            enqueueAnimation(new CharSad(self));
+        } else if (reward == Kaisa.REWARD_REWARD_DIGIMON) {
+            enqueueAnimation(new SummonDigimon(self, objective));
+            if (resultBefore == -1) {
+                enqueueAnimation(new UnlockDigimon(self, objective, false));
+            } else {
+                enqueueAnimation(new LevelUpDigimon(self, objective));
+            }
+            enqueueAnimation(new CharHappy(self));
+        } else if (reward == Kaisa.REWARD_UNLOCK_DIGICODE_OWNED) {
+            enqueueAnimation(new RewardCode(self, objective, data.code(objective)));
+            enqueueAnimation(new CharHappy(self));
+        } else if (reward == Kaisa.REWARD_UNLOCK_DIGICODE_NOT_OWNED) {
+            enqueueAnimation(new RewardCode(self, objective, data.code(objective)));
+            enqueueAnimation(new UnlockDigimon(self, objective, false));
+            enqueueAnimation(new CharHappy(self));
+        } else if (reward == Kaisa.REWARD_DATA_STORM) {
+            // The original passes the move-to-new-area flag as resultBefore.
+            var moveToNewArea = (resultBefore == 1);
+            enqueueAnimation(new DataStorm(self, characterSprites(saved.playerChar()),
+                                           moveToNewArea));
+            if (moveToNewArea) {
+                enqueueAnimation(new DisplayNewArea(self, worldMgr.currentWorld(),
+                                                    worldMgr.currentArea(),
+                                                    worldMgr.currentDistance()));
+            } else {
+                enqueueAnimation(new CharHappy(self));
+            }
+        } else if (reward == Kaisa.REWARD_LOSE_SPIRIT_POWER_10
+                || reward == Kaisa.REWARD_LOSE_SPIRIT_POWER_50) {
+            enqueueAnimation(new RewardSpiritPower(self, true, resultBefore, resultAfter));
+            enqueueAnimation(new CharSad(self));
+        } else if (reward == Kaisa.REWARD_GAIN_SPIRIT_POWER_10
+                || reward == Kaisa.REWARD_GAIN_SPIRIT_POWER_MAX) {
+            enqueueAnimation(new RewardSpiritPower(self, false, resultBefore, resultAfter));
+            enqueueAnimation(new CharHappy(self));
+        } else if (reward == Kaisa.REWARD_LEVEL_DOWN
+                || reward == Kaisa.REWARD_FORCE_LEVEL_DOWN) {
+            enqueueAnimation(new LevelDown(self, resultBefore, resultAfter));
+            enqueueAnimation(new CharSad(self));
+        } else if (reward == Kaisa.REWARD_LEVEL_UP
+                || reward == Kaisa.REWARD_FORCE_LEVEL_UP) {
+            enqueueAnimation(new LevelUp(self, resultBefore, resultAfter));
+            enqueueAnimation(new CharHappy(self));
+        }
     }
 
     // GameManager.cs:301 -- "Returns one of the three seeds of this game at

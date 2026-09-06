@@ -68,7 +68,24 @@ CONVERTED = {
     "SpiritEvolution": 16,
     "FusionSpiritEvolution": 17,
     "AncientEvolution": 18,
+    "CharSadShort": 19,
+    "CharSad": 20,
+    "LevelUp": 21,
+    "LevelDown": 22,
+    "RewardDistance": 23,
+    "RewardSpiritPower": 24,
+    "LevelUpDigimon": 25,
+    "EraseDigimon": 26,
+    "LevelDownDigimon": 27,
+    "RewardCode": 28,
+    "DisplayNewArea": 29,
+    "DataStorm": 30,
 }
+
+# The roll both sides are pinned to: an animation that rolls for a length
+# cannot be diffed otherwise, because the port reproduces the ORIGINAL's RNG
+# semantics and not its sequence (ticket 11 decision 4).
+FIXED_RNG = 17
 
 HOST_ELEMENTS = ("Anim Parent",)
 
@@ -128,6 +145,13 @@ def normalise(lines, cells):
             else:
                 sprite = cells.get(sprite, sprite)
             ev = head + " " + sprite
+        # A flick period is seconds in the original and milliseconds in the
+        # port -- Connect IQ counts frames, not float seconds -- so the
+        # reference's value is converted rather than the port faking a unit
+        # it does not use.
+        m3 = re.fullmatch(r"(setFlickPeriod \S+) ([\d.]+)", ev)
+        if m3 and "." in m3.group(2):
+            ev = f"{m3.group(1)} {int(round(float(m3.group(2)) * 1000))}"
         out.append((float(t), ev))
     return out
 
@@ -137,8 +161,9 @@ def golden(names):
     src = os.environ.get("DTECTOR_SRC")
     if not src or not os.path.isdir(src):
         raise SystemExit("set DTECTOR_SRC to a checkout of kaisadilla/D-Tector-v2")
+    env = dict(os.environ, DTECTOR_RNG=str(FIXED_RNG))
     r = subprocess.run([DOTNET, "run", "--project", "tools/anim_golden", "-v", "q"],
-                       cwd=ROOT, capture_output=True, text=True)
+                       cwd=ROOT, capture_output=True, text=True, env=env)
     if r.returncode != 0:
         raise SystemExit("the golden harness failed:\n" + r.stdout + r.stderr)
 
@@ -161,6 +186,8 @@ def run_probe(index, attempts=3):
     text = open(VIEW).read()
     patched = re.sub(r"var _probeAnim as Number = -?\d+;",
                      f"var _probeAnim as Number = {index};", text)
+    patched = re.sub(r"var _probeRand as Number = -?\d+;",
+                     f"var _probeRand as Number = {FIXED_RNG};", patched)
     open(VIEW, "w").write(patched)
     try:
         b = subprocess.run(["tools/build.sh"], cwd=ROOT, capture_output=True, text=True)

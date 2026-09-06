@@ -18,7 +18,12 @@ public static class Program {
             if (n.Contains("code")) { return "vsjk1"; }
             return "agumon";
         }
-        if (t == typeof(int)) { return 1; }
+        if (t == typeof(int)) {
+            // World 1 has a single area in the real data, and the coroutines
+            // that take both a world and an area index into it -- so the world
+            // the reference plays is 0, which has twelve.
+            return p.Name.ToLower().Contains("world") ? 0 : 1;
+        }
         if (t == typeof(float)) { return 1f; }
         if (t == typeof(bool)) { return false; }
         if (t == typeof(GameChar)) { return GameChar.takuya; }

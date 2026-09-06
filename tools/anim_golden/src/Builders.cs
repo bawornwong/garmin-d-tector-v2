@@ -299,7 +299,25 @@ namespace Kaisa.Digivice {
             PlayerCharSprites = db.GetCharacterSprites(GameChar.takuya);
         }
         public void UnlockInput() { Trace.Log.E("unlockInput"); }
-        public ContainerBuilder BuildMapScreen(int w, Transform p = null) { return new ContainerBuilder("MapScreen"); }
+        // GameManager.cs:281 BuildMapScreen -- a container with one map
+        // sprite, or four for a multi-map world. Stubbing it as a bare
+        // "MapScreen" container hid every one of those.
+        public ContainerBuilder BuildMapScreen(int w, Transform p = null) {
+            ContainerBuilder cbMap = ScreenElement.BuildContainer("Map Container", p);
+            string worldSprite = Database.Worlds[w].worldSprite;
+            if (Database.Worlds[w].multiMap) {
+                cbMap.SetSize(64, 64);
+                ScreenElement.BuildSprite("Map 0", cbMap.transform).SetSprite(spriteDB.GetWorldSprite(worldSprite, 0));
+                ScreenElement.BuildSprite("Map 1", cbMap.transform).SetSprite(spriteDB.GetWorldSprite(worldSprite, 1)).SetPosition(0, 32);
+                ScreenElement.BuildSprite("Map 2", cbMap.transform).SetSprite(spriteDB.GetWorldSprite(worldSprite, 2)).SetPosition(32, 32);
+                ScreenElement.BuildSprite("Map 3", cbMap.transform).SetSprite(spriteDB.GetWorldSprite(worldSprite, 3)).SetPosition(32, 0);
+            }
+            else {
+                cbMap.SetSize(32, 32);
+                ScreenElement.BuildSprite("Map 0", cbMap.transform).SetSprite(spriteDB.GetWorldSprite(worldSprite, 0));
+            }
+            return cbMap;
+        }
         // GameManager.GetDDockScreenElement builds TWO sprites -- the dock
         // plate and the Digimon standing in it -- and returns the second. The
         // dock's own name is the literal "$DDock{ddock}": the original wrote a

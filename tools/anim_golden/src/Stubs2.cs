@@ -13,8 +13,13 @@ namespace Kaisa.Digivice {
     public class Area { public int number = 0; public int map = 0; public int distance = 6000; public Vector2Int coords = new Vector2Int(18, 21); }
     public class World {
         public int number = 0; public bool multiMap = true; public string worldSprite = "frontier_initial";
-        public List<Area> areas = new List<Area> { new Area(), new Area() };
-        public int[] GetAreasInMap(int m) { return new int[] { 0, 1 }; }
+        public List<Area> areas = new List<Area>();
+        // World.GetAreasInMap
+        public int[] GetAreasInMap(int m) {
+            var l = new List<int>();
+            foreach (var a in areas) { if (a.map == m) { l.Add(a.number); } }
+            return l.ToArray();
+        }
     }
     public enum DFont { Regular, Big, Small }
     public enum SpriteAction { Default, Attack, Crush, Spirit, Small, Black, White, SpiritSmall }
@@ -27,7 +32,36 @@ namespace Kaisa.Digivice {
     }
 
     public static class Database {
-        public static List<World> Worlds = new List<World> { new World(), new World() };
+        // The real worlds, read out of the checkout's worlds.json -- the same
+        // file the packer reads. A made-up pair of two-area worlds made
+        // DisplayNewArea draw a map that does not exist.
+        public static List<World> Worlds = LoadWorlds();
+
+        static List<World> LoadWorlds() {
+            var worlds = new List<World>();
+            var src = System.Environment.GetEnvironmentVariable("DTECTOR_SRC");
+            var path = (src == null) ? null : src + "/Assets/Resources/worlds.json";
+            if (path == null || !System.IO.File.Exists(path)) { return worlds; }
+            var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(path));
+            foreach (var w in doc.RootElement.EnumerateArray()) {
+                var world = new World();
+                world.number = w.GetProperty("number").GetInt32();
+                world.multiMap = w.GetProperty("multiMap").GetBoolean();
+                world.worldSprite = w.GetProperty("worldSprite").GetString();
+                foreach (var a in w.GetProperty("areas").EnumerateArray()) {
+                    var area = new Area();
+                    area.number = a.GetProperty("number").GetInt32();
+                    area.map = a.GetProperty("map").GetInt32();
+                    area.distance = a.GetProperty("distance").GetInt32();
+                    var c = a.GetProperty("coords");
+                    area.coords = new Vector2Int(c.GetProperty("x").GetInt32(),
+                                                 c.GetProperty("y").GetInt32());
+                    world.areas.Add(area);
+                }
+                worlds.Add(world);
+            }
+            return worlds;
+        }
         public static Digimon GetDigimon(string name) { var d = new Digimon(); d.name = name; return d; }
     }
 
@@ -39,8 +73,16 @@ namespace Kaisa.Digivice {
     }
 
     public static class SpriteArrayExt {
-        public static Sprite[] ReorderedAs(this Sprite[] a, params int[] order) { return a; }
-        public static Sprite[] ReorderedAs(this SpriteSet s, params int[] order) { return (Sprite[])s; }
-        public static Sprite[] ReorderedAs(this SpriteSet s, object o) { return (Sprite[])s; }
+        // Tools.cs:65 -- newArray[i] = array[indices[i]]. Returning the array
+        // unchanged made LevelDown look identical to LevelUp, which is the one
+        // thing that animation does differently.
+        public static Sprite[] ReorderedAs(this Sprite[] a, params int[] order) {
+            var b = new Sprite[order.Length];
+            for (int i = 0; i < b.Length; i++) { b[i] = a[order[i]]; }
+            return b;
+        }
+        public static Sprite[] ReorderedAs(this SpriteSet s, params int[] order) {
+            return ((Sprite[])s).ReorderedAs(order);
+        }
     }
 }

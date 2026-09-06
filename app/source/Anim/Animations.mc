@@ -2307,3 +2307,1039 @@ class AncientEvolution extends Routine {
         return Routine.DONE;
     }
 }
+
+// port of Animations.cs:651  CharSadShort -- the character's disappointed
+// bounce, the counterpart of CharHappyShort.
+class CharSadShort extends Routine {
+    var gm as GameManager;
+    var sbChar as SpriteBuilder?;
+    var charIdle as Array<Number>?;
+    var charSad as Array<Number>?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager) {
+        Routine.initialize();
+        gm = gmIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                var sprites = gm.characterSprites(gm.saved.playerChar());
+                charIdle = sprites[0];
+                charSad = sprites[7];
+                gm.audioMgr.playSound("charSad");
+                sbChar = Kaisa.ScreenBuilder.buildSprite("CharSad", gm.screenMgr.animParent)
+                    .setSprite(charIdle);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 4; return 0.0; }
+                sbChar.setSprite(charIdle);
+                pc = 2;
+                return 0.475;
+            case 2:
+                sbChar.setSprite(charSad);
+                pc = 3;
+                return 0.475;
+            case 3:
+                i += 1; pc = 1; return 0.0;
+            case 4:
+                sbChar.dispose();
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:647  CharSad -- two CharSadShorts back to back.
+class CharSad extends Routine {
+    var gm as GameManager;
+
+    function initialize(gmIn as GameManager) {
+        Routine.initialize();
+        gm = gmIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                pc = 1;
+                rt.call(new CharSadShort(gm));
+                return 0.0;
+            case 1:
+                pc = 2;
+                rt.call(new CharSadShort(gm));
+                return 0.0;
+            case 2:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// The reward screens -- LevelUp, LevelDown, RewardDistance and
+// RewardSpiritPower -- are the same animation four times over: a four-frame
+// background cycles while an icon fades in, the icon rises, and a label and a
+// number count from the old value to the new one. The original repeats the
+// code four times; the port does too (ADR 2), differing only where they do.
+//
+// port of Animations.cs:1057  LevelUp
+class LevelUp extends Routine {
+    var gm as GameManager;
+    var levelBefore as Number;
+    var levelAfter as Number;
+
+    var sbLevelUpBG as SpriteBuilder?;
+    var sbLevelUpIcon as SpriteBuilder?;
+    var tbLevel as TextBoxBuilder?;
+    var i as Number = 0;
+    var cycle as Number = 0;
+
+    function initialize(gmIn as GameManager, levelBeforeIn as Number,
+                        levelAfterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        levelBefore = levelBeforeIn;
+        levelAfter = levelAfterIn;
+    }
+
+    // LevelDown is this animation with the background frames reordered, so
+    // the two share everything but this and the sound.
+    function background(n as Number) as Array<Number> {
+        return Kaisa.Sprites.REWARD_BACKGROUND[n];
+    }
+
+    function sound() as String { return "levelUp"; }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbLevelUpBG = Kaisa.ScreenBuilder.buildSprite("LevelUpBackground", parent)
+                    .setSprite(background(0));
+                sbLevelUpIcon = Kaisa.ScreenBuilder.buildSprite("LevelUpIcon", parent)
+                    .setSize(16, 16).setSprite(Kaisa.Sprites.REWARDS[0]).center()
+                    .setActive(false).setTransparent(false);
+                gm.audioMgr.playSound(sound());
+                i = 0;
+                cycle = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { cycle = 0; pc = 3; return 0.0; }
+                if (cycle >= 4) { cycle = 0; i += 1; pc = 1; return 0.0; }
+                sbLevelUpBG.setSprite(background(cycle));
+                pc = 2;
+                return 0.125;
+            case 2:
+                cycle += 1; pc = 1; return 0.0;
+            case 3:                                 // for (cycle = 0; cycle < 4; cycle++)
+                if (cycle >= 4) { i = 0; cycle = 0; pc = 5; return 0.0; }
+                sbLevelUpIcon.setActive(cycle % 2 == 0);
+                sbLevelUpBG.setSprite(background(cycle));
+                pc = 4;
+                return 0.125;
+            case 4:
+                cycle += 1; pc = 3; return 0.0;
+            case 5:
+                sbLevelUpIcon.setActive(true);
+                pc = 6;
+                return 0.0;
+            case 6:                                 // for (i = 0; i < 4; i++)
+                if (i >= 4) { i = 0; pc = 8; return 0.0; }
+                if (cycle >= 4) { cycle = 0; i += 1; pc = 6; return 0.0; }
+                sbLevelUpBG.setSprite(background(cycle));
+                pc = 7;
+                return 0.125;
+            case 7:
+                cycle += 1; pc = 6; return 0.0;
+            case 8:
+                sbLevelUpBG.setActive(false);
+                pc = 9;
+                return 0.0;
+            case 9:                                 // for (i = 0; i < 9; i++)
+                if (i >= 9) { pc = 11; return 0.0; }
+                sbLevelUpIcon.move(Kaisa.DIR_UP, 1);
+                pc = 10;
+                return 0.5 / 9;
+            case 10:
+                i += 1; pc = 9; return 0.0;
+            case 11:
+                Kaisa.ScreenBuilder.buildTextBox("Level", parent, Kaisa.Font.REGULAR)
+                    .setText("LEVEL").setSize(32, 5).setPosition(0, 17)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER);
+                tbLevel = Kaisa.ScreenBuilder.buildTextBox("LevelNumber", parent, Kaisa.Font.REGULAR)
+                    .setText(levelBefore.toString()).setSize(29, 5).setPosition(2, 24)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_RIGHT);
+                gm.audioMgr.playButtonA();
+                pc = 12;
+                return 1.0;
+            case 12:
+                tbLevel.setText(levelAfter.toString());
+                gm.audioMgr.playButtonA();
+                pc = 13;
+                return 1.0;
+            case 13:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1101  LevelDown -- LevelUp with the background frames
+// reordered (0, 3, 2, 1), so the ring turns the other way, and its own sound.
+class LevelDown extends LevelUp {
+    function initialize(gmIn as GameManager, levelBeforeIn as Number,
+                        levelAfterIn as Number) {
+        LevelUp.initialize(gmIn, levelBeforeIn, levelAfterIn);
+    }
+
+    function background(n as Number) as Array<Number> {
+        var order = [0, 3, 2, 1];
+        return Kaisa.Sprites.REWARD_BACKGROUND[order[n]];
+    }
+
+    function sound() as String { return "levelDown"; }
+}
+
+// port of Animations.cs:2319  RewardDistance -- LevelUp's screen with the
+// distance icon and a DISTANCE label, and six background cycles instead of
+// four. Punishment and reward differ only in the icon and the sound.
+class RewardDistance extends Routine {
+    var gm as GameManager;
+    var isPunishment as Boolean;
+    var distanceBefore as Number;
+    var distanceAfter as Number;
+
+    var sbRewardBg as SpriteBuilder?;
+    var sbDistanceUp as SpriteBuilder?;
+    var tbLevel as TextBoxBuilder?;
+    var i as Number = 0;
+    var cycle as Number = 0;
+
+    function initialize(gmIn as GameManager, isPunishmentIn as Boolean,
+                        distanceBeforeIn as Number, distanceAfterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        isPunishment = isPunishmentIn;
+        distanceBefore = distanceBeforeIn;
+        distanceAfter = distanceAfterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbRewardBg = Kaisa.ScreenBuilder.buildSprite("DistanceBackground", parent)
+                    .setSprite(Kaisa.Sprites.REWARD_BACKGROUND[0]);
+                sbDistanceUp = Kaisa.ScreenBuilder.buildSprite("DistanceIcon", parent)
+                    .setSize(16, 16)
+                    .setSprite(isPunishment ? Kaisa.Sprites.REWARDS[2] : Kaisa.Sprites.REWARDS[1])
+                    .center().setActive(false).setTransparent(false);
+                gm.audioMgr.playSound(isPunishment ? "punishment" : "reward");
+                i = 0;
+                cycle = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { cycle = 0; pc = 3; return 0.0; }
+                if (cycle >= 4) { cycle = 0; i += 1; pc = 1; return 0.0; }
+                sbRewardBg.setSprite(Kaisa.Sprites.REWARD_BACKGROUND[cycle]);
+                pc = 2;
+                return 0.125;
+            case 2:
+                cycle += 1; pc = 1; return 0.0;
+            case 3:                                 // for (cycle = 0; cycle < 4; cycle++)
+                if (cycle >= 4) { i = 0; cycle = 0; pc = 5; return 0.0; }
+                sbDistanceUp.setActive(cycle % 2 == 0);
+                sbRewardBg.setSprite(Kaisa.Sprites.REWARD_BACKGROUND[cycle]);
+                pc = 4;
+                return 0.125;
+            case 4:
+                cycle += 1; pc = 3; return 0.0;
+            case 5:
+                sbDistanceUp.setActive(true);
+                pc = 6;
+                return 0.0;
+            case 6:                                 // for (i = 0; i < 6; i++)
+                if (i >= 6) { i = 0; pc = 8; return 0.0; }
+                if (cycle >= 4) { cycle = 0; i += 1; pc = 6; return 0.0; }
+                sbRewardBg.setSprite(Kaisa.Sprites.REWARD_BACKGROUND[cycle]);
+                pc = 7;
+                return 0.125;
+            case 7:
+                cycle += 1; pc = 6; return 0.0;
+            case 8:
+                sbRewardBg.setActive(false);
+                pc = 9;
+                return 0.0;
+            case 9:                                 // for (i = 0; i < 9; i++)
+                if (i >= 9) { pc = 11; return 0.0; }
+                sbDistanceUp.move(Kaisa.DIR_UP, 1);
+                pc = 10;
+                return 0.5 / 9;
+            case 10:
+                i += 1; pc = 9; return 0.0;
+            case 11:
+                Kaisa.ScreenBuilder.buildTextBox("Distance", parent, Kaisa.Font.SMALL)
+                    .setText("DISTANCE").setSize(32, 5).setPosition(0, 17);
+                tbLevel = Kaisa.ScreenBuilder.buildTextBox("DistanceNumber", parent, Kaisa.Font.REGULAR)
+                    .setText(distanceBefore.toString()).setSize(29, 5).setPosition(2, 24)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_RIGHT);
+                gm.audioMgr.playButtonA();
+                pc = 12;
+                return 1.0;
+            case 12:
+                tbLevel.setText(distanceAfter.toString());
+                gm.audioMgr.playButtonA();
+                pc = 13;
+                return 1.0;
+            case 13:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2368  RewardSpiritPower -- the same screen again, with
+// the spirit icon and a SPIRITS label. SOURCE ODDITY, reproduced: its two
+// elements are still named for the level-up screen it was copied from.
+class RewardSpiritPower extends Routine {
+    var gm as GameManager;
+    var isPunishment as Boolean;
+    var spiritsBefore as Number;
+    var spiritsAfter as Number;
+
+    var sbRewardBg as SpriteBuilder?;
+    var sbSpiritPower as SpriteBuilder?;
+    var tbLevel as TextBoxBuilder?;
+    var i as Number = 0;
+    var cycle as Number = 0;
+
+    function initialize(gmIn as GameManager, isPunishmentIn as Boolean,
+                        spiritsBeforeIn as Number, spiritsAfterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        isPunishment = isPunishmentIn;
+        spiritsBefore = spiritsBeforeIn;
+        spiritsAfter = spiritsAfterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbRewardBg = Kaisa.ScreenBuilder.buildSprite("LevelUpBackground", parent)
+                    .setSprite(Kaisa.Sprites.REWARD_BACKGROUND[0]);
+                sbSpiritPower = Kaisa.ScreenBuilder.buildSprite("LevelUpIcon", parent)
+                    .setSize(16, 16).setSprite(Kaisa.Sprites.REWARDS[3]).center()
+                    .setActive(false).setTransparent(false);
+                gm.audioMgr.playSound(isPunishment ? "punishment" : "reward");
+                i = 0;
+                cycle = 0;
+                pc = 1;
+                return 0.0;
+            case 1:
+                if (i >= 2) { cycle = 0; pc = 3; return 0.0; }
+                if (cycle >= 4) { cycle = 0; i += 1; pc = 1; return 0.0; }
+                sbRewardBg.setSprite(Kaisa.Sprites.REWARD_BACKGROUND[cycle]);
+                pc = 2;
+                return 0.125;
+            case 2:
+                cycle += 1; pc = 1; return 0.0;
+            case 3:
+                if (cycle >= 4) { i = 0; cycle = 0; pc = 5; return 0.0; }
+                sbSpiritPower.setActive(cycle % 2 == 0);
+                sbRewardBg.setSprite(Kaisa.Sprites.REWARD_BACKGROUND[cycle]);
+                pc = 4;
+                return 0.125;
+            case 4:
+                cycle += 1; pc = 3; return 0.0;
+            case 5:
+                sbSpiritPower.setActive(true);
+                pc = 6;
+                return 0.0;
+            case 6:                                 // for (i = 0; i < 6; i++)
+                if (i >= 6) { i = 0; pc = 8; return 0.0; }
+                if (cycle >= 4) { cycle = 0; i += 1; pc = 6; return 0.0; }
+                sbRewardBg.setSprite(Kaisa.Sprites.REWARD_BACKGROUND[cycle]);
+                pc = 7;
+                return 0.125;
+            case 7:
+                cycle += 1; pc = 6; return 0.0;
+            case 8:
+                sbRewardBg.setActive(false);
+                pc = 9;
+                return 0.0;
+            case 9:
+                if (i >= 9) { pc = 11; return 0.0; }
+                sbSpiritPower.move(Kaisa.DIR_UP, 1);
+                pc = 10;
+                return 0.5 / 9;
+            case 10:
+                i += 1; pc = 9; return 0.0;
+            case 11:
+                Kaisa.ScreenBuilder.buildTextBox("SpiritPower", parent, Kaisa.Font.SMALL)
+                    .setText("SPIRITS").setSize(32, 5).setPosition(1, 17);
+                tbLevel = Kaisa.ScreenBuilder.buildTextBox("SpiritPowerNumber", parent, Kaisa.Font.REGULAR)
+                    .setText(spiritsBefore.toString()).setSize(29, 5).setPosition(2, 24)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_RIGHT);
+                gm.audioMgr.playButtonA();
+                pc = 12;
+                return 1.0;
+            case 12:
+                tbLevel.setText(spiritsAfter.toString());
+                gm.audioMgr.playButtonA();
+                pc = 13;
+                return 1.0;
+            case 13:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:473  LevelUpDigimon -- the Digimon takes power, then
+// the D-Tector does.
+class LevelUpDigimon extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbPower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                gm.audioMgr.playSound("unlockDigimon");
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite(gm.data.name(digimonIndex), parent)
+                    .setSize(24, 24).center()
+                    .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                sbPower = Kaisa.ScreenBuilder.buildSprite("Power", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_POWER).setTransparent(true).setActive(false);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 4; return 0.0; }
+                pc = 2;
+                return 0.40;
+            case 2:
+                sbPower.setActive(true);
+                pc = 3;
+                return 0.15;
+            case 3:
+                sbPower.setActive(false);
+                i += 1; pc = 1; return 0.0;
+            case 4:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 7; return 0.0; }
+                pc = 5;
+                return 0.20;
+            case 5:
+                sbPower.setActive(true);
+                pc = 6;
+                return 0.15;
+            case 6:
+                sbPower.setActive(false);
+                i += 1; pc = 4; return 0.0;
+            case 7:
+                sbPower.setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED);
+                pc = 8;
+                return 0.20;
+            case 8:
+                sbPower.setActive(true);
+                pc = 9;
+                return 0.15;
+            case 9:
+                sbPower.setActive(false);
+                pc = 10;
+                return 0.20;
+            case 10:
+                sbPower.setActive(true);
+                pc = 11;
+                return 0.20;
+            case 11:
+                sbPower.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED);
+                pc = 12;
+                return 0.20;
+            case 12:
+                sbPower.setActive(false);
+                pc = 13;
+                return 0.20;
+            case 13:
+                sbPower.setActive(true);
+                pc = 14;
+                return 0.15;
+            case 14:
+                sbPower.setActive(false);
+                pc = 15;
+                return 0.20;
+            case 15:
+                sbPower.setActive(true);
+                pc = 16;
+                return 0.15;
+            case 16:
+                sbPower.setActive(false);
+                // Give power to D-Tector.
+                sbDigimon.setSize(32, 32).center().setSprite(Kaisa.Sprites.D_TECTOR);
+                sbPower.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED);
+                sbPower.setActive(false);
+                i = 0;
+                pc = 17;
+                return 0.30;
+            case 17:                                // for (i = 0; i < 5; i++)
+                if (i >= 5) { pc = 20; return 1.0; }
+                sbPower.setActive(true);
+                pc = 18;
+                return 0.15;
+            case 18:
+                sbPower.setActive(false);
+                pc = 19;
+                return 0.15;
+            case 19:
+                i += 1; pc = 17; return 0.0;
+            case 20:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:537  EraseDigimon -- the Digimon flickers out.
+class EraseDigimon extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbGivePower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("Digimon", parent)
+                    .setSize(24, 24)
+                    .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                sbDigimon.center();
+                sbDigimon.setActive(false);
+                // SOURCE ODDITY, reproduced: the flash element is named
+                // "Digimon" too.
+                sbGivePower = Kaisa.ScreenBuilder.buildSprite("Digimon", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_POWER);
+                sbGivePower.setTransparent(true);
+                sbGivePower.setActive(false);
+                gm.audioMgr.playSound("loseDigimon");
+                pc = 1;
+                return 0.2;
+            case 1:
+                sbDigimon.setActive(true);
+                pc = 2;
+                return 1.0;
+            case 2:
+                sbGivePower.setActive(true);
+                pc = 3;
+                return 0.05;
+            case 3:
+                sbGivePower.setActive(false);
+                pc = 4;
+                return 0.9;
+            case 4:
+                sbGivePower.setActive(true);
+                pc = 5;
+                return 0.05;
+            case 5:
+                sbGivePower.setActive(false);
+                sbDigimon.setActive(false);
+                i = 0;
+                pc = 6;
+                return 0.0;
+            case 6:                                 // for (i = 0; i < 5; i++)
+                if (i >= 5) { pc = 9; return 0.0; }
+                pc = 7;
+                return 0.3;
+            case 7:
+                sbDigimon.setActive(true);
+                pc = 8;
+                return 0.1;
+            case 8:
+                sbDigimon.setActive(false);
+                i += 1; pc = 6; return 0.0;
+            case 9:
+                sbGivePower.setActive(true);
+                pc = 10;
+                return 0.3;
+            case 10:
+                sbGivePower.setActive(false);
+                pc = 11;
+                return 0.4;
+            case 11:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:575  LevelDownDigimon -- the Digimon blinks while the
+// massive-power sprite alternates over it.
+class LevelDownDigimon extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbPower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite(gm.data.name(digimonIndex), parent)
+                    .setSize(24, 24).center()
+                    .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                sbPower = Kaisa.ScreenBuilder.buildSprite("Power", parent)
+                    .setTransparent(true).setActive(false);
+                gm.audioMgr.playSound("levelDownDigimon");
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 4; return 0.0; }
+                pc = 2;
+                return 0.20;
+            case 2:
+                sbDigimon.setActive(false);
+                pc = 3;
+                return 0.15;
+            case 3:
+                sbDigimon.setActive(true);
+                i += 1; pc = 1; return 0.0;
+            case 4:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 7; return 0.0; }
+                pc = 5;
+                return 0.15;
+            case 5:
+                sbDigimon.setActive(false);
+                pc = 6;
+                return 0.15;
+            case 6:
+                sbDigimon.setActive(true);
+                i += 1; pc = 4; return 0.0;
+            case 7:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 11; return 0.40; }
+                pc = 8;
+                return 0.20;
+            case 8:
+                sbPower.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER).setActive(true);
+                pc = 9;
+                return 0.20;
+            case 9:
+                sbPower.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setActive(true);
+                pc = 10;
+                return 0.20;
+            case 10:
+                sbPower.setActive(false);
+                i += 1; pc = 7; return 0.0;
+            case 11:
+                sbPower.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER).setActive(true);
+                pc = 12;
+                return 0.20;
+            case 12:
+                sbPower.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setActive(true);
+                pc = 13;
+                return 0.20;
+            case 13:
+                sbPower.setActive(false);
+                pc = 14;
+                return 0.60;
+            case 14:
+                sbPower.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER).setActive(true);
+                pc = 15;
+                return 0.20;
+            case 15:
+                sbPower.setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setActive(true);
+                pc = 16;
+                return 0.20;
+            case 16:
+                sbPower.setActive(false);
+                i = 0;
+                pc = 17;
+                return 0.30;
+            case 17:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 20; return 0.50; }
+                pc = 18;
+                return 0.15;
+            case 18:
+                sbDigimon.setActive(false);
+                pc = 19;
+                return 0.15;
+            case 19:
+                sbDigimon.setActive(true);
+                i += 1; pc = 17; return 0.0;
+            case 20:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2418  RewardCode -- the Digimon drifts down in a
+// bubble, the bubble flashes, and its five-character code is displayed before
+// the D-Tector takes the power.
+class RewardCode extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+    var code as String;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbBubble as SpriteBuilder?;
+    var sbPower as SpriteBuilder?;
+    var tbCode as TextBoxBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number,
+                        codeIn as String) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+        code = codeIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("Digimon", parent)
+                    .setSize(24, 24).center().placeOutside(Kaisa.DIR_UP)
+                    .move(Kaisa.DIR_UP, 4)
+                    .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                sbBubble = Kaisa.ScreenBuilder.buildSprite("Bubble", parent)
+                    .placeOutside(Kaisa.DIR_UP).setSprite(Kaisa.Sprites.BUBBLE);
+                gm.audioMgr.playSound("unlockCode");
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 64; i++)
+                if (i >= 64) { pc = 3; return 0.0; }
+                sbBubble.setActive(i % 2 == 1);
+                if (i % 2 == 0) {
+                    sbDigimon.move(Kaisa.DIR_DOWN, 1);
+                    sbBubble.move(Kaisa.DIR_DOWN, 1);
+                }
+                pc = 2;
+                return 4.0 / 64;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:
+                sbBubble.setActive(false).setTransparent(true);
+                pc = 4;
+                return 0.15;
+            case 4:
+                sbBubble.setActive(true);
+                i = 0;
+                pc = 5;
+                return 1.0;
+            case 5:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { i = 0; pc = 8; return 0.0; }
+                sbBubble.setActive(false);
+                pc = 6;
+                return 0.25;
+            case 6:
+                sbBubble.setActive(true);
+                pc = 7;
+                return 0.4;
+            case 7:
+                i += 1; pc = 5; return 0.0;
+            case 8:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 11; return 0.0; }
+                sbBubble.setActive(false);
+                pc = 9;
+                return 0.25;
+            case 9:
+                sbBubble.setActive(true);
+                pc = 10;
+                return 0.2;
+            case 10:
+                i += 1; pc = 8; return 0.0;
+            case 11:
+                sbBubble.setActive(false);
+                pc = 12;
+                return 1.0;
+            case 12:
+                sbDigimon.dispose();
+                gm.audioMgr.playButtonA();
+                sbBubble.setTransparent(false)
+                    .setSprite(Kaisa.Sprites.DATABASE_PAGES[2]).setActive(true);
+                tbCode = Kaisa.ScreenBuilder.buildTextBox("Code", parent, Kaisa.Font.BIG)
+                    .setText(code).setSize(30, 8).setPosition(2, 23)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_RIGHT);
+                pc = 13;
+                return 3.0;
+            case 13:
+                tbCode.dispose();
+                sbBubble.setSprite(Kaisa.Sprites.D_TECTOR);
+                sbPower = Kaisa.ScreenBuilder.buildSprite("Power", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setTransparent(true);
+                sbPower.setActive(false);
+                i = 0;
+                pc = 14;
+                return 0.30;
+            case 14:                                // for (i = 0; i < 5; i++)
+                if (i >= 5) { return Routine.DONE; }
+                sbPower.setActive(true);
+                pc = 15;
+                return 0.15;
+            case 15:
+                sbPower.setActive(false);
+                pc = 16;
+                return 0.15;
+            case 16:
+                i += 1; pc = 14; return 0.0;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:773  DisplayNewArea -- the map of the area the player
+// has just reached, then its distance.
+class DisplayNewArea extends Routine {
+    var gm as GameManager;
+    var world as Number;
+    var area as Number;
+    var distance as Number;
+
+    function initialize(gmIn as GameManager, worldIn as Number, areaIn as Number,
+                        distanceIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        world = worldIn;
+        area = areaIn;
+        distance = distanceIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                var cbMap = gm.buildMapScreen(world, parent);
+                var row = gm.data.worldArea(world, area);
+                var map = row[1];
+
+                if (map == 0) { cbMap.setPosition(0, 0); }
+                else if (map == 1) { cbMap.setPosition(0, -32); }
+                else if (map == 2) { cbMap.setPosition(-32, -32); }
+                else if (map == 3) { cbMap.setPosition(-32, 0); }
+
+                // Spawn the area name and marker.
+                var areaPosY = (map == 0 || map == 3) ? 1 : 26;
+                var n = area + 1;
+                Kaisa.ScreenBuilder.buildTextBox("AreaName", parent, Kaisa.Font.SMALL)
+                    .setText("area" + ((n < 10) ? "0" : "") + n)
+                    .setPosition(2, areaPosY);
+                Kaisa.ScreenBuilder.buildRectangle("OptionMarker", parent)
+                    .setSize(2, 2).setFlickPeriodMs(250, true)
+                    .setPosition(row[3], row[4]);
+
+                // Draw the completed area markers. SOURCE ODDITY, reproduced:
+                // the completion check asks world 0 whatever world this is.
+                var areasInCurrentMap = gm.worldMgr.areasInMap(world, map);
+                for (var k = 0; k < areasInCurrentMap.size(); k += 1) {
+                    var i = areasInCurrentMap[k];
+                    if (gm.worldMgr.getAreaCompleted(0, i)) {
+                        var marker = gm.data.worldArea(world, i);
+                        Kaisa.ScreenBuilder.buildRectangle("Area" + i + "Marker", parent)
+                            .setSize(2, 2).setPosition(marker[3], marker[4]);
+                    }
+                }
+                pc = 1;
+                return 2.25;
+            case 1:
+                // Display distance.
+                Kaisa.ScreenBuilder.buildSprite("DistanceBackground", parent)
+                    .setSprite(Kaisa.Sprites.MAP_DISTANCE_SCREEN);
+                Kaisa.ScreenBuilder.buildTextBox("Distance", parent, Kaisa.Font.REGULAR)
+                    .setText(distance.toString()).setSize(25, 5).setPosition(6, 25)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_RIGHT);
+                pc = 2;
+                return 2.5;
+            case 2:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2482  DataStorm -- the storm sweeps in, the character
+// notices it and runs, and either it carries them to a new area or they get
+// away. How long they spend trying to escape is a roll, which is why the
+// verifier pins the roll on both sides.
+class DataStorm extends Routine {
+    var gm as GameManager;
+    var character as Array;
+    var moveToNewArea as Boolean;
+
+    var sbCharacter as SpriteBuilder?;
+    var sbDigistorm as Array<SpriteBuilder?> = [null, null];
+    var sbExclamation as SpriteBuilder?;
+    var timeTryingToEscape as Number = 0;
+    var i as Number = 0;
+    var j as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Array,
+                        moveToNewAreaIn as Boolean) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+        moveToNewArea = moveToNewAreaIn;
+    }
+
+    // The storm is two 40-wide sprites chasing each other, and both take the
+    // same frame at the same time.
+    function stormFrame(n as Number) as Void {
+        var f = Kaisa.Sprites.DIGISTORM[Kaisa.MathExt.floorToInt(n / 2.0) % 2];
+        sbDigistorm[0].setSprite(f);
+        sbDigistorm[1].setSprite(f);
+    }
+
+    function stormMove(direction as Number) as Void {
+        sbDigistorm[0].move(direction, 1);
+        sbDigistorm[1].move(direction, 1);
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Character", parent)
+                    .setSprite(character[2]).setActive(false);
+                sbDigistorm[0] = Kaisa.ScreenBuilder.buildSprite("Digistorm", parent)
+                    .setSize(40, 32).setSprite(Kaisa.Sprites.DIGISTORM[0])
+                    .placeOutside(Kaisa.DIR_RIGHT);
+                sbDigistorm[1] = Kaisa.ScreenBuilder.buildSprite("Digistorm", parent)
+                    .setSize(40, 32).setSprite(Kaisa.Sprites.DIGISTORM[0])
+                    .placeOutside(Kaisa.DIR_RIGHT).move(Kaisa.DIR_RIGHT, 40);
+                gm.audioMgr.playSound("digistorm");
+                i = 0;
+                j = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 3; return 0.0; }
+                if (j >= 40) { j = 0; i += 1; pc = 1; return 0.0; }
+                stormMove(Kaisa.DIR_LEFT);
+                stormFrame(j);
+                pc = 2;
+                return 4.0 / 40;
+            case 2:
+                j += 1; pc = 1; return 0.0;
+            case 3:
+                sbDigistorm[0].placeOutside(Kaisa.DIR_RIGHT);
+                sbDigistorm[1].placeOutside(Kaisa.DIR_RIGHT).move(Kaisa.DIR_RIGHT, 40);
+                sbExclamation = Kaisa.ScreenBuilder.buildSprite("Exclamation", parent)
+                    .setSize(3, 9).setPosition(26, 1).setSprite(Kaisa.Sprites.BATTLE_DISOBEY);
+                sbCharacter.setActive(true);
+                pc = 4;
+                return 0.5;
+            case 4:
+                sbExclamation.dispose();
+                sbCharacter.setSprite(character[0]);
+                i = 0;
+                pc = 5;
+                return 0.0;
+            case 5:                                 // for (i = 0; i < 4; i++)
+                if (i >= 4) { i = 0; pc = 7; return 0.0; }
+                sbCharacter.setSprite(character[4 + (i % 2)]);
+                sbCharacter.move(Kaisa.DIR_LEFT, 1);
+                pc = 6;
+                return 0.1;
+            case 6:
+                i += 1; pc = 5; return 0.0;
+            case 7:                                 // for (i = 0; i < 20; i++)
+                if (i >= 20) {
+                    timeTryingToEscape = Kaisa.Rand.rangeInt(0, 40);   // default was 20
+                    i = 0;
+                    pc = moveToNewArea ? 9 : 15;
+                    return 0.0;
+                }
+                sbCharacter.setSprite(character[4 + (i % 2)]);
+                stormMove(Kaisa.DIR_LEFT);
+                stormFrame(i);
+                pc = 8;
+                return 4.0 / 40;
+            case 8:
+                i += 1; pc = 7; return 0.0;
+            case 9:                                 // carried off: the escape attempt
+                if (i >= timeTryingToEscape) { i = 0; pc = 11; return 0.0; }
+                sbCharacter.setSprite(character[4 + (i % 2)]);
+                stormFrame(i);
+                pc = 10;
+                return 4.0 / 40;
+            case 10:
+                i += 1; pc = 9; return 0.0;
+            case 11:                                // for (i = 0; i < 20; i++)
+                if (i >= 20) { i = 0; pc = 13; return 0.0; }
+                sbCharacter.setSprite(character[4 + (i % 2)]);
+                stormMove(Kaisa.DIR_LEFT);
+                stormFrame(i);
+                pc = 12;
+                return 4.0 / 40;
+            case 12:
+                i += 1; pc = 11; return 0.0;
+            case 13:                                // for (i = 0; i < 40; i++)
+                if (i >= 40) { pc = 20; return 0.0; }
+                stormMove(Kaisa.DIR_LEFT);
+                stormFrame(i);
+                pc = 14;
+                return 4.0 / 40;
+            case 14:
+                i += 1; pc = 13; return 0.0;
+            case 15:                                // got away: the escape attempt
+                if (i >= timeTryingToEscape) { i = 0; pc = 17; return 0.0; }
+                sbCharacter.setSprite(character[4 + (i % 2)]);
+                stormFrame(i);
+                pc = 16;
+                return 4.0 / 40;
+            case 16:
+                i += 1; pc = 15; return 0.0;
+            case 17:                                // for (i = 0; i < 30; i++)
+                if (i >= 30) { pc = 19; return 0.75; }
+                sbCharacter.setSprite(character[4 + (i % 2)]);
+                sbCharacter.move(Kaisa.DIR_LEFT, 1);
+                stormMove(Kaisa.DIR_RIGHT);
+                stormFrame(i);
+                pc = 18;
+                return 4.0 / 40;
+            case 18:
+                i += 1; pc = 17; return 0.0;
+            case 19:
+                gm.audioMgr.stopSound();
+                return Routine.DONE;
+            case 20:
+                gm.audioMgr.stopSound();
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}

@@ -66,10 +66,26 @@ module Kaisa {
     // An off-by-one here changes drop rates rather than crashing, so the
     // split is preserved in the names.
     module Rand {
+        // Set by the animation probe (and by nothing else) so a coroutine
+        // whose length depends on a roll can still be diffed against the
+        // golden trace: the harness is told the same number. Debug only, and
+        // the release build compiles the plain Math.rand() pair.
+        (:debug) var forced as Number = -1;
+
+        (:debug)
+        function raw() as Number {
+            return (forced >= 0) ? forced : Math.rand();
+        }
+
+        (:release)
+        function raw() as Number {
+            return Math.rand();
+        }
+
         function rangeInt(minInclusive as Number, maxExclusive as Number) as Number {
             var span = maxExclusive - minInclusive;
             if (span <= 0) { return minInclusive; }
-            return minInclusive + (Math.rand() % span);
+            return minInclusive + (raw() % span);
         }
 
         function rangeFloat(minInclusive as Float, maxInclusive as Float) as Float {
@@ -77,7 +93,7 @@ module Kaisa {
             // bound beyond the 32-bit signed range, so the unit interval is
             // built from its low 24 bits: 2^24 keeps every step exactly
             // representable in a Float.
-            var unit = (Math.rand() % 16777216).toFloat() / 16777215.0;
+            var unit = (raw() % 16777216).toFloat() / 16777215.0;
             return minInclusive + (maxInclusive - minInclusive) * unit;
         }
     }
