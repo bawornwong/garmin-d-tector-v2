@@ -78,6 +78,33 @@ public static class Program {
         }
     }
 
+    // The Database app's three data pages, which carry the densest numbers in
+    // the game: the Digimon's level and HP, its energy, crush and ability, and
+    // its code. The app is put on the Pages screen directly -- reaching it by
+    // input would mean stubbing the whole gallery -- and each page is drawn.
+    static void TraceDatabasePages() {
+        var gm = new GameManager(db);
+        var app = new Kaisa.Digivice.Apps.DatabaseApp();
+        app.Setup(gm, null);
+        app.AttachScreen("Screen");
+        app.SetPrivate("currentScreen", 3);         // ScreenDatabase.Pages
+        app.SetPrivate("menuIndex", 0);
+        app.SetPrivate("pageDigimon", Database.GetDigimon(AppFixture.PageDigimon));
+
+        for (int page = 0; page < 3; page++) {
+            Trace.Log.Now = 0.0;
+            Trace.Log.Events.Clear();
+            ScreenElement.AnimParent.Clear();
+            app.SetPrivate("pageIndex", page);
+            app.SetPrivate("digimonNameSign", null);
+            app.Draw();
+            Console.WriteLine("=== DatabasePage" + page + " ===");
+            foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+            Console.WriteLine(string.Format("--- DatabasePage{0} end=0.0000ms events={1}",
+                page, Trace.Log.Events.Count));
+        }
+    }
+
     public static int Main(string[] args) {
         db = new SpriteDatabase();
         var audio = new AudioManager();
@@ -120,6 +147,7 @@ public static class Program {
             }
         }
         TraceStatusApp();
+        TraceDatabasePages();
 
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");

@@ -215,6 +215,10 @@ def run_probe(index, attempts=3):
                      f"var _probeAnim as Number = {index};", text)
     patched = re.sub(r"var _probeRand as Number = -?\d+;",
                      f"var _probeRand as Number = {FIXED_RNG};", patched)
+    # The screen probe returns before the animation one, so it has to be off
+    # whatever the working tree left it at.
+    patched = re.sub(r"var _probeScreens as Boolean = \w+;",
+                     "var _probeScreens as Boolean = false;", patched)
     open(VIEW, "w").write(patched)
     try:
         b = subprocess.run(["tools/build.sh"], cwd=ROOT, capture_output=True, text=True)

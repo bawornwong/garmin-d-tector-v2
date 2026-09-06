@@ -236,6 +236,27 @@ class DTectorView extends WatchUi.View {
             System.println("--- Status" + i + " end=0.0000ms");
             app.inputRight();
         }
+        // The Database app's three data pages, with the same Digimon and the
+        // same extra level the harness pins. The app is put on the Pages
+        // screen directly, as the harness does: reaching it by input would
+        // mean walking a gallery neither side is testing here.
+        var dbApp = new DatabaseApp(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        dbApp.currentScreen = dbApp.SCREEN_PAGES;
+        dbApp.menuIndex = 0;
+        dbApp.pageDigimon = _gm.db.getDigimon(_demoIndex);
+        _gm.logicMgr.setDigimonExtraLevel(_demoIndex, 2);
+        _gm.logicMgr.setDigicodeUnlocked(_demoIndex, true);
+
+        for (var page = 0; page < 3; page += 1) {
+            System.println("=== DatabasePage" + page + " ===");
+            dbApp.pageIndex = page;
+            dbApp.digimonNameSign = null;
+            Kaisa.Trace.enable();
+            dbApp.drawScreen();
+            Kaisa.Trace.disable();
+            System.println("--- DatabasePage" + page + " end=0.0000ms");
+        }
+
         System.println("SCREENEND");
     }
 

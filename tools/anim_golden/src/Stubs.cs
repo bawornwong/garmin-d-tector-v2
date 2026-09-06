@@ -159,6 +159,13 @@ namespace Kaisa.Digivice {
         public SpriteSet rewards;
         public SpriteSet spirit_absorber;
         public SpriteSet spirit_explosion;
+        public SpriteSet arrowsSmall;
+        public SpriteSet invertedArrowsSmall;
+        public SpriteSet database_sections;
+        public SpriteSet database_ddocks;
+        public SpriteSet database_spirit_fusion;
+        public SpriteSet elements;
+        public SpriteSet elementNames;
         public SpriteSet status_distance;
         public SpriteSet status_level;
         public SpriteSet status_victories;
@@ -206,6 +213,13 @@ namespace Kaisa.Digivice {
             rewards = new SpriteSet("rewards");
             spirit_absorber = new SpriteSet("spirit_absorber");
             spirit_explosion = new SpriteSet("spirit_explosion");
+            arrowsSmall = new SpriteSet("arrowsSmall");
+            invertedArrowsSmall = new SpriteSet("invertedArrowsSmall");
+            database_sections = new SpriteSet("database_sections");
+            database_ddocks = new SpriteSet("database_ddocks");
+            database_spirit_fusion = new SpriteSet("database_spirit_fusion");
+            elements = new SpriteSet("elements");
+            elementNames = new SpriteSet("elementNames");
             status_distance = new SpriteSet("status_distance");
             status_level = new SpriteSet("status_level");
             status_victories = new SpriteSet("status_victories");

@@ -25,6 +25,8 @@ namespace Kaisa.Digivice {
         public const int TotalBattles = 9;
         public const int TotalWins = 4;
         public const int DDockDigimon = 0;      // the row the dock holds
+        public const string PageDigimon = "agumon";
+        public const int DigimonExtraLevel = 2;
     }
 
     public interface IAppController {
@@ -65,6 +67,13 @@ namespace Kaisa.Digivice {
         public virtual void InputBUp() { }
         public virtual void InputLeftUp() { }
         public virtual void InputRightUp() { }
+        protected Coroutine navigationCoroutine;
+        protected virtual System.Collections.IEnumerator AutoNavigateDir(Direction dir) {
+            yield return null;
+        }
+        protected void StartNavigation(Direction dir) { }
+        protected void StopNavigation() { }
+
         public abstract void StartApp();
 
         // The harness drives the app directly: it gives it a screen element to
@@ -73,6 +82,20 @@ namespace Kaisa.Digivice {
         public void AttachScreen(string name) {
             screenDisplay.builder = ScreenElement.BuildSprite(name, ScreenElement.AnimParent);
         }
+        // The app's screen state is private, and reaching a data page by input
+        // would mean stubbing the whole gallery. The harness sets the field
+        // instead, and the port's probe sets its own to the same value.
+        public void SetPrivate(string field, object value) {
+            var f = GetType().GetField(field,
+                System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.Instance);
+            if (f == null) { throw new Exception("no field " + field); }
+            if (f.FieldType.IsEnum) { value = Enum.ToObject(f.FieldType, value); }
+            f.SetValue(this, value);
+        }
+
+        public int ScreenChildCount() { return screenDisplay.transform.children.Count; }
+
         public void Draw() {
             GetType().GetMethod("DrawScreen",
                 System.Reflection.BindingFlags.NonPublic
@@ -87,6 +110,21 @@ namespace Kaisa.Digivice {
             }
         }
         protected void CancelInvoke() { }
+        // MonoBehaviour.Destroy, which the apps call unqualified. It has to do
+        // the real thing: an empty stub swallowed every ClearScreen and made
+        // the reference look like it never cleaned up after a screen.
+        protected void Destroy(object o) {
+            var g = o as GameObject;
+            if (g != null) { GameObject.Destroy(g); }
+        }
+        protected Coroutine StartCoroutine(System.Collections.IEnumerator r) {
+            Trace.Log.E("startCoroutine");
+            return Driver.Spawn(r);
+        }
+        protected void StopCoroutine(Coroutine c) {
+            Trace.Log.E("stopCoroutine");
+            Driver.Kill(c);
+        }
         protected void InvokeRepeating(string method, float delay, float period) { }
     }
 }

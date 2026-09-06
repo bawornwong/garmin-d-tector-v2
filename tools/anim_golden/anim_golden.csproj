@@ -18,8 +18,12 @@
     <!-- And the Status app, whose screens are diffed the same way: what a
          screen builds is a display list like any other. -->
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Status.cs" />
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/DatabaseApp.cs" />
     <!-- CircularAdd, which Status walks its screens with: the original's own
          arithmetic rather than a copy of it. -->
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Extensions/MathExt.cs" />
+    <!-- The Digimon model: the stats a database page prints are its
+         arithmetic, not a copy of it. -->
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Models/Digimon.cs" />
   </ItemGroup>
 </Project>

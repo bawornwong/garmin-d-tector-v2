@@ -25,6 +25,11 @@ namespace Kaisa.Digivice {
         protected ScreenElement(string n, Transform p) {
             name = n;
             Trace.Log.E("build " + Kind() + " " + n);
+            // Unity names the transform as well as the object, and the apps
+            // test `child.name` when they decide what to keep across a redraw
+            // -- an unnamed transform made the reference destroy a name sign
+            // the game keeps.
+            transform.name = n;
             transform.gameObject.name = n;
             transform.gameObject.owner = transform;
             if (p != null) { p.children.Add(transform); transform.parent = p; }
@@ -187,6 +192,8 @@ namespace Kaisa.Digivice {
         public TextBoxBuilder SetActive(bool v) { L("setActive", v); return this; }
         public TextBoxBuilder SetTransparent(bool v) { L("setTransparent", v); return this; }
         public TextBoxBuilder SetAlignment(object a) { L("setAlignment", a); return this; }
+        public TextBoxBuilder SetFitSizeToContent(bool v) { L("setFitSizeToContent", v); return this; }
+        public GameObject gameObject { get { return transform.gameObject; } }
         public int ComponentWidth = 32, ComponentHeight = 5;
         public TextBoxBuilder SetComponentSize(int w, int h) { ComponentWidth = w; ComponentHeight = h; L("setComponentSize", w, h); return this; }
         public TextBoxBuilder Move(Direction d) { L("move", d, 1); return this; }
@@ -297,6 +304,11 @@ namespace Kaisa.Digivice {
         public int TotalBattles = AppFixture.TotalBattles;
         public int TotalWins = AppFixture.TotalWins;
         public int GetPlayerLevel() { return AppFixture.PlayerLevel; }
+        public int GetDigimonExtraLevel(string digimon) { return AppFixture.DigimonExtraLevel; }
+        public bool GetDigimonUnlocked(string digimon) { return true; }
+        public bool GetDigicodeUnlocked(string digimon) { return true; }
+        public string[] GetAllDDockDigimon() { return new string[] { "agumon", "agumon", "agumon", "agumon" }; }
+        public void SetDDockDigimon(int ddock, string digimon) { }
         public float WinPercentage {
             get {
                 if (TotalBattles == 0) { return 0f; }
@@ -318,6 +330,16 @@ namespace Kaisa.Digivice {
             PlayerCharSprites = db.GetCharacterSprites(GameChar.takuya);
         }
         public void UnlockInput() { Trace.Log.E("unlockInput"); }
+        public void LockInput() { Trace.Log.E("lockInput"); }
+        public void EnqueueAnimation(IEnumerator a) { Trace.Log.E("enqueueAnimation"); }
+
+        // The gallery lists the Database app builds. Nothing a data page draws
+        // depends on them, and reaching a page by input would mean stubbing
+        // the whole gallery -- the harness sets the page directly instead.
+        public List<string> GetAllUnlockedDigimonInStage(Stage s) { return new List<string>(); }
+        public List<string> GetAllUnlockedSpiritsOfElement(Element e) { return new List<string>(); }
+        public List<string> GetAllUnlockedFusionDigimon() { return new List<string>(); }
+        public bool IsInDock(string digimon) { return false; }
 
         // sprite, or four for a multi-map world. Stubbing it as a bare
         // "MapScreen" container hid every one of those.

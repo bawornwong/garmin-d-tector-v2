@@ -357,6 +357,7 @@ class TextBoxBuilder extends ScreenElement {
     // exactly that measurement and is kept because it is also a real frame of
     // the original's timing.
     function setFitSizeToContent(val as Boolean) as TextBoxBuilder {
+        Kaisa.Trace.el1(name, "setFitSizeToContent", val);
         if (val) {
             componentWidth = Kaisa.TextMetrics.width(font, text);
             width = componentWidth;

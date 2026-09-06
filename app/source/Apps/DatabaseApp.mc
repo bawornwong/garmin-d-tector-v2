@@ -215,18 +215,24 @@ class DatabaseApp extends DigiviceApp {
         }
         // "Destroy all children, except the ones called 'NameSign' if we are
         // in the 'Pages' screen."
-        var kept = [] as Array<ScreenElement>;
-        for (var i = 0; i < screen.children.size(); i += 1) {
+        //
+        // The kept child is stepped over rather than disposed and re-added:
+        // the original never destroys it, and the screen diff sees the
+        // difference (tools/verify_screens.py).
+        var kept = 0;
+        var i = 0;
+        while (i < screen.children.size()) {
             var child = screen.children[i];
             if (currentScreen == SCREEN_PAGES && child.name.equals("NameSign")) {
-                kept.add(child);
+                kept += 1;
+                i += 1;
+            } else {
+                child.dispose();        // dispose unlinks, so i stays put
             }
         }
-        clearScreen();
-        for (var i = 0; i < kept.size(); i += 1) {
-            screen.addChild(kept[i]);
-        }
-        if (kept.size() == 0 && currentScreen != SCREEN_PAGES) {
+        // Unity turns a destroyed GameObject's reference into null; the port
+        // drops it here instead.
+        if (kept == 0) {
             digimonNameSign = null;
         }
 
