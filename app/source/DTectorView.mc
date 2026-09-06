@@ -70,11 +70,11 @@ class DTectorView extends WatchUi.View {
     // Which converted animation to play, traced, for tools/verify_anim.py:
     // -1 plays none. The arguments match the ones the C# harness synthesises
     // (every int is 1), so the two traces are of the same run.
-    var _probeAnim as Number = 1;
+    var _probeAnim as Number = 32;
     var _probeAnimDone as Boolean = false;
     // The roll the animation probe pins Kaisa.Rand to, so an animation whose
     // length depends on one can be diffed; -1 leaves the RNG alone.
-    var _probeRand as Number = -1;
+    var _probeRand as Number = 17;
     const PROBE_STEPS_PER_FRAME = 10;
 
     function initialize() {
@@ -229,7 +229,8 @@ class DTectorView extends WatchUi.View {
         } else if (_probeAnim == 11) {
             name = "DestroyLoser";
             var loserSprites = _gm.getAllDigimonBattleSprites(_demoIndex, 1);
-            routine = new DestroyLoser(_gm, loserSprites, 1, loserSprites[4],
+            routine = new DestroyLoser(_gm, loserSprites, 1,
+                                       _gm.digimonSprite(_demoIndex, _gm.data.ACTION_BASE),
                                        false, 1, 1);
         } else if (_probeAnim == 12) {
             name = "DisplayTurn";
@@ -295,6 +296,31 @@ class DTectorView extends WatchUi.View {
             name = "StartGameAnimation";
             routine = new StartGameAnimation(_gm, Kaisa.CHAR_TAKUYA, _demoIndex, 1,
                                              _demoIndex, 1);
+        } else if (_probeAnim == 32) {
+            name = "EncounterEnemy";
+            routine = new EncounterEnemy(_gm, _demoIndex, 1.0);
+        } else if (_probeAnim == 33) {
+            name = "EncounterBoss";
+            routine = new EncounterBoss(_gm, _demoIndex);
+        } else if (_probeAnim == 34) {
+            name = "SpendCallPoints";
+            routine = new SpendCallPoints(_gm, 1, 1);
+        } else if (_probeAnim == 35) {
+            name = "DeportSprite";
+            routine = new DeportSprite(_gm,
+                _gm.digimonSprite(_demoIndex, _gm.data.ACTION_BASE), 24);
+        } else if (_probeAnim == 36) {
+            name = "DeportDigimon";
+            routine = new DeportDigimon(_gm, _demoIndex);
+        } else if (_probeAnim == 37) {
+            name = "DeportSpirit";
+            routine = new DeportSpirit(_gm, _demoIndex, Kaisa.CHAR_TAKUYA);
+        } else if (_probeAnim == 38) {
+            name = "ReceiveSpirit";
+            routine = new ReceiveSpirit(_gm, _demoIndex);
+        } else if (_probeAnim == 39) {
+            name = "LoseSpirit";
+            routine = new LoseSpirit(_gm, _demoIndex, _demoIndex);
         } else if (_probeAnim == 8) {
             name = "SwapDDock";
             // The animation reads the dock it is about to overwrite, so the

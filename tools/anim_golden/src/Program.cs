@@ -13,6 +13,11 @@ public static class Program {
 
     static object Arg(ParameterInfo p) {
         var t = p.ParameterType;
+        // An optional parameter's own default is what the game passes almost
+        // everywhere it calls the coroutine, and it is in the source -- so use
+        // it rather than a made-up 1, which had the reference deporting a
+        // one-pixel sprite.
+        if (p.HasDefaultValue && p.DefaultValue != null) { return p.DefaultValue; }
         if (t == typeof(string)) {
             var n = p.Name.ToLower();
             if (n.Contains("code")) { return "vsjk1"; }
@@ -27,7 +32,9 @@ public static class Program {
         if (t == typeof(float)) { return 1f; }
         if (t == typeof(bool)) { return false; }
         if (t == typeof(GameChar)) { return GameChar.takuya; }
-        if (t == typeof(Sprite)) { return new Sprite("sprite"); }
+        // A lone Sprite parameter gets real art, so the trace names a cell the
+        // port can be compared against instead of a placeholder.
+        if (t == typeof(Sprite)) { return db.GetDigimonSprite("agumon"); }
         if (t == typeof(Sprite[])) {
             // A Sprite[] parameter is either a character's ten sprites or a
             // Digimon's set, and which one decides what the trace says. The

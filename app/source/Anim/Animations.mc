@@ -3805,3 +3805,586 @@ class StartGameAnimation extends Routine {
         return Routine.DONE;
     }
 }
+
+// port of Animations.cs:860  EncounterEnemy -- the enemy fades in out of the
+// give-power flashes and strikes a pose. `finalDelay` is how long the last
+// frame is held, which the Jackpot Box shortens.
+class EncounterEnemy extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+    var finalDelay as Float;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbGivePower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number,
+                        finalDelayIn as Float) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+        finalDelay = finalDelayIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
+                    .setSize(24, 24).center()
+                    .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                sbDigimon.flipHorizontal(true);
+                sbDigimon.setActive(false);
+                sbGivePower = Kaisa.ScreenBuilder.buildSprite("Power", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_POWER).setTransparent(true);
+                sbGivePower.setActive(false);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { i = 0; pc = 4; return 0.5; }
+                pc = 2;
+                return 0.5;
+            case 2:
+                sbGivePower.setActive(true);
+                pc = 3;
+                return 0.1;
+            case 3:
+                sbGivePower.setActive(false);
+                i += 1; pc = 1; return 0.0;
+            case 4:
+                sbGivePower.setActive(true);
+                i = 0;
+                pc = 5;
+                return 0.0;
+            case 5:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 8; return 0.25; }
+                pc = 6;
+                return 0.25;
+            case 6:
+                sbDigimon.setActive(false);
+                sbGivePower.setActive(true);
+                pc = 7;
+                return 0.1;
+            case 7:
+                sbDigimon.setActive(true);
+                sbGivePower.setActive(false);
+                i += 1; pc = 5; return 0.0;
+            case 8:
+                sbDigimon.setActive(false);
+                sbGivePower.setActive(true);
+                pc = 9;
+                return 0.1;
+            case 9:
+                sbGivePower.setActive(false);
+                pc = 10;
+                return 0.35;
+            case 10:
+                gm.audioMgr.playSound("encounterDigimon");
+                sbDigimon.setActive(true);
+                pc = 11;
+                return 0.35;
+            case 11:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_AT));
+                pc = 12;
+                return 0.6;
+            case 12:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                pc = 13;
+                return 0.6;
+            case 13:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_AT));
+                pc = 14;
+                return finalDelay;
+            case 14:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:909  EncounterBoss -- the same idea with the massive
+// power sprite and its own rhythm.
+class EncounterBoss extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbGivePower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
+                    .setSize(24, 24).center()
+                    .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                sbDigimon.flipHorizontal(true);
+                sbDigimon.setActive(false);
+                sbGivePower = Kaisa.ScreenBuilder.buildSprite("MassivePower", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER).setTransparent(true);
+                sbGivePower.setActive(false);
+                pc = 1;
+                return 0.5;
+            case 1:
+                sbGivePower.setActive(true);
+                pc = 2;
+                return 0.1;
+            case 2:
+                sbGivePower.setActive(false);
+                gm.audioMgr.playSound("encounterDigimonBoss");
+                i = 0;
+                pc = 3;
+                return 0.0;
+            case 3:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { i = 0; pc = 6; return 0.0; }
+                pc = 4;
+                return 0.5;
+            case 4:
+                sbGivePower.setActive(true);
+                pc = 5;
+                return 0.1;
+            case 5:
+                sbGivePower.setActive(false);
+                i += 1; pc = 3; return 0.0;
+            case 6:
+                sbDigimon.setActive(true);
+                i = 0;
+                pc = 7;
+                return 0.0;
+            case 7:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 10; return 0.25; }
+                pc = 8;
+                return 0.25;
+            case 8:
+                sbGivePower.setActive(true);
+                pc = 9;
+                return 0.1;
+            case 9:
+                sbGivePower.setActive(false);
+                i += 1; pc = 7; return 0.0;
+            case 10:
+                sbDigimon.setActive(false);
+                pc = 11;
+                return 0.15;
+            case 11:
+                sbDigimon.setActive(true);
+                pc = 12;
+                return 0.5;
+            case 12:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_AT));
+                pc = 13;
+                return 0.5;
+            case 13:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                pc = 14;
+                return 0.5;
+            case 14:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_AT));
+                pc = 15;
+                return 0.75;
+            case 15:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:955  SpendCallPoints -- the call-point bar, with the
+// points spent disappearing off the right.
+class SpendCallPoints extends Routine {
+    var gm as GameManager;
+    var pointsBefore as Number;
+    var pointsAfter as Number;
+
+    var sbCallPoints as SpriteBuilder?;
+    var callPoints as Array<RectangleBuilder?> = [];
+
+    function initialize(gmIn as GameManager, pointsBeforeIn as Number,
+                        pointsAfterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        pointsBefore = pointsBeforeIn;
+        pointsAfter = pointsAfterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbCallPoints = Kaisa.ScreenBuilder.buildSprite("CallPointScreen", parent)
+                    .setSprite(Kaisa.Sprites.BATTLE_CALL_POINTS_SCREEN);
+                callPoints = [];
+                for (var i = 0; i < pointsBefore; i += 1) {
+                    callPoints.add(Kaisa.ScreenBuilder.buildRectangle("CallPoint" + i, sbCallPoints)
+                        .setSize(2, 5).setPosition(1 + (3 * i), 25));
+                }
+                pc = 1;
+                return 1.0;
+            case 1:
+                gm.audioMgr.playButtonA();
+                for (var i = callPoints.size() - 1; i > pointsAfter - 1; i -= 1) {
+                    callPoints[i].dispose();
+                }
+                pc = 2;
+                return 1.0;
+            case 2:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:972  DeportSprite -- four copies of a sprite fly apart.
+// `dim` is the size, which DeportDigimon leaves at 24.
+class DeportSprite extends Routine {
+    var gm as GameManager;
+    var sprite as Array<Number>?;
+    var dim as Number;
+
+    var spDigimon as Array<SpriteBuilder?> = [null, null, null, null];
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, spriteIn as Array<Number>?,
+                        dimIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        sprite = spriteIn;
+        dim = dimIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                for (var n = 0; n < 4; n += 1) {
+                    spDigimon[n] = Kaisa.ScreenBuilder.buildSprite("Deport" + n, parent)
+                        .setSize(dim, dim).setSprite(sprite).setTransparent(true)
+                        .setActive(false).center();
+                }
+                spDigimon[0].setActive(true);
+                gm.audioMgr.playSound("deport");
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 4; return 0.0; }
+                pc = 2;
+                return 0.25;
+            case 2:
+                spDigimon[0].setActive(false);
+                pc = 3;
+                return 0.25;
+            case 3:
+                spDigimon[0].setActive(true);
+                i += 1; pc = 1; return 0.0;
+            case 4:
+                spDigimon[1].setActive(true);
+                spDigimon[2].setActive(true);
+                spDigimon[3].setActive(true);
+                i = 0;
+                pc = 5;
+                return 0.75;
+            case 5:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 7; return 0.2; }
+                spDigimon[0].move(Kaisa.DIR_LEFT, 1);
+                spDigimon[1].move(Kaisa.DIR_RIGHT, 1);
+                spDigimon[2].move(Kaisa.DIR_UP, 1);
+                spDigimon[3].move(Kaisa.DIR_DOWN, 1);
+                pc = 6;
+                return 1.5 / 32;
+            case 6:
+                i += 1; pc = 5; return 0.0;
+            case 7:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:968  DeportDigimon -- DeportSprite of the Digimon.
+class DeportDigimon extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                pc = 1;
+                rt.call(new DeportSprite(gm,
+                    gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE), 24));
+                return 0.0;
+            case 1:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1003  DeportSpirit -- the spirit splits in two and
+// leaves, and the character takes the power it left behind.
+class DeportSpirit extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+    var character as Number;
+
+    var sCharacter as Array = [];
+    var spDigimon as Array<SpriteBuilder?> = [null, null];
+    var spCharacter as SpriteBuilder?;
+    var spGivePower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number,
+                        characterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+        character = characterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sCharacter = gm.characterSprites(character);
+                gm.audioMgr.playSound("deportSpirit");
+                for (var n = 0; n < 2; n += 1) {
+                    spDigimon[n] = Kaisa.ScreenBuilder.buildSprite("Deport" + n, parent)
+                        .setSize(24, 24)
+                        .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE))
+                        .setTransparent(true).setActive(true).center();
+                }
+                i = 0;
+                pc = 1;
+                return 0.25;
+            case 1:                                 // for (i = 0; i < 16; i++)
+                if (i >= 16) { i = 0; pc = 3; return 0.0; }
+                spDigimon[0].move(Kaisa.DIR_UP, 1);
+                spDigimon[1].move(Kaisa.DIR_DOWN, 1);
+                pc = 2;
+                return 1.75 / 16;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 6; return 0.0; }
+                spDigimon[0].setActive(true);
+                spDigimon[1].setActive(true);
+                pc = 4;
+                return 0.1;
+            case 4:
+                spDigimon[0].setActive(false);
+                spDigimon[1].setActive(false);
+                pc = 5;
+                return 0.3;
+            case 5:
+                i += 1; pc = 3; return 0.0;
+            case 6:
+                spDigimon[0].dispose();
+                spDigimon[1].dispose();
+                pc = 7;
+                return 0.3;
+            case 7:
+                spCharacter = Kaisa.ScreenBuilder.buildSprite("Character", parent)
+                    .setSprite(sCharacter[0]).setActive(false);
+                spGivePower = Kaisa.ScreenBuilder.buildSprite("GivePower", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setTransparent(true);
+                i = 0;
+                pc = 8;
+                return 0.0;
+            case 8:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 11; return 0.2; }
+                if (i == 2) { spCharacter.setActive(true); }
+                spGivePower.setActive(true);
+                pc = 9;
+                return 0.1;
+            case 9:
+                spGivePower.setActive(false);
+                pc = 10;
+                return 0.3;
+            case 10:
+                i += 1; pc = 8; return 0.0;
+            case 11:
+                spGivePower.setActive(true);
+                pc = 12;
+                return 0.1;
+            case 12:
+                spGivePower.setActive(false);
+                pc = 13;
+                return 1.0;
+            case 13:
+                spGivePower.setActive(true);
+                pc = 14;
+                return 0.7;
+            case 14:
+                spGivePower.setActive(false);
+                spCharacter.setSprite(sCharacter[9]);
+                pc = 15;
+                return 0.9;
+            case 15:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:398  ReceiveSpirit -- the spirit drops onto a platform.
+class ReceiveSpirit extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                Kaisa.ScreenBuilder.buildRectangle("Platform", parent)
+                    .setSize(26, 1).setPosition(3, 29);
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite(gm.data.name(digimonIndex), parent)
+                    .setSize(24, 24).flipHorizontal(true).center()
+                    .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_SP))
+                    .placeOutside(Kaisa.DIR_UP);
+                i = 0;
+                pc = 1;
+                return 0.15;
+            case 1:                                 // for (i = 0; i < 28; i++)
+                if (i >= 28) { pc = 3; return 0.75; }
+                sbDigimon.move(Kaisa.DIR_DOWN, 1);
+                pc = 2;
+                return 2.5 / 28;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:
+                sbDigimon.flipHorizontal(false);
+                pc = 4;
+                return 0.75;
+            case 4:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:418  LoseSpirit -- the enemy's attractor drags the
+// spirit off the screen, and the enemy leaves with it.
+class LoseSpirit extends Routine {
+    var gm as GameManager;
+    var spiritLost as Number;
+    var enemyIndex as Number;
+
+    var sbSpiritLost as SpriteBuilder?;
+    var sbAttractor as SpriteBuilder?;
+    var sbEnemyDigimon as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, spiritLostIn as Number,
+                        enemyIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        spiritLost = spiritLostIn;
+        enemyIndex = enemyIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                // SOURCE ODDITY, reproduced: the spirit is named "Enemy" too.
+                sbSpiritLost = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
+                    .setSize(24, 24).center().setX(8)
+                    .setSprite(gm.digimonSprite(spiritLost, gm.data.ACTION_SP))
+                    .setActive(false);
+                sbAttractor = Kaisa.ScreenBuilder.buildSprite("Attractor", parent)
+                    .setSize(3, 24).center().setX(20)
+                    .setSprite(Kaisa.Sprites.STEAL_SPIRIT_ATTRACTOR);
+                sbEnemyDigimon = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
+                    .setSize(24, 24).center().setX(0)
+                    .setSprite(gm.digimonSprite(enemyIndex, gm.data.ACTION_BASE))
+                    .flipHorizontal(true);
+                gm.audioMgr.playSound("attackTravelVeryLong");
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 12; i++)
+                if (i >= 12) { pc = 3; return 0.0; }
+                sbAttractor.move(Kaisa.DIR_RIGHT, 1);
+                pc = 2;
+                return 2.0 / 32;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:
+                sbEnemyDigimon.setActive(false);
+                sbSpiritLost.setActive(true);
+                sbAttractor.placeOutside(Kaisa.DIR_LEFT);
+                i = 0;
+                pc = 4;
+                return 0.0;
+            case 4:                                 // for (i = 0; i < 8; i++)
+                if (i >= 8) { i = 0; pc = 6; return 0.0; }
+                sbAttractor.move(Kaisa.DIR_RIGHT, 1);
+                pc = 5;
+                return 2.0 / 32;
+            case 5:
+                i += 1; pc = 4; return 0.0;
+            case 6:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 8; return 0.0; }
+                sbAttractor.move(Kaisa.DIR_LEFT, 1);
+                sbSpiritLost.move(Kaisa.DIR_LEFT, 1);
+                pc = 7;
+                return 2.0 / 32;
+            case 7:
+                i += 1; pc = 6; return 0.0;
+            case 8:
+                sbEnemyDigimon.setActive(true);
+                sbSpiritLost.move(Kaisa.DIR_RIGHT, 40 + 28);
+                sbAttractor.move(Kaisa.DIR_RIGHT, 40 + 28);
+                i = 0;
+                pc = 9;
+                return 0.0;
+            case 9:                                 // for (i = 0; i < 42; i++)
+                if (i >= 42) { pc = 11; return 0.0; }
+                sbAttractor.move(Kaisa.DIR_LEFT, 1);
+                sbSpiritLost.move(Kaisa.DIR_LEFT, 1);
+                pc = 10;
+                return 2.0 / 32;
+            case 10:
+                i += 1; pc = 9; return 0.0;
+            case 11:
+                sbSpiritLost.setActive(false);
+                sbAttractor.setActive(false);
+                i = 0;
+                pc = 12;
+                return 0.75;
+            case 12:                                // for (i = 0; i < 16; i++)
+                if (i >= 16) { pc = 14; return 0.2; }
+                sbEnemyDigimon.move(Kaisa.DIR_UP, 2);
+                pc = 13;
+                return 0.6 / 16;
+            case 13:
+                i += 1; pc = 12; return 0.0;
+            case 14:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}

@@ -81,6 +81,14 @@ CONVERTED = {
     "DisplayNewArea": 29,
     "DataStorm": 30,
     "StartGameAnimation": 31,
+    "EncounterEnemy": 32,
+    "EncounterBoss": 33,
+    "SpendCallPoints": 34,
+    "DeportSprite": 35,
+    "DeportDigimon": 36,
+    "DeportSpirit": 37,
+    "ReceiveSpirit": 38,
+    "LoseSpirit": 39,
 }
 
 # The roll both sides are pinned to: an animation that rolls for a length
