@@ -77,10 +77,11 @@ Three generators, all run before `monkeyc`, all self-verifying.
 - Emits `DIGIMON_CELLS[index][action]`, 603 rows × 6, `-1` where an action has no art.
 - Verifies by unpacking its own output and diffing every cell.
 
-**Font packer** (`prototype/data/pack_fonts.py`)
+**Font packer** (`tools/pack_fonts.py`)
 - Reads the three `.fontsettings`, converting Unity units to game pixels by dividing by 24.
-- Emits per-glyph bitmaps and advances: Big monospaced at 6 px, Regular and Small proportional (2–6 px); line spacing 8 px for Big, 6 px otherwise.
+- Emits per-glyph bitmaps, advances and vertical bearings: Big monospaced at 6 px, Regular and Small proportional (2–6 px); line spacing 8 px for Big, 6 px otherwise. It fails the build on a glyph whose `vert` box disagrees with its `uv` box (only the blank space glyph does, and nothing is drawn from it) or whose advance or bearing is fractional.
 - Places all 113 glyphs inside **one standard atlas row** so text blits on the 312 µs plateau.
+- Generates `app/source/Render/FontMetrics.mc`, the table the renderer reads: flat `Number` arrays, five entries per character code from 32 to 90 ([ADR 12](docs/adr/0012-verification-is-generated-not-transcribed.md)).
 
 **Data packer** (`prototype/data/pack_data.py`)
 - Packs `digimonDB.json` + `frontier_rarities.json` + `worlds.json` + `initials.json` into the byte layout, base64s it, and writes the string resources ([ADR 6](docs/adr/0006-packed-data-in-string-resources.md)).
@@ -96,7 +97,7 @@ Three generators, all run before `monkeyc`, all self-verifying.
 
 **Drawing a sprite** — `drawBitmap2` from a row buffer with `:bitmapX`/`:bitmapY`/`:bitmapWidth`/`:bitmapHeight`, `:transform` = `AffineTransform.setToScale(10, 10)`, `:filterMode` = `FILTER_MODE_POINT`, `:tintColor` = the ink colour. **Pass `x - 10 * srcX`, `y - 10 * srcY` as the destination**: with a transform set the device draws at `(x, y) + T * (bitmapX, bitmapY)`, so an uncompensated call puts the sprite off-screen and draws nothing. The tint is a multiply over white ink, so the same cell draws in any colour, and the transparent field lets it composite over what is already on screen.
 
-**Drawing text** — uppercase the string, then blit glyph by glyph, advancing by each glyph's own advance. `\n` breaks lines; **nothing wraps**. Characters with no glyph are skipped entirely ([ADR 10](docs/adr/0010-missing-glyphs-are-skipped.md)). Text clips at the canvas, not at its own rect; the rect exists for alignment.
+**Drawing text** — uppercase the string, then blit glyph by glyph, advancing by each glyph's own advance and dropping it by its own **vertical bearing** (Unity's `vert.y`, which sits Big's letters 2 px below its digits). `\n` breaks lines; **nothing wraps**. Characters with no glyph are skipped entirely ([ADR 10](docs/adr/0010-missing-glyphs-are-skipped.md)). Text clips at the canvas, not at its own rect; the rect exists for alignment. **Centre alignment halves the leftover width in device pixels, not game pixels**: the scene canvas is `m_PixelPerfect: 0`, so a line 3 game px wider than its box sits at −1.5 game px, which 10× expresses exactly and game-pixel rounding shifts by one.
 
 **Input** — see [ADR 9](docs/adr/0009-input-mapping.md). Down is `onDrag START` or `onHold`; up is `onDrag STOP` or `onRelease`; `onSwipe` is consumed; `onBack` is consumed and delivered as B.
 
@@ -129,10 +130,14 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 | Coroutines traceable from the real source | 53 / 53, 6,911 events |
 | Rendered frame against the atlas, read back off the device | 576 / 576 pixels per cell, two cells |
 | Same, drawn inverted (tinted ink over a black box) | 576 / 576 |
+| Flipped blits (h, v, both) against the atlas | 576 / 576 each |
+| Text canvas against the font metrics, read back off the device | 102,400 / 102,400 device pixels, 5 strings |
 
 `tools/verify_render.py` runs the render-parity check: it resolves the sprite reference out of `build/data.bin` — the bytes the device itself reads — samples the centre of each 10× block of a captured frame, and diffs. It is what caught both device behaviours above; neither was visible in a screenshot at a glance.
 
-Two checks still to be built: **font metrics** (render a fixed string set, compare widths and positions against values computed from the `.fontsettings`; include a name with parentheses), and **per-coroutine golden diffs** as each of the 60 is converted.
+`tools/verify_text.py` is the font-metrics check: `tools/text_probe.json` holds a fixed string set covering all three faces, every anchor the source uses, the vertical bearing, a line break, a name with parentheses (no glyph, so it must vanish) and inversion; `tools/gen_text_probe.py` generates the scene the app draws from that spec and the checker computes the expected 320 × 320 canvas from the same spec, so neither side can drift. It caught the half-pixel centring rule above.
+
+One check still to be built: **per-coroutine golden diffs** as each of the 60 is converted.
 
 ## 8. Known open items
 

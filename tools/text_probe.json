@@ -1,0 +1,15 @@
+{
+  "_comment": "The fixed string set for the font-metrics check (SPEC section 7). Read by tools/gen_text_probe.py, which generates the scene the app draws, and by tools/verify_text.py, which computes what that scene must look like -- so the two can never drift. Boxes are game pixels; anchor 0/1/2 = upper left/centre/right.",
+  "strings": [
+    {"text": "AGUMON 12",   "face": "Big",     "x": 0, "y": 0,  "w": 32, "anchor": 0, "inverted": false,
+     "why": "Big is monospaced, and its letters carry a 2 px vertical bearing its digits do not"},
+    {"text": "LV 99!",      "face": "Regular", "x": 0, "y": 9,  "w": 30, "anchor": 2, "inverted": false,
+     "why": "proportional advances, right-aligned, and the only punctuation any face has"},
+    {"text": "HP 1234",     "face": "Small",   "x": 0, "y": 15, "w": 30, "anchor": 1, "inverted": false,
+     "why": "centre alignment rounds in game pixels, not device pixels"},
+    {"text": "(BOSS)\nX9",  "face": "Small",   "x": 0, "y": 21, "w": 30, "anchor": 0, "inverted": false,
+     "why": "parentheses have no glyph and are skipped entirely (ADR 10); the line break advances by lineSpacing"},
+    {"text": "INV 07",      "face": "Regular", "x": 2, "y": 26, "w": 12, "anchor": 0, "inverted": true,
+     "why": "inverted text: the box paints ink and the glyphs paint the field colour"}
+  ]
+}

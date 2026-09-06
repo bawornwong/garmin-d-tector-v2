@@ -31,17 +31,24 @@ import Toybox.WatchUi;
 class AtlasCache {
     const CAP = 16;
 
-    // atlasClass -> [cellW, cellH, cols] for the three grid atlases;
-    // class 3 (the odd strip) has no grid and is handled separately.
+    // atlasClass -> [cellW, cellH, cols] for the three grid atlases.
     const GEOM = {
         0 => [24, 24, 24],
         1 => [32, 32, 24],
         2 => [14, 16, 24],
     };
-    const ODD_WIDTH = 1011;
-    const ODD_HEIGHT = 82;
+    // The gridless atlases -- class 3 is the odd-size sprite strip, 4 to 6 the
+    // three font faces (Kaisa.Font.ATLAS_CLASS). Each is one row: short enough
+    // that the whole thing is the row buffer, which is the point of packing
+    // every glyph of a face into a single strip.
+    const STRIP = {
+        3 => [1011, 82],
+        4 => [185, 7],
+        5 => [145, 5],
+        6 => [138, 5],
+    };
 
-    var _atlas as Array = [null, null, null, null];
+    var _atlas as Array = [null, null, null, null, null, null, null];
     var _rows as Dictionary = {};
     var _order as Array<String> = [];
 
@@ -53,13 +60,17 @@ class AtlasCache {
         _atlas[1] = WatchUi.loadResource(Rez.Drawables.Atlas32);
         _atlas[2] = WatchUi.loadResource(Rez.Drawables.Atlas14x16);
         _atlas[3] = WatchUi.loadResource(Rez.Drawables.AtlasOdd);
+        _atlas[4] = WatchUi.loadResource(Rez.Drawables.FontBig);
+        _atlas[5] = WatchUi.loadResource(Rez.Drawables.FontRegular);
+        _atlas[6] = WatchUi.loadResource(Rez.Drawables.FontSmall);
     }
 
     // Returns [BufferedBitmap, localX, localY] to blit from, or null if the
     // row could not be materialised (pool overcommitted this frame).
     function locate(cls as Number, x as Number, y as Number) as Array? {
-        if (cls == 3) {
-            var buf = rowBuffer(3, 0, ODD_WIDTH, ODD_HEIGHT);
+        var strip = STRIP[cls];
+        if (strip != null) {
+            var buf = rowBuffer(cls, 0, strip[0], strip[1]);
             return (buf == null) ? null : [buf, x, y];
         }
         var geom = GEOM[cls];
