@@ -1,44 +1,48 @@
 {
  "sections": {
   "entries": {
-   "offset": 82,
+   "offset": 90,
    "length": 37952
   },
   "names": {
-   "offset": 38034,
+   "offset": 38042,
    "length": 7212
   },
   "codes": {
-   "offset": 45246,
+   "offset": 45254,
    "length": 2965
   },
   "abilities": {
-   "offset": 48211,
+   "offset": 48219,
    "length": 2275
   },
   "abilitySprites": {
-   "offset": 50486,
+   "offset": 50494,
    "length": 1351
   },
   "energySprites": {
-   "offset": 51837,
+   "offset": 51845,
    "length": 112
   },
   "extraEvo": {
-   "offset": 51949,
+   "offset": 51957,
    "length": 296
   },
   "bossStats": {
-   "offset": 52245,
+   "offset": 52253,
    "length": 132
   },
   "worlds": {
-   "offset": 52377,
+   "offset": 52385,
    "length": 740
   },
   "initials": {
-   "offset": 53117,
+   "offset": 53125,
    "length": 38
+  },
+  "orderIndex": {
+   "offset": 53163,
+   "length": 1188
   }
  },
  "entrySize": 64,

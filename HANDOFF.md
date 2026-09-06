@@ -2,7 +2,7 @@
 
 Companion to [SPEC.md](SPEC.md), which is the *specification* and does not change much. This file is the *state*: what is built, what is proven, what to do next, and which traps are already known. Update it at the end of a working session.
 
-Last updated: 2026-09-06, at commit `28a23b4`.
+Last updated: 2026-09-06, at commit `HEAD` (the Database app and the coroutine runner).
 
 ## 1. Set this up first — it is not in the repo
 
@@ -38,6 +38,7 @@ app/source/
               WellKnown.mc        GENERATED: the 8 literal Digimon names as indices
   Input/      InputAdapter.mc     twelve abstract events + the queue (ADR 9)
   Save/       SaveFormat.mc       the positional save blob (ADR 8)
+  Anim/       Runner.mc           Routine / Fiber / Runner (ADR 4 + ADR 5)
   Render/     AtlasCache.mc       row buffers, LRU of 16 (ADR 3)
               Blit.mc             the drawBitmap2 rules: transform offset, tint, flips
               Renderer.mc         walks the display list once per frame
@@ -52,6 +53,7 @@ app/source/
               GameManager.mc, IllegalBoundsException.mc
   Apps/       DigiviceApp.mc      base app: the twelve inputs, screen, tick
               Status.mc           the first real app, all seven of its screens
+              DatabaseApp.mc      six screens, three converted coroutines
 ```
 
 Generated files are marked GENERATED and say which tool writes them. Never hand-edit one; ADR 12 is the reason.
@@ -65,8 +67,8 @@ Against SPEC section 6's order of work:
 | 3. Input adapter | done |
 | 4. Logic layer | **in progress** — the foundation and the Status/Database dependencies are translated; everything else is not |
 | 5. Text renderer | done |
-| 6. Vertical slice: Status + Database | **half** — Status runs; DatabaseApp is not started |
-| 7. Runner + fibers, then the 4 linear coroutines | not started |
+| 6. Vertical slice: Status + Database | **done** — both apps run |
+| 7. Runner + fibers, then the 4 linear coroutines | **runner done** (concurrent fibers, ADR 5 schedule); 3 coroutines converted (DatabaseApp's), the 4 linear ones from `Animations.cs` not yet |
 | 8. Battle | not started |
 | 9. The remaining apps and minigames | not started |
 | 10. `StartGameAnimation` | not started |
@@ -81,6 +83,7 @@ Every check reads a frame back off the device or diffs two real implementations.
 | Glyph round-trip | 113 / 113 | `tools/pack_fonts.py` |
 | UI sprite resolution | 215 resolved, 1 unassigned in the scene | `tools/pack_ui_sprites.py` |
 | Numeric parity, original C# ↔ ported Monkey C | 16,211 values, 0 differences, floats bit-exact | `tools/verify_numeric.py` |
+| Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
 | Rendered sprite vs atlas (normal) | 576 / 576 | set `_probeIndex`, capture, `tools/verify_render.py <png> 8` |
 | Rendered sprite vs atlas (inverted) | 576 / 576 | also set `_probeInvert`, then `... --inverted` |
 | Text canvas vs font metrics | 102,400 / 102,400 device px | set `_probeText`, capture, `tools/verify_text.py <png>` |
@@ -108,23 +111,23 @@ All measured, all already encoded in the code that depends on them — listed he
 
 ## 5. What to do next
 
-**Immediately: `DatabaseApp` (`Logic/Apps/DatabaseApp.cs`, 484 lines)** — the other half of the vertical slice. It is the right next thing because it exercises what Status did not: menus with a cursor, paging through 593 entries, the element/stage/rarity art, and the D-Dock section. It needs, roughly in this order:
+**Immediately: the host that owns the apps.** `LogicManager`'s screen state machine plus `AppLoader`, the main menu and `Camp`, so apps can be opened and closed for real. Today `DTectorView.closeLoadedApp` only logs and the slice starts one app directly, which is the last piece of scaffolding standing between the port and a playable shell. It needs:
 
-1. `Logic/Models/Menu.cs` (43 lines) — the cursor/paging model.
-2. The `Database`-side accessors it reads: names, numbers, stages, elements, evolution lines, `extraEvolutions` (the packed `extraEvo` section has no reader yet).
-3. `LogicManager`'s Digimon-data region (`GetDigimonExtraLevel`, ownership, digicode unlocks) — the file already carries the player-stat half and a `port of` line per method, so keep appending in source order.
-4. The app itself, with `DigiviceApp` as its base, plus whichever `Kaisa.Sprites.DATABASE_*` constants it names.
+1. `Logic/Models/Menu.cs` (43 lines) and the `MainMenu` / `Screen` enums (already translated in `Logic/Enums.mc`).
+2. `LogicManager`'s screen region — the state machine that owns `currentScreen`, the menu indices and the app lifecycle.
+3. `AppLoader.cs` (93 lines), reduced to "make the app object": the original instantiates prefabs.
+4. `Camp.cs` (47 lines), the smallest remaining app, as the second consumer of the host.
 
 **Then, in order:**
 
-- **The host that owns the apps.** `LogicManager`'s screen state machine plus `AppLoader`, `Camp`, and the main menu, so apps can actually be opened and closed. Today `DTectorView.closeLoadedApp` only logs, and `Status` is started directly.
-- **Step 7: the runner and fibers**, then the four linear coroutines, to validate the conversion pipeline end to end (ADR 4, ADR 5). This unblocks every animation and is what the per-coroutine golden check hangs off.
+- **The rest of step 7**: the four linear coroutines from `Animations.cs`, each with its golden diff, to validate the conversion pipeline against the reference trace rather than against three app-local animations.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
 
 ## 6. Traps and loose ends
 
-- **`DTectorView` is scaffolding.** `seedSkeletonStats` writes demo stats into the save record in RAM (never committed) so the Status screens have numbers of varying width; the probe flags build fixed scenes instead of the game. All of it comes out when the real host in step 5 above lands.
+- **`DTectorView` is scaffolding.** `seedSkeletonStats` writes demo stats and a spread of unlocked Digimon into the save record in RAM (never committed) so the screens have something to show; `_sliceApp` picks which app to start; `_probeInputs` replays a scripted press sequence so a capture can reach a screen several presses deep. All of it comes out when the real host lands.
+- **`Animations.cs` is not translated at all.** `GameManager.enqueueAnimation` takes null from every call site that would play one, and each such site says so. The three coroutines that exist are DatabaseApp's own.
 - **`Database.indexOfCode` will trip the watchdog** the way `indexOfName` did: it decodes 593 strings. Compare at the byte level before CodeInput ships.
 - **Every render timing in SPEC is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
 - **Worlds, areas and bosses are unsurveyed.** `WorldManager` carries only the two counters Status reads; the rest is deliberately absent rather than guessed, and SPEC section 8 lists what is unknown.

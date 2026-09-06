@@ -55,9 +55,17 @@ class DTectorView extends WatchUi.View {
     var _probeIndex as Number = -1;
     var _probeInvert as Boolean = false;
     var _probeText as Boolean = false;
-    // Which Status screen the slice starts on; the app pages with left/right
-    // as usual, this only saves pressing them to capture a given screen.
+    // Which app the slice starts, and which of its screens: the apps page with
+    // left/right as usual, this only saves pressing them to capture a given
+    // screen. 0 = Status, 1 = Database.
+    var _sliceApp as Number = 0;
     var _probeStatusScreen as Number = 0;
+    // A scripted input sequence, one event per frame from frame 5, so a
+    // capture can reach a screen several presses deep. It goes through
+    // dispatch() like a real press, so the probe exercises the input path
+    // rather than reaching around it.
+    var _probeInputs as Array<Number> = [];
+    var _probeInputAt as Number = 0;
 
     function initialize() {
         View.initialize();
@@ -122,10 +130,17 @@ class DTectorView extends WatchUi.View {
         var saved = new SavedGame(_save, 0, record);
         _gm = new GameManager(_data, db, saved);
 
-        var app = new Status(_gm, self, root);
-        app.currentScreen = _probeStatusScreen;
-        app.startApp();
-        _app = app;
+        if (_sliceApp == 1) {
+            var app = new DatabaseApp(_gm, self, root);
+            app.currentScreen = _probeStatusScreen;
+            app.startApp();
+            _app = app;
+        } else {
+            var app = new Status(_gm, self, root);
+            app.currentScreen = _probeStatusScreen;
+            app.startApp();
+            _app = app;
+        }
     }
 
     // SKELETON SCAFFOLDING, in RAM only and never committed: a fresh save is
@@ -141,6 +156,14 @@ class DTectorView extends WatchUi.View {
         record.totalBattles = 13;
         record.totalWins = 9;
         record.ddockDigimon[0] = _demoIndex;
+        // A locked database is an empty database: unlock a spread of Digimon
+        // so the gallery, the pages and the spirit menu all have something in
+        // them. Level 1 is "owned at base level" (LogicManager's off-by-one).
+        for (var i = 0; i < record.digimonLevel.size(); i += 4) {
+            record.digimonLevel[i] = 1;
+        }
+        record.digimonLevel[_demoIndex] = 3;
+        record.digicodeUnlocked[_demoIndex] = true;
     }
 
     // IAppController.CloseLoadedApp
@@ -211,6 +234,11 @@ class DTectorView extends WatchUi.View {
                 dispatch(events[i]);
             }
         }
+        if (_probeInputAt < _probeInputs.size() && _frame > 4) {
+            dispatch(_probeInputs[_probeInputAt]);
+            _probeInputAt += 1;
+        }
+        if (_gm != null) { _gm.runner.advance(TICK_MS.toFloat()); }
         if (_app != null) { _app.tick(TICK_MS); }
         advanceFlicks(_root, TICK_MS);
         WatchUi.requestUpdate();

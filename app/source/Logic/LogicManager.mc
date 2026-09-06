@@ -114,8 +114,57 @@ class LogicManager {
         return _saved.ddockDigimon(ddock);
     }
 
+    // LogicManager.cs:559 -- "unlocked" is a stored level above zero.
+    function getDigimonUnlocked(digimonIndex as Number) as Boolean {
+        return _saved.digimonLevel(digimonIndex) > 0;
+    }
+
+    // LogicManager.cs:584
     function getDigimonExtraLevel(digimonIndex as Number) as Number {
-        return _saved.digimonExtraLevel(digimonIndex);
+        return _saved.digimonLevel(digimonIndex) - 1;
+    }
+
+    // LogicManager.cs:563 -- clamps to the Digimon's own maximum, and cannot
+    // be used to LOCK a Digimon (the floor of 1 is on the extra level, so the
+    // stored level never goes below 2 through here).
+    function setDigimonExtraLevel(digimonIndex as Number, val as Number) as Void {
+        var d = _db.getDigimon(digimonIndex);
+        if (d == null) { return; }
+        var v = val;
+        var maxExtraLevel = d.maxExtraLevel();
+        if (v > maxExtraLevel) { v = maxExtraLevel; }
+        if (v < 1) { v = 1; }
+        _saved.setDigimonLevel(digimonIndex, v + 1);
+    }
+
+    // LogicManager.cs:591
+    function getDigicodeUnlocked(digimonIndex as Number) as Boolean {
+        return _saved.digicodeUnlocked(digimonIndex);
+    }
+
+    function setDigicodeUnlocked(digimonIndex as Number, val as Boolean) as Void {
+        _saved.setDigicodeUnlocked(digimonIndex, val);
+    }
+
+    // LogicManager.cs:660 -- "The player only has 4 D-Docks."
+    function setDDockDigimon(ddock as Number, digimonIndex as Number) as Void {
+        if (ddock > 3) { return; }
+        _saved.setDDockDigimon(ddock, digimonIndex);
+    }
+
+    // LogicManager.cs:664. An empty dock is -1 here, "" in the original.
+    function isDDockEmpty(ddock as Number) as Boolean {
+        return _saved.ddockDigimon(ddock) < 0;
+    }
+
+    // LogicManager.cs:666 -- only the docks that hold something.
+    function getAllDDockDigimon() as Array<Number> {
+        var notEmpty = [] as Array<Number>;
+        for (var i = 0; i < 4; i += 1) {
+            var d = _saved.ddockDigimon(i);
+            if (d >= 0) { notEmpty.add(d); }
+        }
+        return notEmpty;
     }
 
     // LogicManager.cs:589

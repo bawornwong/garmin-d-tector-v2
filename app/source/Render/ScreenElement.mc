@@ -284,6 +284,20 @@ class TextBoxBuilder extends ScreenElement {
         componentHeight = h;
         return self;
     }
+
+    // TextBoxBuilder.SetFitSizeToContent: Unity switches a ContentSizeFitter
+    // on and reads the width back a frame later. The port measures the string
+    // outright, so the width is right immediately -- the one place a caller
+    // has to care is AnimateName, whose `yield return null` was waiting for
+    // exactly that measurement and is kept because it is also a real frame of
+    // the original's timing.
+    function setFitSizeToContent(val as Boolean) as TextBoxBuilder {
+        if (val) {
+            componentWidth = Kaisa.TextMetrics.width(font, text);
+            width = componentWidth;
+        }
+        return self;
+    }
 }
 
 // RectangleBuilder: a filled rectangle, optionally flicking. The flick is a

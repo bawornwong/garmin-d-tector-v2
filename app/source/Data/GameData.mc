@@ -64,6 +64,7 @@ class GameData {
     const SEC_BOSS_STATS = 7;
     const SEC_WORLDS = 8;
     const SEC_INITIALS = 9;
+    const SEC_ORDER_INDEX = 10;
 
     function initialize() {
     }
@@ -165,6 +166,18 @@ class GameData {
         var cls = u8(o);
         if (cls == 0xFF) { return null; }
         return [cls, u16(o + 1), u16(o + 3), u8(o + 5), u8(o + 6)];
+    }
+
+    // The gallery order: row indices sorted by the editorial `order` field,
+    // packed because that field does NOT follow row order (all eight stages
+    // disagree; see tools/verify_gallery.py) and the alternative is sorting up
+    // to 136 rows on a menu press.
+    function orderCount() as Number {
+        return u16(_secOff[SEC_ORDER_INDEX]);
+    }
+
+    function orderIndex(position as Number) as Number {
+        return u16(_secOff[SEC_ORDER_INDEX] + 2 + position * 2);
     }
 
     // Boss stats are packed as a SPARSE table -- u16 count, then one

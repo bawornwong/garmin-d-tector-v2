@@ -90,12 +90,14 @@ class SavedGame {
         touch();
     }
 
-    // The extra levels a Digimon the player owns has gained. 0 means owned at
-    // base level; the original stores -1 for "not owned".
-    function digimonExtraLevel(digimonIndex as Number) as Number {
+    // SavedGame.GetDigimonLevel: the RAW level, where 0 means the player does
+    // not have the Digimon at all and 1 means they have it at its base level.
+    // LogicManager is where that becomes "unlocked" and "extra level" -- the
+    // off-by-one lives there in the original too.
+    function digimonLevel(digimonIndex as Number) as Number {
         return record.digimonLevel[digimonIndex];
     }
-    function setDigimonExtraLevel(digimonIndex as Number, v as Number) as Void {
+    function setDigimonLevel(digimonIndex as Number, v as Number) as Void {
         record.digimonLevel[digimonIndex] = v;
         touch();
     }

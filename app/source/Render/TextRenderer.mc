@@ -30,6 +30,56 @@ module Kaisa {
     }
 }
 
+// Measuring is separate from drawing: TextBoxBuilder.SetFitSizeToContent has
+// to know how wide a string is before anything is on screen, and the metrics
+// table is static data with no atlas or Dc behind it.
+module Kaisa {
+    module TextMetrics {
+        // [x, w, h, advance, offsetY] for one character, or null if this face
+        // has no glyph for it. The caller has already uppercased.
+        function glyph(face as Number, code as Number) as Array<Number>? {
+            if (code < Kaisa.Font.FIRST_CODE || code > Kaisa.Font.LAST_CODE) { return null; }
+            var table = Kaisa.Font.glyphs(face);
+            var base = (code - Kaisa.Font.FIRST_CODE) * Kaisa.Font.FIELDS;
+            if (table[base] < 0) { return null; }
+            return [table[base], table[base + 1], table[base + 2],
+                    table[base + 3], table[base + 4]];
+        }
+
+        // Width in game pixels of one line, summing advances. A character with
+        // no glyph contributes nothing at all -- not even its advance --
+        // because it is skipped entirely (ADR 10).
+        function lineWidth(face as Number, line as String) as Number {
+            var chars = line.toCharArray();
+            var w = 0;
+            for (var i = 0; i < chars.size(); i += 1) {
+                var g = glyph(face, chars[i].toNumber());
+                if (g != null) { w += g[3]; }
+            }
+            return w;
+        }
+
+        // The widest line of a (possibly multi-line) string, which is what
+        // Unity's ContentSizeFitter reports as the component's width.
+        function width(face as Number, text as String) as Number {
+            var upper = Kaisa.Font.CONVERT_CASE[face] ? text.toUpper() : text;
+            var chars = upper.toCharArray();
+            var best = 0;
+            var w = 0;
+            for (var i = 0; i < chars.size(); i += 1) {
+                if (chars[i] == '\n') {
+                    if (w > best) { best = w; }
+                    w = 0;
+                } else {
+                    var g = glyph(face, chars[i].toNumber());
+                    if (g != null) { w += g[3]; }
+                }
+            }
+            return (w > best) ? w : best;
+        }
+    }
+}
+
 class TextRenderer {
     var _atlas as AtlasCache;
 
@@ -37,28 +87,12 @@ class TextRenderer {
         _atlas = atlas;
     }
 
-    // [x, w, h, advance, offsetY] for one character, or null if this face has
-    // no glyph for it. The caller has already uppercased.
     function glyph(face as Number, code as Number) as Array<Number>? {
-        if (code < Kaisa.Font.FIRST_CODE || code > Kaisa.Font.LAST_CODE) { return null; }
-        var table = Kaisa.Font.glyphs(face);
-        var base = (code - Kaisa.Font.FIRST_CODE) * Kaisa.Font.FIELDS;
-        if (table[base] < 0) { return null; }
-        return [table[base], table[base + 1], table[base + 2],
-                table[base + 3], table[base + 4]];
+        return Kaisa.TextMetrics.glyph(face, code);
     }
 
-    // Width in game pixels of one line, summing advances. A character with no
-    // glyph contributes nothing at all -- not even its advance -- because it
-    // is skipped entirely (ADR 10).
     function lineWidth(face as Number, line as String) as Number {
-        var chars = line.toCharArray();
-        var w = 0;
-        for (var i = 0; i < chars.size(); i += 1) {
-            var g = glyph(face, chars[i].toNumber());
-            if (g != null) { w += g[3]; }
-        }
-        return w;
+        return Kaisa.TextMetrics.lineWidth(face, line);
     }
 
     // Draws `text` with its top-left at the DEVICE pixel (x, y), aligned

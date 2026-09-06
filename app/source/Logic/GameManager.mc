@@ -14,6 +14,7 @@ class GameManager {
     var logicMgr as LogicManager;
     var worldMgr as WorldManager;
     var audioMgr as AudioManager;
+    var runner as Runner;
 
     function initialize(dataIn as GameData, dbIn as Database, savedIn as SavedGame) {
         data = dataIn;
@@ -22,6 +23,19 @@ class GameManager {
         logicMgr = new LogicManager(savedIn, dbIn);
         worldMgr = new WorldManager(savedIn);
         audioMgr = new AudioManager();
+        runner = new Runner();
+    }
+
+    // GameManager.EnqueueAnimation. The original queues an animation coroutine
+    // and plays it over whatever screen is loaded.
+    //
+    // NOT TRANSLATED YET: Animations.cs is 2,902 lines and belongs to step 7
+    // of SPEC's order of work. Call sites pass null until their animation is
+    // converted, so the game logic around them stays line-for-line and the
+    // holes are visible here rather than scattered.
+    function enqueueAnimation(routine as Routine?) as Void {
+        if (routine == null) { return; }
+        runner.start(routine);
     }
 
     // GameManager.GetDDockScreenElement -- the dock plate with its Digimon.
@@ -35,11 +49,71 @@ class GameManager {
         return Kaisa.ScreenBuilder.buildDDockScreenElement(ddock, sprite, parent);
     }
 
-    // GameManager.GetAllDDockDigimons
+    // GameManager.GetAllDDockDigimons -- all four slots, empty ones included.
     function getAllDDockDigimons() as Array<Number> {
         var out = new [4];
         for (var i = 0; i < 4; i += 1) {
             out[i] = logicMgr.getDDockDigimon(i);
+        }
+        return out;
+    }
+
+    // GameManager.cs:417
+    function isInDock(digimonIndex as Number) as Boolean {
+        for (var i = 0; i < 4; i += 1) {
+            if (logicMgr.getDDockDigimon(i) == digimonIndex) { return true; }
+        }
+        return false;
+    }
+
+    // GameManager.cs:313, which ends in .OrderBy(d => d.order).
+    //
+    // `order` is an editorial field and does NOT follow row order: checking it
+    // (tools/verify_gallery.py) found all eight stages disagreeing, one of them
+    // by 200 rows. So the sorted sequence is packed at build time and walked
+    // here -- the alternative is sorting up to 136 rows on a menu press.
+    // The other two queries below do NOT sort in the original, so they stay in
+    // row order.
+    function getAllUnlockedDigimonInStage(stage as Number) as Array<Number> {
+        var out = [] as Array<Number>;
+        var n = data.orderCount();
+        for (var k = 0; k < n; k += 1) {
+            var i = data.orderIndex(k);
+            if (db.isDisabled(i)) { continue; }
+            if (data.stage(i) == stage && logicMgr.getDigimonUnlocked(i)) {
+                out.add(i);
+            }
+        }
+        return out;
+    }
+
+    // GameManager.cs:322
+    function getAllUnlockedSpiritsOfElement(element as Number) as Array<Number> {
+        var out = [] as Array<Number>;
+        var n = db.count();
+        for (var i = 0; i < n; i += 1) {
+            if (db.isDisabled(i)) { continue; }
+            if (data.stage(i) == Kaisa.STAGE_SPIRIT
+                    && data.element(i) == element
+                    && data.spiritType(i) != Kaisa.SPIRIT_FUSION
+                    && logicMgr.getDigimonUnlocked(i)) {
+                out.add(i);
+            }
+        }
+        return out;
+    }
+
+    // GameManager.cs:348
+    function getAllUnlockedFusionDigimon() as Array<Number> {
+        var out = [] as Array<Number>;
+        var n = db.count();
+        for (var i = 0; i < n; i += 1) {
+            if (db.isDisabled(i)) { continue; }
+            if (data.stage(i) == Kaisa.STAGE_SPIRIT
+                    && data.spiritType(i) == Kaisa.SPIRIT_FUSION
+                    && logicMgr.getDigimonUnlocked(i)) {
+                out.add(i);
+            }
         }
         return out;
     }

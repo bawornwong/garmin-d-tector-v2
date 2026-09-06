@@ -155,6 +155,16 @@ def main():
             for n in names_:
                 wblob += struct.pack("<h", name_to_index.get(n, -1))
 
+    # The gallery order. GameManager's queries end in .OrderBy(d => d.order),
+    # and `order` is an editorial field that does NOT follow row order --
+    # tools/verify_gallery.py showed all eight stages disagreeing, the worst by
+    # 200 rows. Sorting at runtime would mean sorting up to 136 rows on a menu
+    # press, so the sorted sequence is packed instead: row indices in `order`
+    # order, ties broken by row index the way C#'s stable OrderBy does.
+    order_index = sorted(range(len(db)), key=lambda i: (db[i]["order"], i))
+    order_blob = struct.pack("<H", len(order_index))
+    order_blob += b"".join(struct.pack("<H", i) for i in order_index)
+
     init_blob = struct.pack("<H", len(initials))
     init_blob += b"".join(struct.pack("<H", name_to_index[n]) for n in initials)
 
@@ -163,6 +173,7 @@ def main():
         ("abilities", ability_names), ("abilitySprites", ability_sprites),
         ("energySprites", energy_sprites), ("extraEvo", extra_table),
         ("bossStats", boss_stats_table), ("worlds", wblob), ("initials", init_blob),
+        ("orderIndex", order_blob),
     ]
 
     header = struct.pack("<H", len(sections))

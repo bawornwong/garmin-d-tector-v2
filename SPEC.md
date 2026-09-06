@@ -35,7 +35,7 @@ Asset budget, all measured:
 |---|---|
 | Sprite atlases (2,423 sprites) | 217 KB |
 | Font atlas (113 glyphs) | 525 B |
-| Packed game data | 26,484 B (35,312 B as base64) |
+| Packed game data | 54,351 B (72,468 B as base64, 3 string resources) |
 | One save slot | 963 B |
 
 ## 3. Architecture
@@ -92,10 +92,11 @@ Three generators, all run before `monkeyc`, all self-verifying.
 **Data packer** (`tools/pack_data.py`)
 - Packs `digimonDB.json` + `frontier_rarities.json` + `worlds.json` + `initials.json` into the byte layout, base64s it, and writes the string resources ([ADR 6](docs/adr/0006-packed-data-in-string-resources.md)).
 - Row order is `digimonDB.json` order, shared with the sprite and save tables ([ADR 7](docs/adr/0007-one-row-order-shared-by-three-tables.md)).
+- Also packs the **gallery order**: the row indices sorted by the editorial `order` field. That field does *not* follow row order — checking it found all eight stages disagreeing, one by 200 rows — and the alternative is sorting up to 136 rows on a menu press.
 
 ## 5. Runtime
 
-**Startup** — load the packed data (35,312 chars → 26,484 bytes, about 1 ms), build the index tables, restore the save slot. Decode each base64 string resource to a `ByteArray` **separately** and join with `addAll`: **Monkey C string concatenation wraps modulo 65,536** rather than throwing, so joining the chunks first silently truncates the blob (70,876 chars came back as 5,340 = 70,876 − 65,536). Row buffers are *not* pre-filled.
+**Startup** — load the packed data (72,468 chars → 54,351 bytes, about 1 ms), build the index tables, restore the save slot. Decode each base64 string resource to a `ByteArray` **separately** and join with `addAll`: **Monkey C string concatenation wraps modulo 65,536** rather than throwing, so joining the chunks first silently truncates the blob (70,876 chars came back as 5,340 = 70,876 − 65,536). Row buffers are *not* pre-filled.
 
 **Row residency** — an LRU of 16 row buffers, each holding a strong reference; eviction drops the reference. A fill costs 8 ms, affordable on a screen transition and not inside an animation. Allocation is wrapped in `try`: overcommitting the pool throws. A row whose strong reference was dropped is treated as empty and refilled.
 
@@ -138,6 +139,7 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 | Same, drawn inverted (tinted ink over a black box) | 576 / 576 |
 | Flipped blits (h, v, both) against the atlas | 576 / 576 each |
 | Text canvas against the font metrics, read back off the device | 102,400 / 102,400 device pixels, 5 strings |
+| Packed gallery order against the original's `OrderBy(order)` | 8 / 8 stages, 593 rows |
 
 `tools/verify_numeric.py` runs the numeric-parity check on both sides at once: the C# side compiles the **original** `Logic/Models/Digimon.cs` against a Mathf shim, the Monkey C side compiles the **ported** `app/source/Logic/Digimon.mc` through its own jungle `sourcePath`, and the two sweeps are diffed line for line. Float results are compared as IEEE-754 bit patterns, so a one-ULP difference — the thing that moves a floor boundary elsewhere — cannot hide behind a decimal rendering. It covers `MaxExtraLevel`, `GetSpiritCost`, `GetCallCost`, `GetBossLevel`, `GetObeyChance`, `GetIdleChance`, `GetEvolveChance`, `GetBossStats`, `GetFriendlyStats` and `GetEnergyRank`. **`Mathf.RoundToInt` is half-to-even and Monkey C's `Math.round` is not**, so the port has its own `roundToInt`; this check is what would have caught the difference.
 
