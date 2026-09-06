@@ -371,4 +371,5 @@ class AudioManager {
     function playCharHappy() as Void { Kaisa.Trace.event("sound charHappy"); }
     function playCharSad() as Void { Kaisa.Trace.event("sound charSad"); }
     function playSound(s as String) as Void { Kaisa.Trace.event("sound " + s); }
+    function stopSound() as Void { Kaisa.Trace.event("stopSound"); }
 }

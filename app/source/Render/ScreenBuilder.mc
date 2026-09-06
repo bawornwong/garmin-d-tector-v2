@@ -70,6 +70,16 @@ module Kaisa {
             return cbSign;
         }
 
+        // Animations.ClearAnimParent: the animation's own children go, the
+        // container stays for whatever plays next. Only the DIRECT children,
+        // as the original's `foreach (Transform child in AnimParent)` does --
+        // a composite's parts go with the composite.
+        function clearAnimParent(parent as ScreenElement) as Void {
+            while (parent.children.size() > 0) {
+                parent.children[0].dispose();
+            }
+        }
+
         // GameManager.GetDDockScreenElement: the dock's name plate, with the
         // Digimon standing in it -- or the empty-dock sprite when the dock
         // holds nothing (index -1).

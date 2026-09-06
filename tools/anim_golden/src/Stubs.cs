@@ -26,17 +26,33 @@ namespace UnityEngine {
         public override string ToString() { return name; }
     }
     public class GameObject : Object {
+        // The transform this object belongs to, so destroying it takes the
+        // element off the display instead of only logging that it did. Unity
+        // defers the removal to the end of the frame; nothing here observes
+        // the hierarchy within a frame, and leaving them in made a second
+        // ClearAnimParent dispose the first one's elements all over again.
+        public Transform owner;
         // An element leaving the display is one event, whether it went through
         // Dispose or through Destroy on its GameObject; the port has only the
         // one word for it.
-        public static void Destroy(GameObject g) { Trace.Log.E("dispose " + g.name); }
+        public static void Destroy(GameObject g) {
+            Trace.Log.E("dispose " + g.name);
+            if (g.owner != null && g.owner.parent != null) {
+                g.owner.parent.children.Remove(g.owner);
+                g.owner.parent = null;
+            }
+        }
         public GameObject gameObject { get { return this; } }
     }
     public class Transform : Object, IEnumerable {
         public void SetAsLastSibling() { }
         public List<Transform> children = new List<Transform>();
+        public Transform parent;
         public GameObject gameObject = new GameObject();
-        public IEnumerator GetEnumerator() { return children.GetEnumerator(); }
+        // A snapshot, because `foreach (Transform child in AnimParent)
+        // Destroy(child.gameObject)` is how ClearAnimParent works and the
+        // destruction now mutates this list.
+        public IEnumerator GetEnumerator() { return new List<Transform>(children).GetEnumerator(); }
         // Destroying a child of AnimParent is a real display event -- it is
         // how an animation cleans up after itself (Animations.ClearAnimParent)
         // -- so the children have to actually be here for the trace to show

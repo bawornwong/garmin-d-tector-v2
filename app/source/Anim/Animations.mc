@@ -677,11 +677,670 @@ class LaunchAttack extends Routine {
                 pc = 11;
                 return 0.0;
             case 15:
-                // ClearAnimParent: the animation's own children go, the
-                // container stays for whatever plays next.
-                while (parent.children.size() > 0) {
-                    parent.children[0].dispose();
+                Kaisa.ScreenBuilder.clearAnimParent(parent);
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1986  AttackCollision
+//
+// The two attacks meet in the middle. The first 16 steps are always the same
+// -- both sides walk one pixel towards each other -- and what happens on
+// contact is a table of five outcomes indexed by (friendlyAttack,
+// enemyAttack), each of them a nested coroutine in the original and a Routine
+// of its own here.
+//
+// `winner` is 0 friendly, 1 enemy, 2 tie. `extraPixels` carries the two
+// widths a wider-than-32 ability adds to each side's travel, which the
+// outcomes need after the collision -- so it lives on the class, as the
+// captured local it is in the original.
+class AttackCollision extends Routine {
+    var gm as GameManager;
+    var friendlyAttack as Number;
+    var friendlySprites as Array;
+    var enemyAttack as Number;
+    var enemySprites as Array;
+    var winner as Number;
+
+    var sbFriendlyAttack as SpriteBuilder?;
+    var sbEnemyAttack as SpriteBuilder?;
+    var extraPixels as Array<Number> = [0, 0];
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, friendlyAttackIn as Number,
+                        friendlySpritesIn as Array, enemyAttackIn as Number,
+                        enemySpritesIn as Array, winnerIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        friendlyAttack = friendlyAttackIn;
+        friendlySprites = friendlySpritesIn;
+        enemyAttack = enemyAttackIn;
+        enemySprites = enemySpritesIn;
+        winner = winnerIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbFriendlyAttack = Kaisa.ScreenBuilder.buildSprite("FriendlyAttack", parent)
+                    .setSize(24, 24);
+                sbFriendlyAttack.center().placeOutside(Kaisa.DIR_RIGHT);
+                sbEnemyAttack = Kaisa.ScreenBuilder.buildSprite("EnemyAttack", parent)
+                    .setSize(24, 24);
+                sbEnemyAttack.center().placeOutside(Kaisa.DIR_LEFT);
+                sbEnemyAttack.flipHorizontal(true);
+
+                extraPixels = [0, 0];
+
+                // Place the friendly attack above if he won.
+                if (winner == 0) { sbFriendlyAttack.setAsLastSibling(); }
+
+                if (friendlyAttack == 0) {
+                    sbFriendlyAttack.setSprite(friendlySprites[3]);
+                } else if (friendlyAttack == 1) {
+                    sbFriendlyAttack.setSprite(friendlySprites[2]);
+                } else if (friendlyAttack == 2) {
+                    sbFriendlyAttack.setSprite(friendlySprites[4]);
+                    if (friendlySprites[4] != null && friendlySprites[4][3] > 32) {
+                        extraPixels[0] = friendlySprites[4][3] - 24;
+                        sbFriendlyAttack.setSize(friendlySprites[4][3], 24)
+                            .move(Kaisa.DIR_RIGHT, extraPixels[0])
+                            .centerComponent()
+                            .placeOutside(Kaisa.DIR_RIGHT);
+                    }
+                } else if (friendlyAttack == 3) {
+                    sbFriendlyAttack.setActive(false);
                 }
+                if (enemyAttack == 0) {
+                    sbEnemyAttack.setSprite(enemySprites[3]);
+                } else if (enemyAttack == 1) {
+                    sbEnemyAttack.setSprite(enemySprites[2]);
+                } else if (enemyAttack == 2) {
+                    sbEnemyAttack.setSprite(enemySprites[4]);
+                    if (enemySprites[4] != null && enemySprites[4][3] > 32) {
+                        extraPixels[1] = enemySprites[4][3] - 24;
+                        sbEnemyAttack.setSize(enemySprites[4][3], 24)
+                            .move(Kaisa.DIR_LEFT, extraPixels[1])
+                            .centerComponent()
+                            .placeOutside(Kaisa.DIR_LEFT);
+                    }
+                } else if (enemyAttack == 3) {
+                    sbEnemyAttack.setActive(false);
+                }
+
+                gm.audioMgr.playSound("attackTravelVeryLong");
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 16; i++)
+                if (i >= 16) { pc = 3; return 0.0; }
+                sbFriendlyAttack.move(Kaisa.DIR_LEFT, 1);
+                sbEnemyAttack.move(Kaisa.DIR_RIGHT, 1);
+                pc = 2;
+                return 0.6 / 16;
+            case 2:
+                i += 1;
+                pc = 1;
+                return 0.0;
+            case 3:
+                // The pattern of the table is: tie, player win, player lose.
+                pc = 4;
+                rt.call(outcome());
+                return 0.0;
+            case 4:
+                Kaisa.ScreenBuilder.clearAnimParent(parent);
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+
+    function outcome() as Routine {
+        if (friendlyAttack == 0) {
+            if (enemyAttack == 0) { return new EnergyOrAbilityCollides(self); }
+            else if (enemyAttack == 1) { return new EnergyVsCrush(self); }
+            else if (enemyAttack == 2) { return new EnergyVsAbility(self); }
+            return new CrushVsAbility(self);
+        } else if (friendlyAttack == 1) {
+            if (enemyAttack == 0) { return new EnergyVsCrush(self); }
+            else if (enemyAttack == 1) { return new CrushCollides(self); }
+            return new CrushVsAbility(self);
+        } else if (friendlyAttack == 2) {
+            if (enemyAttack == 0) { return new EnergyVsAbility(self); }
+            else if (enemyAttack == 2) { return new EnergyOrAbilityCollides(self); }
+            return new CrushVsAbility(self);
+        }
+        // friendlyAttack == 3: reuse this animation because it's identical.
+        return new CrushVsAbility(self);
+    }
+
+    // The two local functions the outcomes share.
+    function transformAttackIntoCollision(sb as SpriteBuilder) as Void {
+        sb.setSprite(Kaisa.Sprites.BATTLE_ATTACK_COLLISION);
+        sb.setSize(7, 24);
+    }
+
+    function transformAttackIntoBigCollision(sb as SpriteBuilder) as Void {
+        sb.setSprite(Kaisa.Sprites.BATTLE_ATTACK_COLLISION_BIG);
+        sb.setSize(15, 32);
+        sb.setPosition(8, 0);
+    }
+}
+
+// AttackCollision._EnergyOrAbilityCollides
+class EnergyOrAbilityCollides extends Routine {
+    var a as AttackCollision;
+    var i as Number = 0;
+
+    function initialize(parentIn as AttackCollision) {
+        Routine.initialize();
+        a = parentIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                if (a.winner == 0) {
+                    a.transformAttackIntoCollision(a.sbEnemyAttack);
+                    i = 0; pc = 1; return 0.0;
+                } else if (a.winner == 1) {
+                    a.transformAttackIntoCollision(a.sbFriendlyAttack);
+                    i = 0; pc = 5; return 0.0;
+                }
+                // winner == 2: reuse the friendly attack as the big collision.
+                a.sbEnemyAttack.dispose();
+                a.transformAttackIntoBigCollision(a.sbFriendlyAttack);
+                pc = 9;
+                return 0.15;
+            case 1:                                 // for (i = 0; i < 40; i++)
+                if (i >= 40) { i = 0; pc = 3; return 0.0; }
+                if (i == 3) { a.sbEnemyAttack.dispose(); }
+                a.sbFriendlyAttack.move(Kaisa.DIR_LEFT, 1);
+                pc = 2;
+                return 0.6 / 16;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:                                 // for (i = 0; i < extraPixels[0]; i++)
+                if (i >= a.extraPixels[0]) { return Routine.DONE; }
+                a.sbFriendlyAttack.move(Kaisa.DIR_LEFT, 1);
+                pc = 4;
+                return 0.6 / 16;
+            case 4:
+                i += 1; pc = 3; return 0.0;
+            case 5:
+                if (i >= 40) { i = 0; pc = 7; return 0.0; }
+                if (i == 3) { a.sbFriendlyAttack.dispose(); }
+                a.sbEnemyAttack.move(Kaisa.DIR_RIGHT, 1);
+                pc = 6;
+                return 0.6 / 16;
+            case 6:
+                i += 1; pc = 5; return 0.0;
+            case 7:                                 // for (i = 0; i < extraPixels[1]; i++)
+                if (i >= a.extraPixels[1]) { return Routine.DONE; }
+                a.sbEnemyAttack.move(Kaisa.DIR_RIGHT, 1);
+                pc = 8;
+                return 0.6 / 16;
+            case 8:
+                i += 1; pc = 7; return 0.0;
+            case 9:
+                a.gm.audioMgr.stopSound();
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// AttackCollision._EnergyVsCrush
+class EnergyVsCrush extends Routine {
+    var a as AttackCollision;
+    var winnerSprite as SpriteBuilder?;
+    var loserSprite as SpriteBuilder?;
+    var winnerDirection as Number = Kaisa.DIR_LEFT;
+    var i as Number = 0;
+
+    function initialize(parentIn as AttackCollision) {
+        Routine.initialize();
+        a = parentIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                winnerSprite = (a.winner == 0) ? a.sbFriendlyAttack : a.sbEnemyAttack;
+                loserSprite = (a.winner == 0) ? a.sbEnemyAttack : a.sbFriendlyAttack;
+                winnerDirection = (a.winner == 0) ? Kaisa.DIR_LEFT : Kaisa.DIR_RIGHT;
+                a.transformAttackIntoCollision(loserSprite);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 16; i++)
+                if (i >= 16) { return Routine.DONE; }
+                if (i == 3) { loserSprite.dispose(); }
+                winnerSprite.move(winnerDirection, 1);
+                pc = 2;
+                return 0.6 / 16;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+        }
+        return Routine.DONE;
+    }
+}
+
+// AttackCollision._EnergyVsAbility -- the ability breaks in two and the
+// halves slide off past the energy panel that broke them.
+class EnergyVsAbility extends Routine {
+    var a as AttackCollision;
+    var winnerSprite as SpriteBuilder?;
+    var loserSprite as SpriteBuilder?;
+    var winnerDirection as Number = Kaisa.DIR_LEFT;
+    var cbBrokenAbilityUp as ContainerBuilder?;
+    var cbBrokenAbilityDown as ContainerBuilder?;
+    var i as Number = 0;
+
+    function initialize(parentIn as AttackCollision) {
+        Routine.initialize();
+        a = parentIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = a.gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                winnerSprite = (a.winner == 0) ? a.sbFriendlyAttack : a.sbEnemyAttack;
+                loserSprite = (a.winner == 0) ? a.sbEnemyAttack : a.sbFriendlyAttack;
+                winnerSprite.setTransparent(true);  // the energy panel is transparent
+
+                var brokenAbilityX = loserSprite.x;
+                var brokenAbilitySprite = loserSprite.sprite;
+                winnerDirection = (a.winner == 0) ? Kaisa.DIR_LEFT : Kaisa.DIR_RIGHT;
+                var loserExtra = a.extraPixels[(a.winner == 0) ? 1 : 0];
+
+                cbBrokenAbilityUp = Kaisa.ScreenBuilder.buildContainer("AbilityUp", parent, true)
+                    .setSize(24 + loserExtra, 12).setMaskActive(true);
+                cbBrokenAbilityUp.setPosition(brokenAbilityX, 4);
+                Kaisa.ScreenBuilder.buildSprite("AbilityUpSprite", cbBrokenAbilityUp)
+                    .setSize(24 + loserExtra, 24).centerComponent()
+                    .setPosition(0, 0).setSprite(brokenAbilitySprite)
+                    .flipHorizontal(a.winner == 0);
+
+                cbBrokenAbilityDown = Kaisa.ScreenBuilder.buildContainer("AbilityDown", parent, true)
+                    .setSize(24 + loserExtra, 12).setMaskActive(true);
+                cbBrokenAbilityDown.setPosition(brokenAbilityX, 16);
+                Kaisa.ScreenBuilder.buildSprite("AbilityDownSprite", cbBrokenAbilityDown)
+                    .setSize(24 + loserExtra, 24).centerComponent()
+                    .setPosition(0, -12).setSprite(brokenAbilitySprite)
+                    .flipHorizontal(a.winner == 0);
+
+                loserSprite.dispose();
+                // Place the winning attack above everything else.
+                winnerSprite.setAsLastSibling();
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { i = 0; pc = 3; return 0.0; }
+                cbBrokenAbilityUp.move(Kaisa.Enums.opposite(winnerDirection), 1)
+                                 .move(Kaisa.DIR_UP, 1);
+                cbBrokenAbilityDown.move(Kaisa.Enums.opposite(winnerDirection), 1)
+                                   .move(Kaisa.DIR_DOWN, 1);
+                winnerSprite.move(winnerDirection, 1);
+                pc = 2;
+                return 0.6 / 16;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:                                 // for (i = 0; i < extraPixels[winner]; i++)
+                if (i >= a.extraPixels[a.winner]) { return Routine.DONE; }
+                winnerSprite.move(winnerDirection, 1);
+                pc = 4;
+                return 0.6 / 16;
+            case 4:
+                i += 1; pc = 3; return 0.0;
+        }
+        return Routine.DONE;
+    }
+}
+
+// AttackCollision._CrushCollides
+class CrushCollides extends Routine {
+    var a as AttackCollision;
+    var pushDirection as Number = Kaisa.DIR_LEFT;
+    var i as Number = 0;
+
+    function initialize(parentIn as AttackCollision) {
+        Routine.initialize();
+        a = parentIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                i = 0;
+                if (a.winner == 2) { pc = 1; return 0.0; }
+                pushDirection = (a.winner == 0) ? Kaisa.DIR_LEFT : Kaisa.DIR_RIGHT;
+                pc = 4;
+                return 0.0;
+            case 1:                                 // a tie: they bounce apart
+                if (i >= 40) { pc = 3; return 0.0; }
+                a.sbFriendlyAttack.move(Kaisa.DIR_RIGHT, 1);
+                a.sbEnemyAttack.move(Kaisa.DIR_LEFT, 1);
+                pc = 2;
+                return 0.6 / 16;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:
+                a.gm.audioMgr.stopSound();
+                return Routine.DONE;
+            case 4:                                 // the winner pushes the loser
+                if (i >= 40) { return Routine.DONE; }
+                a.sbFriendlyAttack.move(pushDirection, 1);
+                a.sbEnemyAttack.move(pushDirection, 1);
+                pc = 5;
+                return 0.6 / 16;
+            case 5:
+                i += 1; pc = 4; return 0.0;
+        }
+        return Routine.DONE;
+    }
+}
+
+// AttackCollision._CrushVsAbility -- the ability rolls straight over the
+// crush, which is removed at the frame it is completely covered.
+class CrushVsAbility extends Routine {
+    var a as AttackCollision;
+    var winnerSprite as SpriteBuilder?;
+    var loserSprite as SpriteBuilder?;
+    var winnerDirection as Number = Kaisa.DIR_LEFT;
+    var i as Number = 0;
+
+    function initialize(parentIn as AttackCollision) {
+        Routine.initialize();
+        a = parentIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                winnerSprite = (a.winner == 0) ? a.sbFriendlyAttack : a.sbEnemyAttack;
+                loserSprite = (a.winner == 0) ? a.sbEnemyAttack : a.sbFriendlyAttack;
+                winnerDirection = (a.winner == 0) ? Kaisa.DIR_LEFT : Kaisa.DIR_RIGHT;
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 40; i++)
+                if (i >= 40) { i = 0; pc = 3; return 0.0; }
+                if (i == 16) { loserSprite.dispose(); }
+                winnerSprite.move(winnerDirection, 1);
+                pc = 2;
+                return 0.6 / 16;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:                                 // for (i = 0; i < extraPixels[winner]; i++)
+                if (i >= a.extraPixels[a.winner]) { return Routine.DONE; }
+                winnerSprite.move(winnerDirection, 1);
+                pc = 4;
+                return 0.6 / 16;
+            case 4:
+                i += 1; pc = 3; return 0.0;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2181  DestroyLoser
+//
+// What happens to the Digimon that lost the exchange, which depends on what
+// beat it: an energy shot explodes it where it stands, a crush drags it off
+// the screen first, and an ability rolls over it. Then the LIFE sign counts
+// the hit points down.
+//
+// `winningAbility` null means the caller does not want the ability win
+// animation to play, as the original's note says.
+class DestroyLoser extends Routine {
+    var gm as GameManager;
+    var loserSprites as Array;
+    var winningAttack as Number;
+    var winningAbility as Array<Number>?;
+    var isEnemy as Boolean;
+    var loserHPbefore as Number;
+    var loserHPnow as Number;
+
+    var sbLoser as SpriteBuilder?;
+    var sbAbility as SpriteBuilder?;
+    var cbLifeSign as ContainerBuilder?;
+    var winningDirection as Number = Kaisa.DIR_LEFT;
+    var extraPixels as Number = 0;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, loserSpritesIn as Array,
+                        winningAttackIn as Number, winningAbilityIn as Array<Number>?,
+                        isEnemyIn as Boolean, loserHPbeforeIn as Number,
+                        loserHPnowIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        loserSprites = loserSpritesIn;
+        winningAttack = winningAttackIn;
+        winningAbility = winningAbilityIn;
+        isEnemy = isEnemyIn;
+        loserHPbefore = loserHPbeforeIn;
+        loserHPnow = loserHPnowIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbLoser = Kaisa.ScreenBuilder.buildSprite("Loser", parent)
+                    .setSize(24, 24).center();
+                // Flip the sprite if the loser is the enemy.
+                sbLoser.flipHorizontal(isEnemy);
+                winningDirection = isEnemy ? Kaisa.DIR_LEFT : Kaisa.DIR_RIGHT;
+
+                if (winningAttack == 0) {
+                    sbLoser.setSprite(loserSprites[0]);
+                    pc = 1;
+                    return 0.5;
+                } else if (winningAttack == 1) {
+                    sbLoser.setSprite(loserSprites[2]);
+                    sbLoser.placeOutside(Kaisa.Enums.opposite(winningDirection));
+                    i = 0;
+                    pc = 3;
+                    return 0.0;
+                } else if (winningAttack == 2 && winningAbility != null) {
+                    extraPixels = 0;
+                    sbLoser.setSprite(loserSprites[0]);
+                    // SOURCE ODDITY, reproduced: the ability element is built
+                    // with the same name as the loser.
+                    sbAbility = Kaisa.ScreenBuilder.buildSprite("Loser", parent)
+                        .setSize(24, 24).setSprite(winningAbility).center();
+                    if (winningAbility[3] > 32) {
+                        sbAbility.setSize(winningAbility[3], 24).centerComponent();
+                        extraPixels = sbAbility.width - 24;
+                    }
+                    sbAbility.placeOutside(Kaisa.Enums.opposite(winningDirection));
+                    // Flip the ability if the loser is the ally.
+                    sbAbility.flipHorizontal(!isEnemy);
+                    i = 0;
+                    pc = 6;
+                    return 0.0;
+                }
+                gm.audioMgr.stopSound();
+                pc = 10;
+                return 0.0;
+            case 1:                                 // energy: it just explodes
+                pc = 2;
+                rt.call(new ExplodeLoser(self));
+                return 0.0;
+            case 2:
+                pc = 10;
+                return 0.0;
+            case 3:                                 // crush: for (i = 0; i < 64; i++)
+                if (i >= 64) { pc = 5; return 0.0; }
+                sbLoser.move(winningDirection, 1);
+                pc = 4;
+                return 0.6 / 16;
+            case 4:
+                i += 1; pc = 3; return 0.0;
+            case 5:
+                pc = 2;
+                rt.call(new ExplodeLoser(self));
+                return 0.0;
+            case 6:                                 // ability: for (i = 0; i < 64; i++)
+                if (i >= 64) { i = 0; pc = 8; return 0.0; }
+                if (i == 28) { sbLoser.setActive(false); }
+                sbAbility.move(winningDirection, 1);
+                pc = 7;
+                return Kaisa.Constants.ATTACK_TRAVEL_SPEED;
+            case 7:
+                i += 1; pc = 6; return 0.0;
+            case 8:                                 // for (i = 0; i < extraPixels; i++)
+                if (i >= extraPixels) { gm.audioMgr.stopSound(); pc = 10; return 0.0; }
+                if (i == 28) { sbLoser.setActive(false); }
+                sbAbility.move(winningDirection, 1);
+                pc = 9;
+                return Kaisa.Constants.ATTACK_TRAVEL_SPEED;
+            case 9:
+                i += 1; pc = 8; return 0.0;
+            case 10:
+                // No animation is done when a digimon loses to an ability.
+                sbLoser.setActive(true).setSprite(loserSprites[0]);
+                pc = 11;
+                return 0.5;
+            case 11:
+                cbLifeSign = Kaisa.ScreenBuilder.buildStatSign("LIFE", parent);
+                pc = 12;
+                return 0.5;
+            case 12:
+                gm.audioMgr.playButtonA();
+                (cbLifeSign.getChildBuilder(1) as TextBoxBuilder).setText(loserHPbefore.toString());
+                pc = 13;
+                return 0.75;
+            case 13:
+                gm.audioMgr.playButtonA();
+                (cbLifeSign.getChildBuilder(1) as TextBoxBuilder).setText(loserHPnow.toString());
+                pc = 14;
+                return 0.75;
+            case 14:
+                Kaisa.ScreenBuilder.clearAnimParent(parent);
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// DestroyLoser._ExplodeLoser
+class ExplodeLoser extends Routine {
+    var d as DestroyLoser;
+    var i as Number = 0;
+
+    function initialize(parentIn as DestroyLoser) {
+        Routine.initialize();
+        d = parentIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                d.gm.audioMgr.playSound("explosion");
+                d.sbLoser.flipHorizontal(false);
+                d.sbLoser.center();
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 4; return 0.25; }
+                d.sbLoser.setSprite(Kaisa.Sprites.BATTLE_EXPLOSION[0]);
+                pc = 2;
+                return 0.5;
+            case 2:
+                d.sbLoser.setSprite(Kaisa.Sprites.BATTLE_EXPLOSION[1]);
+                pc = 3;
+                return 0.5;
+            case 3:
+                i += 1; pc = 1; return 0.0;
+            case 4:
+                d.sbLoser.flipHorizontal(d.isEnemy);
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1159  DisplayTurn -- one exchange of the battle, from
+// both attacks leaving to the loser losing its hit points. It is nothing but
+// a sequence of the three animations above.
+class DisplayTurn extends Routine {
+    var gm as GameManager;
+    var friendlyIndex as Number;
+    var friendlyAttack as Number;
+    var friendlyEnergyRank as Number;
+    var enemyIndex as Number;
+    var enemyAttack as Number;
+    var enemyEnergyRank as Number;
+    var winner as Number;
+    var disobeyed as Boolean;
+    var loserHPbefore as Number;
+    var loserHPnow as Number;
+
+    var friendlySprites as Array = [];
+    var enemySprites as Array = [];
+
+    function initialize(gmIn as GameManager, friendlyIndexIn as Number,
+                        friendlyAttackIn as Number, friendlyEnergyRankIn as Number,
+                        enemyIndexIn as Number, enemyAttackIn as Number,
+                        enemyEnergyRankIn as Number, winnerIn as Number,
+                        disobeyedIn as Boolean, loserHPbeforeIn as Number,
+                        loserHPnowIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        friendlyIndex = friendlyIndexIn;
+        friendlyAttack = friendlyAttackIn;
+        friendlyEnergyRank = friendlyEnergyRankIn;
+        enemyIndex = enemyIndexIn;
+        enemyAttack = enemyAttackIn;
+        enemyEnergyRank = enemyEnergyRankIn;
+        winner = winnerIn;
+        disobeyed = disobeyedIn;
+        loserHPbefore = loserHPbeforeIn;
+        loserHPnow = loserHPnowIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                friendlySprites = gm.getAllDigimonBattleSprites(friendlyIndex, friendlyEnergyRank);
+                enemySprites = gm.getAllDigimonBattleSprites(enemyIndex, enemyEnergyRank);
+                pc = 1;
+                rt.call(new LaunchAttack(gm, friendlySprites, friendlyAttack, false, disobeyed));
+                return 0.0;
+            case 1:
+                pc = 2;
+                rt.call(new LaunchAttack(gm, enemySprites, enemyAttack, true, false));
+                return 0.0;
+            case 2:
+                pc = 3;
+                rt.call(new AttackCollision(gm, friendlyAttack, friendlySprites,
+                                            enemyAttack, enemySprites, winner));
+                return 0.0;
+            case 3:
+                if (winner == 0) {
+                    // If the enemy used crush (and you, ability), skip the
+                    // ability animation.
+                    var abilitySprite = (enemyAttack == 1) ? null : friendlySprites[4];
+                    pc = 4;
+                    rt.call(new DestroyLoser(gm, enemySprites, friendlyAttack, abilitySprite,
+                                             true, loserHPbefore, loserHPnow));
+                    return 0.0;
+                } else if (winner == 1) {
+                    var abilitySprite = (friendlyAttack == 1) ? null : enemySprites[4];
+                    pc = 4;
+                    rt.call(new DestroyLoser(gm, friendlySprites, enemyAttack, abilitySprite,
+                                             false, loserHPbefore, loserHPnow));
+                    return 0.0;
+                }
+                return Routine.DONE;
+            case 4:
                 return Routine.DONE;
         }
         return Routine.DONE;

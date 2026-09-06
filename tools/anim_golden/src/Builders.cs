@@ -26,7 +26,8 @@ namespace Kaisa.Digivice {
             name = n;
             Trace.Log.E("build " + Kind() + " " + n);
             transform.gameObject.name = n;
-            if (p != null) { p.children.Add(transform); }
+            transform.gameObject.owner = transform;
+            if (p != null) { p.children.Add(transform); transform.parent = p; }
         }
         protected virtual string Kind() { return "element"; }
         // The children a composite builder made, so GetChildBuilder hands back

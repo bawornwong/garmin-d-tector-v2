@@ -70,7 +70,7 @@ class DTectorView extends WatchUi.View {
     // Which converted animation to play, traced, for tools/verify_anim.py:
     // -1 plays none. The arguments match the ones the C# harness synthesises
     // (every int is 1), so the two traces are of the same run.
-    var _probeAnim as Number = 6;
+    var _probeAnim as Number = 12;
     var _probeAnimDone as Boolean = false;
 
     function initialize() {
@@ -206,6 +206,22 @@ class DTectorView extends WatchUi.View {
             // false, and a battle sprite set at energy rank 1.
             routine = new LaunchAttack(_gm,
                 _gm.getAllDigimonBattleSprites(_demoIndex, 1), 1, false, false);
+        } else if (_probeAnim == 10) {
+            name = "AttackCollision";
+            // The harness synthesises crush against crush with the enemy
+            // winning, and a battle sprite set at energy rank 1 for both.
+            routine = new AttackCollision(_gm, 1,
+                _gm.getAllDigimonBattleSprites(_demoIndex, 1), 1,
+                _gm.getAllDigimonBattleSprites(_demoIndex, 1), 1);
+        } else if (_probeAnim == 11) {
+            name = "DestroyLoser";
+            var loserSprites = _gm.getAllDigimonBattleSprites(_demoIndex, 1);
+            routine = new DestroyLoser(_gm, loserSprites, 1, loserSprites[4],
+                                       false, 1, 1);
+        } else if (_probeAnim == 12) {
+            name = "DisplayTurn";
+            routine = new DisplayTurn(_gm, _demoIndex, 1, 1, _demoIndex, 1, 1,
+                                      1, false, 1, 1);
         } else if (_probeAnim == 8) {
             name = "SwapDDock";
             // The animation reads the dock it is about to overwrite, so the

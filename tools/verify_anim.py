@@ -59,6 +59,9 @@ CONVERTED = {
     "CloseCamp": 7,
     "SwapDDock": 8,
     "LaunchAttack": 9,
+    "AttackCollision": 10,
+    "DestroyLoser": 11,
+    "DisplayTurn": 12,
 }
 
 HOST_ELEMENTS = ("Anim Parent",)
@@ -157,10 +160,15 @@ def run_probe(index, attempts=3):
         b = subprocess.run(["tools/build.sh"], cwd=ROOT, capture_output=True, text=True)
         if b.returncode != 0:
             raise SystemExit("build failed:\n" + b.stdout + b.stderr)
-        # The simulator drops a launch now and then -- it is not ready for the
-        # next app the instant the last one exited -- and a dropped launch
-        # looks exactly like an animation that emitted nothing. Retrying is
-        # the difference between a real diff and a flake.
+        # monkeydo's java client does not notice the app exiting: it lingers,
+        # holding its connection, and once a few have piled up the simulator
+        # refuses to start anything. Reaping it after every probe is what
+        # keeps a long run from turning into a wall of empty traces.
+        #
+        # Even so the simulator drops a launch now and then, which looks
+        # exactly like an animation that emitted nothing -- so an empty trace
+        # is retried against a freshly restarted simulator rather than
+        # reported as a diff.
         for attempt in range(attempts):
             try:
                 r = subprocess.run([os.path.join(SDK, "bin/monkeydo"),
@@ -171,13 +179,33 @@ def run_probe(index, attempts=3):
             except subprocess.TimeoutExpired as e:
                 lines = ((e.stdout or b"").decode()
                          + (e.stderr or b"").decode()).splitlines()
+            reap()
             out = trace_of(lines)
             if out:
                 return out
-            time.sleep(3)
+            restart_simulator()
         return []
     finally:
         open(VIEW, "w").write(text)
+
+
+def reap():
+    """Kill the monkeydo clients that outlive the app they started."""
+    subprocess.run(["pkill", "-f", "MonkeyDoDeux"], capture_output=True)
+
+
+def restart_simulator():
+    subprocess.run(["pkill", "-f", "MacOS/simulator"], capture_output=True)
+    time.sleep(2)
+    subprocess.Popen([os.path.join(SDK, "bin/connectiq")],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(20):
+        time.sleep(1)
+        if subprocess.run(["pgrep", "-f", "MacOS/simulator"],
+                          capture_output=True).returncode == 0:
+            time.sleep(3)
+            return
+    raise SystemExit("the simulator would not start")
 
 
 def trace_of(lines):

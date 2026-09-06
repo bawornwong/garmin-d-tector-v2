@@ -129,7 +129,17 @@ class ScreenElement {
     }
 
     // Elements are drawn in the order they were added, which is Unity's
-    // sibling order, so a later child is on top.
+    // sibling order, so a later child is on top -- which is what the
+    // animations' `transform.SetAsLastSibling()` is for. It moves the element
+    // to the end of its parent's list and says nothing: the original's
+    // Transform does not report it either, and the diff is of display events.
+    function setAsLastSibling() as Void {
+        if (parent != null) {
+            parent.children.remove(self);
+            parent.children.add(self);
+        }
+    }
+
     function absX() as Number {
         return (parent == null) ? x : parent.absX() + x;
     }
