@@ -45,8 +45,13 @@ class AppLoader {
         if (app == Kaisa.APP_STATUS) { return new Status(gm, controller, parent); }
         if (app == Kaisa.APP_DATABASE) { return new DatabaseApp(gm, controller, parent); }
         if (app == Kaisa.APP_CAMP) { return new Camp(gm, controller, parent); }
+        if (app == Kaisa.APP_CODE_INPUT) {
+            // LogicManager.OpenDigits passes false: a wrong code stays on the
+            // error screen instead of closing with the default Digimon.
+            return new CodeInput(gm, controller, parent).setSubmitError(false);
+        }
 
-        // Map, CodeInput, Connect, Finder, Battle, JackpotBox, EnergyWars,
+        // Map, Connect, Finder, Battle, JackpotBox, EnergyWars,
         // DigiCatch, SpeedRunner, Asteroids, DigiHunter, Maze -- steps 8 and 9
         // of SPEC's order of work.
         System.println("AppLoader: app " + app + " is not translated yet");

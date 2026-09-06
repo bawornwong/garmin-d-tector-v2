@@ -232,8 +232,20 @@ class LogicManager {
     function closeLoadedApp(newScreen as Number) as Void {
         if (loadedApp == null) { return; }
 
-        // The CodeInput branch (unlock the entered Digimon, then three
-        // animations) waits on CodeInput itself.
+        // LogicManager.cs:384 -- a code entered successfully unlocks the
+        // Digimon it names, and plays three animations. Two of them
+        // (SummonDigimon, UnlockDigimon) are not converted yet.
+        if (loadedApp instanceof CodeInput) {
+            var digimon = (loadedApp as CodeInput).returnedDigimon;
+            if (digimon >= 0) {
+                setDigimonUnlocked(digimon, true);
+                setDigicodeUnlocked(digimon, true);
+
+                _gm.enqueueAnimation(null);     // Animations.SummonDigimon
+                _gm.enqueueAnimation(null);     // Animations.UnlockDigimon
+                _gm.enqueueAnimation(new CharHappy(_gm));
+            }
+        }
 
         if (isEventPending) { currentScreen = Kaisa.SCREEN_CHARACTER; }
         else { currentScreen = newScreen; }
@@ -360,6 +372,18 @@ class LogicManager {
         if (v > maxExtraLevel) { v = maxExtraLevel; }
         if (v < 1) { v = 1; }
         _saved.setDigimonLevel(digimonIndex, v + 1);
+    }
+
+    // LogicManager.cs:570 -- unlocking sets the stored level to 1, which is
+    // "owned at base level"; locking is the only way the level goes to 0.
+    function setDigimonUnlocked(digimonIndex as Number, val as Boolean) as Void {
+        if (val) {
+            if (_saved.digimonLevel(digimonIndex) == 0) {
+                _saved.setDigimonLevel(digimonIndex, 1);
+            }
+        } else {
+            _saved.setDigimonLevel(digimonIndex, 0);
+        }
     }
 
     // LogicManager.cs:591

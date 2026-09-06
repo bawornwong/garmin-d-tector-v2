@@ -1,5 +1,6 @@
 import Toybox.Lang;
 import Toybox.Math;
+import Toybox.StringUtil;
 import Toybox.System;
 
 // port of Logic/Data/Database.cs
@@ -209,17 +210,14 @@ class Database {
         return 0.0;
     }
 
-    // Database.GetDigimonFromCode. The codes are five characters, stored one
-    // row per Digimon in the packed blob, and the CodeInput app hits this once
-    // per entered code -- a single user action, not a frame, but it is still
-    // 593 string decodes and will need comparing at the byte level before
-    // CodeInput ships (the same watchdog that caught indexOfName).
+    // Database.GetDigimonFromCode. The comparison is at the byte level (see
+    // GameData.indexOfCodeBytes): decoding 593 codes to strings is the shape
+    // of scan that tripped the watchdog for name lookups.
     function indexOfCode(code as String) as Number {
-        var wanted = code.toLower();
-        var n = count();
-        for (var i = 0; i < n; i += 1) {
-            if (_data.code(i).equals(wanted)) { return i; }
-        }
-        return -1;
+        var wanted = StringUtil.convertEncodedString(code.toLower(), {
+            :fromRepresentation => StringUtil.REPRESENTATION_STRING_PLAIN_TEXT,
+            :toRepresentation => StringUtil.REPRESENTATION_BYTE_ARRAY
+        }) as ByteArray;
+        return _data.indexOfCodeBytes(wanted);
     }
 }

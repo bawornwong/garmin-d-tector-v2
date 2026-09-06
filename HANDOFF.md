@@ -59,6 +59,7 @@ app/source/
               AppLoader.mc        the App enum; makes an app, null if untranslated
               Status.mc           the first real app, all seven of its screens
               DatabaseApp.mc      six screens, three converted coroutines
+              CodeInput.mc        the five-character code entry
               Camp.mc             the smallest app; clears the defeated flag
 ```
 
@@ -123,7 +124,7 @@ All measured, all already encoded in the code that depends on them — listed he
 **Then, in order:**
 
 - **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
-- **`CodeInput`**, which also needs `indexOfCode` rewritten to compare bytes rather than decode 593 strings.
+- **`Finder`** (114 lines), the smallest minigame, and the `Connect` app.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
 
@@ -133,7 +134,6 @@ All measured, all already encoded in the code that depends on them — listed he
 - **The character screen shows a character but nothing else.** `CreateNewGame`, the pending-event machinery and `TakeAStep` are not translated, so `isEventPending` is never set and the event/eyes overlays never show.
 - **`Animations.cs` is 9 of 60 translated.** `GameManager.enqueueAnimation` takes null from every call site whose animation is not converted yet, and each such site says so.
 - **Two `Kaisa.Sprites` fields can be the same cell** (`animDistance` and `games_distance` are one sprite), so the debug name lookup is ambiguous by nature; `verify_anim.py` canonicalises names to cells rather than trusting them.
-- **`Database.indexOfCode` will trip the watchdog** the way `indexOfName` did: it decodes 593 strings. Compare at the byte level before CodeInput ships.
 - **Every render timing in SPEC is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
 - **Worlds, areas and bosses are unsurveyed.** `WorldManager` carries only the two counters Status reads; the rest is deliberately absent rather than guessed, and SPEC section 8 lists what is unknown.
 - `SaveFormat`'s seeding of `bosses` and `semibossGroup` has not been checked against `WorldManager.cs`; the round-trip proves the format, not the initial values.

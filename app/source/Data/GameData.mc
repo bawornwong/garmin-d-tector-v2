@@ -273,6 +273,29 @@ class GameData {
         return readString(_secOff[SEC_ABILITIES], idx);
     }
 
+    // Finds a Digimon by its five-character code WITHOUT decoding any string.
+    //
+    // The obvious version -- decode every row's code and compare -- is 593
+    // string decodes, and a scan of that shape already tripped the watchdog
+    // once (Database.indexOfName, before the well-known indices moved to build
+    // time). The codes are fixed-width, NUL-padded ASCII in the blob, so the
+    // comparison happens on raw bytes and the app never builds a string it
+    // does not display.
+    function indexOfCodeBytes(wanted as ByteArray) as Number {
+        var base = _secOff[SEC_CODES];
+        var n = _digimonCount;
+        for (var i = 0; i < n; i += 1) {
+            var o = base + i * 5;
+            var match = true;
+            for (var k = 0; k < 5; k += 1) {
+                var want = (k < wanted.size()) ? wanted[k] : 0;
+                if (_bytes[o + k] != want) { match = false; break; }
+            }
+            if (match) { return i; }
+        }
+        return -1;
+    }
+
     function code(idx as Number) as String {
         var o = _secOff[SEC_CODES] + idx * 5;
         // ljust-padded to 5 bytes with NUL in the packer; find the real length
