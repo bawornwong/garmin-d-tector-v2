@@ -176,7 +176,7 @@ def normalise(lines, cells):
         # port -- Connect IQ counts frames, not float seconds -- so the
         # reference's value is converted rather than the port faking a unit
         # it does not use.
-        m3 = re.fullmatch(r"(setFlickPeriod \S+) ([\d.]+)", ev)
+        m3 = re.fullmatch(r"(setFlickPeriod .+) ([\d.]+)", ev)
         if m3 and "." in m3.group(2):
             ev = f"{m3.group(1)} {int(round(float(m3.group(2)) * 1000))}"
         out.append((float(t), ev))

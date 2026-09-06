@@ -257,6 +257,26 @@ class DTectorView extends WatchUi.View {
             System.println("--- DatabasePage" + page + " end=0.0000ms");
         }
 
+        // The Map app's three screens: the map with its area markers, the
+        // area selection, and the distance the chosen area costs. World 0 is
+        // the multi-map one, so the four-quadrant sheet is drawn too.
+        _gm.saved.record.currentMap = 0;
+        _gm.saved.record.currentArea = 0;
+        _gm.saved.record.currentDistance = 4321;
+        var mapApp = new Map(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        var mapNames = ["MapMap", "MapAreas", "MapDistance"];
+        for (var screen = 0; screen < 3; screen += 1) {
+            System.println("=== " + mapNames[screen] + " ===");
+            Kaisa.Trace.enable();
+            if (screen == 0) {
+                mapApp.startApp();
+            } else {
+                mapApp.inputA();
+            }
+            Kaisa.Trace.disable();
+            System.println("--- " + mapNames[screen] + " end=0.0000ms");
+        }
+
         System.println("SCREENEND");
     }
 

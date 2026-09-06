@@ -105,6 +105,38 @@ public static class Program {
         }
     }
 
+    // The Map app's three screens: the map itself with its area markers, the
+    // area selection, and the distance the chosen area costs. World 0 is the
+    // multi-map one, so this exercises the four-quadrant sheet as well.
+    static void TraceMapScreens() {
+        var gm = new GameManager(db);
+        gm.WorldMgr.CurrentWorld = 0;
+        gm.WorldMgr.CurrentMap = 0;
+        gm.WorldMgr.CurrentArea = 0;
+        gm.WorldMgr.CurrentDistance = AppFixture.Distance;
+
+        var app = new Kaisa.Digivice.Apps.Map();
+        app.Setup(gm, null);
+        app.AttachScreen("Screen");
+
+        string[] names = { "MapMap", "MapAreas", "MapDistance" };
+        for (int screen = 0; screen < 3; screen++) {
+            Trace.Log.Now = 0.0;
+            Trace.Log.Events.Clear();
+            if (screen == 0) {
+                app.StartApp();
+            } else if (screen == 1) {
+                app.InputA();               // open the area selection
+            } else {
+                app.InputA();               // open the distance screen
+            }
+            Console.WriteLine("=== " + names[screen] + " ===");
+            foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+            Console.WriteLine(string.Format("--- {0} end=0.0000ms events={1}",
+                names[screen], Trace.Log.Events.Count));
+        }
+    }
+
     public static int Main(string[] args) {
         db = new SpriteDatabase();
         var audio = new AudioManager();
@@ -148,6 +180,7 @@ public static class Program {
         }
         TraceStatusApp();
         TraceDatabasePages();
+        TraceMapScreens();
 
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");

@@ -103,7 +103,7 @@ Every check reads a frame back off the device or diffs two real implementations.
 | Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
 | Packed world layout vs `worlds.json` | 225 / 225 fields | `tools/verify_worlds.py` |
 | Converted animations vs a golden trace of the original | 53 / 53 | `tools/verify_anim.py` (~20 minutes: it rebuilds and runs the app once per animation) |
-| App screens vs the original's | 10 / 10 screens, 149 events | `tools/verify_screens.py` -- the Status app's seven, and the Database's three data pages |
+| App screens vs the original's | 13 / 13 screens, 193 events | `tools/verify_screens.py` -- Status's seven, the Database's three data pages, the Map's three |
 | Rendered sprite vs atlas (normal) | 576 / 576 | set `_probeIndex`, capture, `tools/verify_render.py <png> 8` |
 | Rendered sprite vs atlas (inverted) | 576 / 576 | also set `_probeInvert`, then `... --inverted` |
 | Text canvas vs font metrics | 102,400 / 102,400 device px | set `_probeText`, capture, `tools/verify_text.py <png>` |
@@ -165,13 +165,15 @@ translation.
 
    That is evidence the paths hold together. What a *screen* draws is now
    checked too, by the same golden-diff trick: `tools/verify_screens.py`
-   compiles the original `Status.cs` and `DatabaseApp.cs` into the harness --
-   along with the original `Digimon.cs` and the real rows out of
-   digimonDB.json -- and diffs their screens against the port drawing the same
-   ones with the same numbers. 10/10: the seven Status screens and the three
-   Database data pages, which carry the densest numbers in the game (a
-   Digimon's level and HP, its energy, crush and ability, and its code). The
-   remaining apps can follow the same way when they are worth the stubs.
+   compiles the original `Status.cs`, `DatabaseApp.cs` and `Map.cs` into the
+   harness -- along with the original `Digimon.cs`, the real rows out of
+   digimonDB.json and the real worlds out of worlds.json -- and diffs their
+   screens against the port drawing the same ones with the same numbers.
+   13/13: Status's seven, the three Database data pages, which carry the
+   densest numbers in the game (a Digimon's level and HP, its energy, crush
+   and ability, and its code), and the Map's three, which draw a world's
+   four-quadrant sheet and its area markers. The remaining apps can follow the
+   same way when they are worth the stubs.
 
    What is left for a person is the feel: the input mapping, the pacing, and a
    watch to judge them on.

@@ -287,6 +287,9 @@ namespace Kaisa.Digivice {
     }
     public class InputManager { public void ConsumeLastKey(params object[] a) { } }
     public class WorldManager {
+        public World CurrentWorldData { get { return Database.Worlds[CurrentWorld]; } }
+        public int CurrentMap = 0;
+        public void MoveToArea(int w, int a) { }
         public int CurrentDistance = 100;
         // Status draws these two; the fixture pins them so the port can be
         // told the same numbers.

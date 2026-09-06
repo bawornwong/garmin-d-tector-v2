@@ -15,6 +15,11 @@ namespace UnityEngine.UI {
 }
 
 namespace Kaisa.Digivice {
+    // The game's debug log; the apps write to it and nothing reads it here.
+    public static class VisualDebug {
+        public static void WriteLine(string s) { }
+    }
+
     // The numbers Status draws. One place, so the port's probe can be told the
     // same story.
     public static class AppFixture {
@@ -46,6 +51,7 @@ namespace Kaisa.Digivice {
     public abstract class DigiviceApp {
         protected IAppController controller;
         protected AppScreen screenDisplay = new AppScreen();
+        protected Transform Parent { get { return screenDisplay.transform; } }
         protected GameManager gm;
         protected AudioManager audioMgr;
 

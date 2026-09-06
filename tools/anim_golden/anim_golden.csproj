@@ -19,6 +19,7 @@
          screen builds is a display list like any other. -->
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Status.cs" />
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/DatabaseApp.cs" />
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Map.cs" />
     <!-- CircularAdd, which Status walks its screens with: the original's own
          arithmetic rather than a copy of it. -->
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Extensions/MathExt.cs" />

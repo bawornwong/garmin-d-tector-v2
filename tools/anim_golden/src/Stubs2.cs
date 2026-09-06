@@ -13,6 +13,7 @@ namespace Kaisa.Digivice {
     public class Area { public int number = 0; public int map = 0; public int distance = 6000; public Vector2Int coords = new Vector2Int(18, 21); }
     public class World {
         public int number = 0; public bool multiMap = true; public string worldSprite = "frontier_initial";
+        public bool lockTravel = false;
         public List<Area> areas = new List<Area>();
         // World.GetAreasInMap
         public int[] GetAreasInMap(int m) {
@@ -39,6 +40,12 @@ namespace Kaisa.Digivice {
                 var world = new World();
                 world.number = w.GetProperty("number").GetInt32();
                 world.multiMap = w.GetProperty("multiMap").GetBoolean();
+                // Optional in the data: most worlds simply do not carry it,
+                // and Unity's JsonUtility leaves the field at its default.
+                System.Text.Json.JsonElement lockTravel;
+                if (w.TryGetProperty("lockTravel", out lockTravel)) {
+                    world.lockTravel = lockTravel.GetBoolean();
+                }
                 world.worldSprite = w.GetProperty("worldSprite").GetString();
                 foreach (var a in w.GetProperty("areas").EnumerateArray()) {
                     var area = new Area();
