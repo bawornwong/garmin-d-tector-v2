@@ -160,4 +160,10 @@ Nine of the sixty coroutines are converted: the four the survey called linear, t
 - **Every render timing here is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
 - Whether Unity draws *nothing* for a missing glyph, or a blank box that consumes advance, needs confirming against a running original.
 - The 20-entry cap on `lostSpirits` is inferred, not verified against the game's own maximum.
-- The evolution, D-Dock and spirit rules are unsurveyed, and `Battle` and `JackpotBox`'s reward system wait on them. The D-Tector frame art around the canvas and localization are also unsurveyed.
+- The D-Tector frame art around the canvas and localization are unsurveyed.
+- **Battle is the last app.** Its rules are surveyed now and live inside `Battle.cs` itself rather than in the shared logic, which is why nothing else waited on them:
+  - a turn is energy/crush/ability in a rock-paper-scissors ring (energy beats ability, crush beats energy, ability beats crush); the same attack on both sides compares damage, with a tie under a 5-point threshold and the higher energy RANK winning an energy mirror outright
+  - the enemy's choice is `AttackChooser`, weighted `30 + stat` per attack and seeded per battle so an enemy replays the same sequence
+  - the friendly Digimon can disobey: `GetIdleChance` decides whether it attacks at all, `GetObeyChance` whether it uses the attack it was told to. Both are in `Digimon` and are already checked by the numeric parity sweep
+  - evolution, boosts and spirit costs are `Digimon.GetEvolveChance`, `GetSpiritCost` and `GetCallCost`, all translated and swept
+  The remaining work is the app itself: 1,068 lines of screens and its animations.

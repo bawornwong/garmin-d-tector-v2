@@ -131,7 +131,8 @@ All measured, all already encoded in the code that depends on them — listed he
 **Then, in order:**
 
 - **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
-- **`Battle`** (1,068 lines) and its animations: the last app, the heaviest surface, and the only one left that needs the evolution and spirit rules SPEC section 8 still lists as unsurveyed. Survey those first, the way the world rules were surveyed before `Map`.
+- **`Battle`** (1,068 lines) and its animations: the last app and the heaviest surface. Its rules ARE surveyed now (SPEC section 8 lists them) and every piece of shared logic it needs is translated and checked -- the turn resolution, the disobey chances, the evolution and spirit costs. What is left is the app: six screens, the D-Dock and spirit menus, the turn loop, and the battle animations, which are the hardest in `Animations.cs` (`AttackCollision` alone has 35 `if`s and five nested coroutines).
+- `AttackChooser` is already translated, with one documented difference: it carries its own LCG, because Monkey C has no seedable RNG object and C#'s string hash has no equivalent. It reproduces what the original guarantees -- the same enemy replays the same sequence within a battle -- rather than the exact numbers.
 - **The remaining 51 animations.** Every `enqueueAnimation(null)` in the port names the one it is waiting for; `tools/verify_anim.py` checks each as it lands.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
