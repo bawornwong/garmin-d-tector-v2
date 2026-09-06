@@ -30,6 +30,7 @@ Usage:
 
 With no names, checks every animation the port has converted.
 """
+import json
 import os
 import re
 import subprocess
@@ -55,17 +56,42 @@ CONVERTED = {
     "CharHappy": 5,
     "OpenCamp": 6,
     "CloseCamp": 7,
+    "SwapDDock": 8,
 }
 
 HOST_ELEMENTS = ("Anim Parent",)
 
 
+# The reference names a Digimon sprite `agumon` or `agumon:Crush`; the packed
+# index keys the same art `Digimon/agumon` and `Digimon/agumon_cr`.
+ACTION_SUFFIX = {"Default": "", "Attack": "_at", "Crush": "_cr", "Spirit": "_sp",
+                 "SpiritSmall": "_sm", "Black": "_bl", "White": "_wh"}
+ATLAS_CLASS = {"atlas_24x24": 0, "atlas_32x32": 1, "atlas_14x16": 2, "atlas_odd": 3}
+
+
 def sprite_cells():
-    """SpriteDatabase field name -> "cell(cls,x,y)", from the generated table."""
-    text = open(SPRITE_DB).read()
+    """Every name either side can print -> "cell(cls,x,y)".
+
+    Two sources: the generated UI table (SpriteDatabase field names) and the
+    sprite index (Digimon art). Canonicalising to the cell is what makes the
+    diff immune to a sprite having two names -- `animDistance` and
+    `games_distance` are wired to one cell in the Unity scene.
+    """
     out = {}
+    text = open(SPRITE_DB).read()
     for name, cls, x, y in re.findall(r'\["(\w+)", (\d+), (\d+), (\d+)\]', text):
         out[name] = f"cell({cls},{x},{y})"
+
+    index = json.load(open(os.path.join(ROOT, "build/sprite_index.json")))["sprites"]
+    for key, e in index.items():
+        if not key.startswith("Digimon/"):
+            continue
+        cell = f"cell({ATLAS_CLASS[e['atlas']]},{e['x']},{e['y']})"
+        base = key[len("Digimon/"):]
+        out[base] = cell
+        for action, suffix in ACTION_SUFFIX.items():
+            if suffix and base.endswith(suffix):
+                out[base[: -len(suffix)] + ":" + action] = cell
     return out
 
 
@@ -81,7 +107,14 @@ def normalise(lines, cells):
             continue
         if ev.startswith("setSprite "):
             head, _, sprite = ev.rpartition(" ")
-            ev = head + " " + cells.get(sprite, sprite)
+            # The port prints `sprite(cls,x,y)` for art the debug name table
+            # does not carry (every Digimon sprite); that IS the cell.
+            m2 = re.fullmatch(r"sprite\((\d+),(\d+),(\d+)\)", sprite)
+            if m2:
+                sprite = f"cell({m2.group(1)},{m2.group(2)},{m2.group(3)})"
+            else:
+                sprite = cells.get(sprite, sprite)
+            ev = head + " " + sprite
         out.append((float(t), ev))
     return out
 

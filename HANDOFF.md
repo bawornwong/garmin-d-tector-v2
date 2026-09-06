@@ -39,7 +39,7 @@ app/source/
   Input/      InputAdapter.mc     twelve abstract events + the queue (ADR 9)
   Save/       SaveFormat.mc       the positional save blob (ADR 8)
   Anim/       Runner.mc           Routine / Fiber / Runner (ADR 4 + ADR 5)
-              Animations.mc       the converted coroutines, 8 of 60 so far
+              Animations.mc       the converted coroutines, 9 of 60 so far
               Trace.mc            the debug-only event trace the goldens read
   Render/     AtlasCache.mc       row buffers, LRU of 16 (ADR 3)
               Blit.mc             the drawBitmap2 rules: transform offset, tint, flips
@@ -90,7 +90,7 @@ Every check reads a frame back off the device or diffs two real implementations.
 | UI sprite resolution | 215 resolved, 1 unassigned in the scene | `tools/pack_ui_sprites.py` |
 | Numeric parity, original C# ↔ ported Monkey C | 16,211 values, 0 differences, floats bit-exact | `tools/verify_numeric.py` |
 | Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
-| Converted animations vs a golden trace of the original | 8 / 8, 318 events | `tools/verify_anim.py` (a few minutes: it rebuilds and runs the app once per animation) |
+| Converted animations vs a golden trace of the original | 9 / 9, 475 events | `tools/verify_anim.py` (a few minutes: it rebuilds and runs the app once per animation) |
 | Rendered sprite vs atlas (normal) | 576 / 576 | set `_probeIndex`, capture, `tools/verify_render.py <png> 8` |
 | Rendered sprite vs atlas (inverted) | 576 / 576 | also set `_probeInvert`, then `... --inverted` |
 | Text canvas vs font metrics | 102,400 / 102,400 device px | set `_probeText`, capture, `tools/verify_text.py <png>` |
@@ -100,7 +100,7 @@ Capture is `tools/sim_capture.sh /abs/path.png` — it drives the simulator's ow
 
 The probe flags live at the top of `DTectorView.mc` (`_probeIndex`, `_probeInvert`, `_probeText`, `_probeStatusScreen`). Set one, rebuild, run, capture. **Reset them to `-1` / `false` / `0` afterwards.**
 
-The animation check is per coroutine: add the new one to `CONVERTED` in `tools/verify_anim.py` and to the probe list in `DTectorView.startAnimProbe`, and it is checked against the original from then on. 8 of 60 are converted.
+The animation check is per coroutine: add the new one to `CONVERTED` in `tools/verify_anim.py` and to the probe list in `DTectorView.startAnimProbe`, and it is checked against the original from then on. 9 of 60 are converted.
 
 ## 4. Device facts that cost time to find
 
@@ -131,7 +131,7 @@ All measured, all already encoded in the code that depends on them — listed he
 
 - **`DTectorView` still carries scaffolding**, though it now boots the real host: `seedSkeletonStats` writes demo stats and a spread of unlocked Digimon into the save record in RAM (never committed) so the screens have something to show; `_sliceApp` can open one app directly instead of starting on the character screen; `_probeInputs` replays a scripted press sequence so a capture can reach a screen several presses deep.
 - **The character screen shows a character but nothing else.** `CreateNewGame`, the pending-event machinery and `TakeAStep` are not translated, so `isEventPending` is never set and the event/eyes overlays never show.
-- **`Animations.cs` is 8 of 60 translated.** `GameManager.enqueueAnimation` takes null from every call site whose animation is not converted yet, and each such site says so.
+- **`Animations.cs` is 9 of 60 translated.** `GameManager.enqueueAnimation` takes null from every call site whose animation is not converted yet, and each such site says so.
 - **Two `Kaisa.Sprites` fields can be the same cell** (`animDistance` and `games_distance` are one sprite), so the debug name lookup is ambiguous by nature; `verify_anim.py` canonicalises names to cells rather than trusting them.
 - **`Database.indexOfCode` will trip the watchdog** the way `indexOfName` did: it decodes 593 strings. Compare at the byte level before CodeInput ships.
 - **Every render timing in SPEC is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.

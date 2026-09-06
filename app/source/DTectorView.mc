@@ -186,6 +186,13 @@ class DTectorView extends WatchUi.View {
         } else if (_probeAnim == 7) {
             name = "CloseCamp";
             routine = new CloseCamp(_gm, _gm.characterSprites(Kaisa.CHAR_TAKUYA));
+        } else if (_probeAnim == 8) {
+            name = "SwapDDock";
+            // The animation reads the dock it is about to overwrite, so the
+            // dock has to hold something -- as it does in the reference, whose
+            // stub dock is never empty.
+            _gm.logicMgr.setDDockDigimon(1, _demoIndex);
+            routine = new SwapDDock(_gm, 1, _demoIndex);
         }
         System.println("=== " + name + " ===");
         // Enqueueing builds the Anim Parent container the animation draws
@@ -208,6 +215,7 @@ class DTectorView extends WatchUi.View {
         record.totalBattles = 13;
         record.totalWins = 9;
         record.ddockDigimon[0] = _demoIndex;
+        record.ddockDigimon[1] = _demoIndex;
         // A locked database is an empty database: unlock a spread of Digimon
         // so the gallery, the pages and the spirit menu all have something in
         // them. Level 1 is "owned at base level" (LogicManager's off-by-one).

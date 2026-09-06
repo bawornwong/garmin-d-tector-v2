@@ -480,9 +480,7 @@ class DatabaseApp extends DigiviceApp {
     }
 
     function chooseDDock() as Void {
-        // Animations.SwapDDock is not translated yet (step 7); the swap
-        // itself is logic and happens either way.
-        gm.enqueueAnimation(null);
+        gm.enqueueAnimation(new SwapDDock(gm, ddockIndex, pageDigimon.index));
 
         // "If the chosen Digimon is already in a ddock, swap those ddocks."
         if (digimonIsInDDock) {

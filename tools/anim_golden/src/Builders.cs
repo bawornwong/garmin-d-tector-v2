@@ -249,7 +249,15 @@ namespace Kaisa.Digivice {
         }
         public void UnlockInput() { Trace.Log.E("unlockInput"); }
         public ContainerBuilder BuildMapScreen(int w, Transform p = null) { return new ContainerBuilder("MapScreen"); }
-        public SpriteBuilder GetDDockScreenElement(int d, Transform p = null) { return new SpriteBuilder("DDock" + d); }
+        // GameManager.GetDDockScreenElement builds TWO sprites -- the dock
+        // plate and the Digimon standing in it -- and returns the second. The
+        // dock's own name is the literal "$DDock{ddock}": the original wrote a
+        // C# interpolation without the $ prefix, so the brace text IS the name.
+        public SpriteBuilder GetDDockScreenElement(int d, Transform p = null) {
+            new SpriteBuilder("$DDock{ddock}").SetSprite(spriteDB.status_ddock[d]);
+            return new SpriteBuilder("DigimonDDock" + d)
+                .SetSize(24, 24).SetPosition(4, 8).SetSprite(new Sprite("agumon"));
+        }
         public Coroutine StartCoroutine(IEnumerator r) {
             Trace.Log.E("startCoroutine");
             return Driver.Spawn(r);

@@ -423,3 +423,111 @@ class CloseCamp extends Routine {
         return Routine.DONE;
     }
 }
+
+// port of Animations.cs:816  SwapDDock
+//
+// Black bars slide the D-Dock plate up, the Digimon inside it changes, the
+// plate slides back, and the new Digimon flashes five times. The waits are
+// computed -- animDuration / 32 -- which is 46.875 ms: shorter than a frame,
+// so ADR 5's scheduler is what keeps the two 1.5 s sweeps exact.
+class SwapDDock extends Routine {
+    var gm as GameManager;
+    var ddock as Number;
+    var newDigimon as Number;               // a packed-data index (ADR 7)
+    var animDuration as Float = 1.5;
+    var newDigimonSprite as Array<Number>?;
+    var newDigimonSpriteCr as Array<Number>?;
+    var bBlackBars as SpriteBuilder?;
+    var bDDock as SpriteBuilder?;
+    var bDDockSprite as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, ddockIn as Number, newDigimonIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        ddock = ddockIn;
+        newDigimon = newDigimonIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                newDigimonSprite = gm.data.spriteRef(newDigimon, gm.data.ACTION_BASE);
+                newDigimonSpriteCr = gm.data.spriteRef(newDigimon, gm.data.ACTION_CR);
+
+                gm.audioMgr.playSound("changeDock");
+
+                bBlackBars = Kaisa.ScreenBuilder.buildSprite("BlackBars", gm.screenMgr.animParent)
+                    .setSprite(Kaisa.Sprites.BLACK_BARS).placeOutside(Kaisa.DIR_DOWN);
+                bDDock = Kaisa.ScreenBuilder.buildSprite("DDock", gm.screenMgr.animParent)
+                    .setSprite(Kaisa.Sprites.STATUS_DDOCK[ddock]);
+                bDDockSprite = gm.buildDDockScreenElement(ddock, bDDock);
+
+                pc = 1;
+                return 0.75;
+            case 1:                             // for (i = 0; i < 32; i++)
+                i = 0;
+                pc = 2;
+                return 0.0;
+            case 2:
+                if (i >= 32) { pc = 4; return 0.0; }
+                bBlackBars.move(Kaisa.DIR_UP, 1);
+                bDDock.move(Kaisa.DIR_UP, 1);
+                pc = 3;
+                return animDuration / 32;
+            case 3:
+                i += 1;
+                pc = 2;
+                return 0.0;
+            case 4:
+                bDDockSprite.setSprite(newDigimonSprite);
+                pc = 5;
+                return 0.75;
+            case 5:                             // for (i = 0; i < 32; i++)
+                i = 0;
+                pc = 6;
+                return 0.0;
+            case 6:
+                if (i >= 32) { pc = 8; return 0.0; }
+                bBlackBars.move(Kaisa.DIR_DOWN, 1);
+                bDDock.move(Kaisa.DIR_DOWN, 1);
+                pc = 7;
+                return animDuration / 32;
+            case 7:
+                i += 1;
+                pc = 6;
+                return 0.0;
+            case 8:
+                pc = 9;
+                return 0.5;
+            case 9:
+                // "Originally this started after 0.175 seconds."
+                gm.audioMgr.playSound("charHappy");
+                bDDockSprite.setSprite(newDigimonSpriteCr);
+                i = 0;
+                pc = 10;
+                return 0.0;
+            case 10:                            // for (i = 0; i < 5; i++)
+                if (i >= 5) { pc = 13; return 0.0; }
+                bDDockSprite.setActive(false);
+                pc = 11;
+                return 0.175;
+            case 11:
+                bDDockSprite.setActive(true);
+                pc = 12;
+                return 0.175;
+            case 12:
+                i += 1;
+                pc = 10;
+                return 0.0;
+            case 13:
+                pc = 14;
+                return 0.5;
+            case 14:
+                bBlackBars.dispose();
+                bDDock.dispose();
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}

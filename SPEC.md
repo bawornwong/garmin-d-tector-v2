@@ -135,7 +135,7 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 | Numeric parity, C# ↔ Monkey C | 16,211 values, 0 differences (floats bit-exact) |
 | Animation events against the golden trace | 150 / 150 |
 | Coroutines traceable from the real source | 53 / 53, 6,911 events |
-| Converted animations against a golden trace of the original | 8 / 8, 318 events, end times exact |
+| Converted animations against a golden trace of the original | 9 / 9, 475 events, end times exact |
 | Rendered frame against the atlas, read back off the device | 576 / 576 pixels per cell, two cells |
 | Same, drawn inverted (tinted ink over a black box) | 576 / 576 |
 | Flipped blits (h, v, both) against the atlas | 576 / 576 each |
@@ -152,7 +152,7 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 
 It has already earned its keep twice — it caught the runner starting a nested fiber at the frame budget rather than at the parent's scheduled time (every background-animation event 50 ms late), and it caught two places where the stubs under-reported what the original does to the display.
 
-Eight of the sixty coroutines are converted: the four the survey called linear, the two they depend on, and the character/camp pair the Camp app plays. The rest arrive with the apps that use them.
+Nine of the sixty coroutines are converted: the four the survey called linear, the two they depend on, the character/camp pair the Camp app plays, and the D-Dock swap the Database app plays. The rest arrive with the apps that use them.
 
 ## 8. Known open items
 

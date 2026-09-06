@@ -75,7 +75,11 @@ module Kaisa {
         // holds nothing (index -1).
         function buildDDockScreenElement(ddock as Number, digimonSprite as Array<Number>?,
                                          parent as ScreenElement) as SpriteBuilder {
-            var sbDDockName = buildSprite("DDock" + ddock, parent)
+            // SOURCE ODDITY, reproduced: the original names this element with
+            // an uninterpolated C# format string, so its name really is the
+            // literal "$DDock{ddock}" for every dock. Names are debug- and
+            // trace-visible only, and ADR 2 says the original wins.
+            var sbDDockName = buildSprite("$DDock{ddock}", parent)
                 .setSprite(Kaisa.Sprites.STATUS_DDOCK[ddock]);
             var dockDigimon = digimonSprite;
             if (dockDigimon == null) { dockDigimon = Kaisa.Sprites.STATUS_DDOCK_EMPTY; }
