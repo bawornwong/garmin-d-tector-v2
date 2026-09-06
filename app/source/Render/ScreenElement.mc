@@ -402,7 +402,9 @@ class RectangleBuilder extends ScreenElement {
     // The source takes seconds as a float; milliseconds are exact at 20 fps
     // and avoid a float compare in the frame loop.
     function setFlickPeriodMs(periodMs as Number, startEnabled as Boolean) as RectangleBuilder {
-        Kaisa.Trace.el1(name, "setFlickPeriod", periodMs);
+        // Both arguments, because the original's two-argument SetFlickPeriod
+        // reports both and the screen diff compares them.
+        Kaisa.Trace.el2(name, "setFlickPeriod", periodMs, startEnabled);
         flickPeriodMs = periodMs;
         flickOn = startEnabled;
         return self;

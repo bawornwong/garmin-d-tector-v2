@@ -113,6 +113,10 @@ namespace Kaisa.Digivice {
         // the packed data carries the real value for the port.
         public static Rarity GetDigimonRarity(string name) { return Rarity.Common; }
         public static float GetEraseChance(string name) { return 0f; }
+        public static Digimon GetDigimonFromCode(string code) {
+            foreach (var d in Digimons) { if (d.code == code) { return d; } }
+            return null;
+        }
 
         public static Digimon GetDigimon(string name) {
             foreach (var d in Digimons) {

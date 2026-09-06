@@ -160,6 +160,11 @@ namespace Kaisa.Digivice {
         public SpriteSet rewards;
         public SpriteSet spirit_absorber;
         public SpriteSet spirit_explosion;
+        public SpriteSet arrows;
+        public SpriteSet digits_ok;
+        public SpriteSet digits_error;
+        public SpriteSet digiHunter_explosion;
+        public SpriteSet digiHunter_hunted;
         public SpriteSet battle_mainMenu;
         public SpriteSet battle_combatMenu;
         public SpriteSet battle_attackMenu;
@@ -218,6 +223,11 @@ namespace Kaisa.Digivice {
             rewards = new SpriteSet("rewards");
             spirit_absorber = new SpriteSet("spirit_absorber");
             spirit_explosion = new SpriteSet("spirit_explosion");
+            arrows = new SpriteSet("arrows");
+            digits_ok = new SpriteSet("digits_ok");
+            digits_error = new SpriteSet("digits_error");
+            digiHunter_explosion = new SpriteSet("digiHunter_explosion");
+            digiHunter_hunted = new SpriteSet("digiHunter_hunted");
             battle_mainMenu = new SpriteSet("battle_mainMenu");
             battle_combatMenu = new SpriteSet("battle_combatMenu");
             battle_attackMenu = new SpriteSet("battle_attackMenu");
@@ -327,6 +337,9 @@ namespace Kaisa.Digivice {
         public string deportSpirit;
         public string destroySpirits;
         public string digiHunter_Start;
+        public string speedRunner_Asteroid;
+        public string speedRunner_Crash;
+        public string speedRunner_Finish;
         public string digiPowerFailed;
         public string digiPowerSucceed;
         public string digistorm;
@@ -360,6 +373,9 @@ namespace Kaisa.Digivice {
             deportSpirit = "deportSpirit";
             destroySpirits = "destroySpirits";
             digiHunter_Start = "digiHunter_Start";
+            speedRunner_Asteroid = "speedRunner_Asteroid";
+            speedRunner_Crash = "speedRunner_Crash";
+            speedRunner_Finish = "speedRunner_Finish";
             digiPowerFailed = "digiPowerFailed";
             digiPowerSucceed = "digiPowerSucceed";
             digistorm = "digistorm";

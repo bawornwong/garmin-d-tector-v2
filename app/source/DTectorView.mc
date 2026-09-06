@@ -309,6 +309,15 @@ class DTectorView extends WatchUi.View {
             System.println("--- " + battleNames[i] + " end=0.0000ms");
         }
 
+        // The code-input app: five underscores, the letter being chosen, and
+        // the code so far.
+        var codeApp = new CodeInput(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        System.println("=== CodeInputStart ===");
+        Kaisa.Trace.enable();
+        codeApp.startApp();
+        Kaisa.Trace.disable();
+        System.println("--- CodeInputStart end=0.0000ms");
+
         System.println("SCREENEND");
     }
 

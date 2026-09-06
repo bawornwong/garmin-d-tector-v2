@@ -217,7 +217,19 @@ namespace Kaisa.Digivice {
         public RectangleBuilder InvertColors(bool v = true) { L("invertColors", v); return this; }
         public RectangleBuilder SetMaskActive(bool v) { L("setMaskActive", v); return this; }
         public RectangleBuilder SetComponentPosition(int x, int y) { L("setComponentPosition", x, y); return this; }
-        public RectangleBuilder SetFlickPeriod(float f) { L("setFlickPeriod", f); return this; }
+        // The flick period is readable as well as settable: CodeInput asks
+        // whether an underscore is already blinking before it starts it.
+        float _flickPeriod = 0f;
+        public float FlickPeriod {
+            get { return _flickPeriod; }
+            set { _flickPeriod = value; L("setFlickPeriod", value); }
+        }
+        // RectangleBuilder.cs:95 -- one method whose second argument defaults
+        // to true. Both are reported, because the port sets both and the
+        // screen diff compares them.
+        public RectangleBuilder SetFlickPeriod(float f, bool startEnabled = true) {
+            _flickPeriod = f; L("setFlickPeriod", f, startEnabled); return this;
+        }
         public ScreenElement GetChildBuilder(int i) { return new TextBoxBuilder(name + ".child" + i); }
         public RectangleBuilder SetColor(object c) { L("setColor"); return this; }
 
@@ -363,6 +375,7 @@ namespace Kaisa.Digivice {
         public void UpdateLeaverBuster(uint exp, string digimon) { }
         public void DisableLeaverBuster() { }
         public void CompleteWorld(int world) { }
+        public void SubmitGameScore(int score) { }
         public AppLoader appLoader = new AppLoader();
         public void LockInput() { Trace.Log.E("lockInput"); }
         public void EnqueueAnimation(IEnumerator a) { Trace.Log.E("enqueueAnimation"); }

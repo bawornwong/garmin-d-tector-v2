@@ -18,16 +18,6 @@ namespace UnityEngine.UI {
     public class Image { }
 }
 
-namespace Kaisa.Digivice.Apps {
-    // Battle opens the code-input app inside itself to read a spirit's code.
-    // Only its type is named here; nothing a battle SCREEN draws touches it.
-    public class CodeInput : DigiviceApp {
-        public string ReturnedDigimon { get { return null; } }
-        public override void StartApp() { }
-        public CodeInput Initialize(params object[] args) { return this; }
-    }
-}
-
 namespace Kaisa.Digivice {
     // The game's debug log; the apps write to it and nothing reads it here.
     public static class VisualDebug {

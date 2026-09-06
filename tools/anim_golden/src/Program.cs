@@ -175,6 +175,25 @@ public static class Program {
         }
     }
 
+    // The code-input app: five underscores, the letter being chosen, and the
+    // code so far. Its StartApp builds the screen and its UpdateScreen redraws
+    // it, so both are exercised.
+    static void TraceCodeInputScreen() {
+        var gm = new GameManager(db);
+        var app = new Kaisa.Digivice.Apps.CodeInput();
+        app.Setup(gm, null);
+        app.AttachScreen("Screen");
+
+        Trace.Log.Now = 0.0;
+        Trace.Log.Events.Clear();
+        ScreenElement.AnimParent.Clear();
+        app.StartApp();
+        Console.WriteLine("=== CodeInputStart ===");
+        foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+        Console.WriteLine(string.Format("--- CodeInputStart end=0.0000ms events={0}",
+            Trace.Log.Events.Count));
+    }
+
     public static int Main(string[] args) {
         db = new SpriteDatabase();
         var audio = new AudioManager();
@@ -220,6 +239,7 @@ public static class Program {
         TraceDatabasePages();
         TraceMapScreens();
         TraceBattleScreens();
+        TraceCodeInputScreen();
 
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");
