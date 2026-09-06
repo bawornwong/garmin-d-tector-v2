@@ -88,8 +88,13 @@ namespace UnityEngine {
                 return (v != null && int.TryParse(v, out n)) ? (int?)n : null;
             }
         }
+        // The pin is for the ANIMATION diffs, where a roll decides how long a
+        // coroutine runs. It must not apply to the app screens: SpeedRunner
+        // generates its level with a do/while that refuses two identical rows
+        // in a row, and a constant roll makes that loop forever.
+        public static bool Pinned = true;
         public static int Range(int min, int max) {
-            var f = Fixed;
+            var f = Pinned ? Fixed : null;
             if (f != null && max > min) { return min + (f.Value % (max - min)); }
             return r.Next(min, max);
         }

@@ -311,6 +311,10 @@ public static class Program {
                 failed++;
             }
         }
+        // The app screens are traced with the harness's own seeded RNG: what
+        // they BUILD does not depend on a roll, and one app's level generator
+        // hangs if every roll is the same.
+        UnityEngine.Random.Pinned = false;
         TraceStatusApp();
         TraceDatabasePages();
         TraceMapScreens();
@@ -320,6 +324,8 @@ public static class Program {
         TraceCampScreen();
         TraceJackpotScreens();
         TraceSpeedRunnerScreen();
+
+        UnityEngine.Random.Pinned = true;
 
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");
