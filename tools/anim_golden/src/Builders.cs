@@ -193,6 +193,12 @@ namespace Kaisa.Digivice {
         public TextBoxBuilder SetTransparent(bool v) { L("setTransparent", v); return this; }
         public TextBoxBuilder SetAlignment(object a) { L("setAlignment", a); return this; }
         public TextBoxBuilder SetFitSizeToContent(bool v) { L("setFitSizeToContent", v); return this; }
+        // SpeedRunner reads it back before it hides a lane marker.
+        bool _active = true;
+        public bool Active {
+            get { return _active; }
+            set { _active = value; L("setActive", value); }
+        }
         public GameObject gameObject { get { return transform.gameObject; } }
         public int ComponentWidth = 32, ComponentHeight = 5;
         public TextBoxBuilder SetComponentSize(int w, int h) { ComponentWidth = w; ComponentHeight = h; L("setComponentSize", w, h); return this; }
@@ -267,6 +273,7 @@ namespace Kaisa.Digivice {
         public ContainerBuilder SetFlickPeriod(float f) { L("setFlickPeriod", f); return this; }
         public ScreenElement GetChildBuilder(int i) { return Children[i]; }
         public ContainerBuilder SetColor(object c) { L("setColor"); return this; }
+        public ContainerBuilder SetChildActive(int i, bool v) { L("setChildActive", i, v); return this; }
         public ContainerBuilder SetTransparent(bool v) { L("setTransparent", v); return this; }
         // Silent on both sides: the flag decides how the container paints, and
         // nothing reads it back.

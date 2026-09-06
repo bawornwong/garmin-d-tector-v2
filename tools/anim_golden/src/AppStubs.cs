@@ -12,6 +12,15 @@ using UnityEngine;
 // namespace that does not exist outside the Unity editor.
 namespace UnityEditor { }
 
+namespace UnityEngine {
+    // The engine's log; the apps write to it and nothing reads it here.
+    public static class Debug {
+        public static void Log(object o) { }
+        public static void LogWarning(object o) { }
+        public static void LogError(object o) { }
+    }
+}
+
 namespace UnityEngine.UI {
     // Status.cs uses it only in a `using`; the screen it draws into is
     // AppScreen here.
@@ -125,6 +134,7 @@ namespace Kaisa.Digivice {
             }
         }
         protected void CancelInvoke() { }
+        protected void StopAllCoroutines() { }
         // MonoBehaviour.Destroy, which the apps call unqualified. It has to do
         // the real thing: an empty stub swallowed every ClearScreen and made
         // the reference look like it never cleaned up after a screen.
@@ -140,6 +150,12 @@ namespace Kaisa.Digivice {
             Trace.Log.E("stopCoroutine");
             Driver.Kill(c);
         }
-        protected void InvokeRepeating(string method, float delay, float period) { }
+        // Unity's InvokeRepeating schedules a method to run over and over.
+        // The port has no scheduler beside the animation runner, so it starts
+        // a fiber for it (ADR 5) -- one event on each side, and the same one,
+        // rather than the reference silently having no scheduler at all.
+        protected void InvokeRepeating(string method, float delay, float period) {
+            Trace.Log.E("startCoroutine");
+        }
     }
 }

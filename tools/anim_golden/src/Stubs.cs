@@ -166,6 +166,11 @@ namespace Kaisa.Digivice {
         public SpriteSet loading;
         public SpriteSet loadingComplete;
         public SpriteSet pressAButton;
+        public SpriteSet speedRunner_rocket;
+        public SpriteSet speedRunner_rocketAsteroid;
+        public SpriteSet speedRunner_rocketExplosion;
+        public SpriteSet speedRunner_rocketFinish;
+        public SpriteSet speedRunner_rocketSpeedMark;
         public SpriteSet jackpot_pad;
         public SpriteSet jackpot_keys;
         public SpriteSet digits_ok;
@@ -236,6 +241,11 @@ namespace Kaisa.Digivice {
             loading = new SpriteSet("loading");
             loadingComplete = new SpriteSet("loadingComplete");
             pressAButton = new SpriteSet("pressAButton");
+            speedRunner_rocket = new SpriteSet("speedRunner_rocket");
+            speedRunner_rocketAsteroid = new SpriteSet("speedRunner_rocketAsteroid");
+            speedRunner_rocketExplosion = new SpriteSet("speedRunner_rocketExplosion");
+            speedRunner_rocketFinish = new SpriteSet("speedRunner_rocketFinish");
+            speedRunner_rocketSpeedMark = new SpriteSet("speedRunner_rocketSpeedMark");
             jackpot_pad = new SpriteSet("jackpot_pad");
             jackpot_keys = new SpriteSet("jackpot_keys");
             digits_ok = new SpriteSet("digits_ok");
@@ -352,6 +362,7 @@ namespace Kaisa.Digivice {
         public string destroySpirits;
         public string digiHunter_Start;
         public string beepLow;
+        public string speedRunner_Start;
         public string speedRunner_Asteroid;
         public string speedRunner_Crash;
         public string speedRunner_Finish;
@@ -389,6 +400,7 @@ namespace Kaisa.Digivice {
             destroySpirits = "destroySpirits";
             digiHunter_Start = "digiHunter_Start";
             beepLow = "beepLow";
+            speedRunner_Start = "speedRunner_Start";
             speedRunner_Asteroid = "speedRunner_Asteroid";
             speedRunner_Crash = "speedRunner_Crash";
             speedRunner_Finish = "speedRunner_Finish";

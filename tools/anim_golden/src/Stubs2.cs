@@ -141,6 +141,18 @@ namespace Kaisa.Digivice {
 
     // Tools.GetRandomElement, which Battle uses to pick an area; the harness
     // never runs that path, and a deterministic first element keeps it so.
+    // Tools.SubArray, which SpeedRunner uses to slice its lanes.
+    public static class ArrayExt {
+        public static T[] SubArray<T>(this T[] a, int index) {
+            return a.SubArray(index, a.Length - index);
+        }
+        public static T[] SubArray<T>(this T[] a, int index, int length) {
+            var b = new T[length];
+            System.Array.Copy(a, index, b, 0, length);
+            return b;
+        }
+    }
+
     public static class ListExt {
         public static T GetRandomElement<T>(this IList<T> list) {
             return (list.Count == 0) ? default(T) : list[0];

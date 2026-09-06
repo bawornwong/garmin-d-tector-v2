@@ -27,6 +27,7 @@
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Camp.cs" />
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Games/Finder.cs" />
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Games/JackpotBox.cs" />
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Games/SpeedRunner.cs" />
     <!-- CircularAdd, which Status walks its screens with: the original's own
          arithmetic rather than a copy of it. -->
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Extensions/MathExt.cs" />

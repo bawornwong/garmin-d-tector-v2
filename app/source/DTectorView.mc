@@ -346,6 +346,16 @@ class DTectorView extends WatchUi.View {
             System.println("--- Jackpot" + screen + " end=0.0000ms");
         }
 
+        // SpeedRunner's board: the lane line, the rocket, the asteroid rows
+        // and the finish. Its level generation rolls dice, but only to decide
+        // which asteroids are shown later; what startApp BUILDS is fixed.
+        var runner = new SpeedRunner(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        System.println("=== SpeedRunnerStart ===");
+        Kaisa.Trace.enable();
+        runner.startApp();
+        Kaisa.Trace.disable();
+        System.println("--- SpeedRunnerStart end=0.0000ms");
+
         System.println("SCREENEND");
     }
 

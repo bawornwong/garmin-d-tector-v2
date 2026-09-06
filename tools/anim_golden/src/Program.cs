@@ -250,6 +250,26 @@ public static class Program {
         }
     }
 
+    // SpeedRunner's board: the lane line, the rocket, the asteroid rows and
+    // the finish. Its level generation rolls dice, but only to decide which
+    // asteroids are shown later -- what StartApp BUILDS is the same every
+    // time, which is what this compares.
+    static void TraceSpeedRunnerScreen() {
+        var gm = new GameManager(db);
+        var app = new Kaisa.Digivice.Apps.SpeedRunner();
+        app.Setup(gm, null);
+        app.AttachScreen("Screen");
+
+        Trace.Log.Now = 0.0;
+        Trace.Log.Events.Clear();
+        ScreenElement.AnimParent.Clear();
+        app.StartApp();
+        Console.WriteLine("=== SpeedRunnerStart ===");
+        foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+        Console.WriteLine(string.Format("--- SpeedRunnerStart end=0.0000ms events={0}",
+            Trace.Log.Events.Count));
+    }
+
     public static int Main(string[] args) {
         db = new SpriteDatabase();
         var audio = new AudioManager();
@@ -299,6 +319,7 @@ public static class Program {
         TraceDigiHunterScreen();
         TraceCampScreen();
         TraceJackpotScreens();
+        TraceSpeedRunnerScreen();
 
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");
