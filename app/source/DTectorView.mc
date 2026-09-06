@@ -39,10 +39,10 @@ class DTectorView extends WatchUi.View {
     var _timer as Timer.Timer?;
     var _renderer as Renderer?;
     var _root as ContainerBuilder?;
+    var _gm as GameManager?;
+    var _app as DigiviceApp?;
 
     var _demoIndex as Number = 0;      // digimonDB.json index being shown
-    var _demoSprite as SpriteBuilder?;
-    var _demoAction as Number = 0;
     var _frame as Number = 0;
     var _lastEvent as String = "(none)";
     var _saveStatus as String = "";
@@ -55,6 +55,9 @@ class DTectorView extends WatchUi.View {
     var _probeIndex as Number = -1;
     var _probeInvert as Boolean = false;
     var _probeText as Boolean = false;
+    // Which Status screen the slice starts on; the app pages with left/right
+    // as usual, this only saves pressing them to capture a given screen.
+    var _probeStatusScreen as Number = 0;
 
     function initialize() {
         View.initialize();
@@ -76,8 +79,8 @@ class DTectorView extends WatchUi.View {
                                  origin, origin, SCALE, INK, LCD);
 
         _demoIndex = findDigimon("agumon");
-        buildScene();
         proveSave();
+        buildScene();
     }
 
     // Not a general lookup used by game logic (that would defeat ADR 7 --
@@ -102,8 +105,65 @@ class DTectorView extends WatchUi.View {
         } else if (_probeIndex >= 0) {
             buildSpriteProbe(root);
         } else {
-            buildDemo(root);
+            startStatusApp(root);
         }
+    }
+
+    // The vertical slice (SPEC step 6): the real Status app, on the real
+    // display list, over the real save. There is no main menu yet, so the app
+    // is started directly and closeLoadedApp only logs -- the host that owns
+    // the menu is LogicManager's screen state machine, which arrives with it.
+    function startStatusApp(root as ContainerBuilder) as Void {
+        var db = new Database(_data);
+        db.load();
+        var record = _save.readSlot(0);
+        if (record == null) { record = _save.createDefault("PLAYER"); }
+        seedSkeletonStats(record);
+        var saved = new SavedGame(_save, 0, record);
+        _gm = new GameManager(_data, db, saved);
+
+        var app = new Status(_gm, self, root);
+        app.currentScreen = _probeStatusScreen;
+        app.startApp();
+        _app = app;
+    }
+
+    // SKELETON SCAFFOLDING, in RAM only and never committed: a fresh save is
+    // all zeroes, and a Status screen full of zeroes proves less than one with
+    // numbers of different widths in it. The real values arrive with the
+    // Camp/Map apps that produce them.
+    function seedSkeletonStats(record as SaveRecord) as Void {
+        if (record.playerExperience != 0) { return; }
+        record.currentDistance = 1284;
+        record.steps = 37;
+        record.playerExperience = 5832;     // level 18 = floor(5832^(1/3))
+        record.spiritPower = 42;
+        record.totalBattles = 13;
+        record.totalWins = 9;
+        record.ddockDigimon[0] = _demoIndex;
+    }
+
+    // IAppController.CloseLoadedApp
+    function closeLoadedApp(newScreen as Number) as Void {
+        System.println("closeLoadedApp(" + newScreen + ") -- no menu to return to yet");
+    }
+
+    // Routes the adapter's twelve abstract events at the loaded app, which is
+    // what InputManager.cs does in the original.
+    function dispatch(event as Number) as Void {
+        if (_app == null) { return; }
+        if (event == Kaisa.Input.EVT_A) { _app.inputA(); }
+        else if (event == Kaisa.Input.EVT_A_DOWN) { _app.inputADown(); }
+        else if (event == Kaisa.Input.EVT_A_UP) { _app.inputAUp(); }
+        else if (event == Kaisa.Input.EVT_B) { _app.inputB(); }
+        else if (event == Kaisa.Input.EVT_B_DOWN) { _app.inputBDown(); }
+        else if (event == Kaisa.Input.EVT_B_UP) { _app.inputBUp(); }
+        else if (event == Kaisa.Input.EVT_LEFT) { _app.inputLeft(); }
+        else if (event == Kaisa.Input.EVT_LEFT_DOWN) { _app.inputLeftDown(); }
+        else if (event == Kaisa.Input.EVT_LEFT_UP) { _app.inputLeftUp(); }
+        else if (event == Kaisa.Input.EVT_RIGHT) { _app.inputRight(); }
+        else if (event == Kaisa.Input.EVT_RIGHT_DOWN) { _app.inputRightDown(); }
+        else if (event == Kaisa.Input.EVT_RIGHT_UP) { _app.inputRightUp(); }
     }
 
     // tools/verify_render.py knows this position and size.
@@ -116,49 +176,6 @@ class DTectorView extends WatchUi.View {
               .invertColors(_probeInvert)
               .setSprite(_data.spriteRef(_probeIndex, _data.ACTION_BASE));
         root.addChild(sprite);
-    }
-
-    // (The text probe scene is generated from tools/text_probe.json by
-    // tools/gen_text_probe.py, and tools/verify_text.py computes what it must
-    // look like from that same spec.)
-    //
-    // Exercises the parts of the display list that the two probes do not:
-    // a masked container that a text box overflows, a flicking rectangle,
-    // and a flipped sprite.
-    function buildDemo(root as ContainerBuilder) as Void {
-        var sprite = new SpriteBuilder();
-        sprite.setName("Demo");
-        sprite.setSize(24, 24).setPosition(4, 2).setTransparent(true);
-        root.addChild(sprite);
-        _demoSprite = sprite;
-
-        var flipped = new SpriteBuilder();
-        flipped.setName("Flipped");
-        flipped.setSize(14, 16)
-               .setPosition(1, 1)
-               .setTransparent(true)
-               .flipHorizontal(true)
-               .setSprite(_data.energySpriteRef(0));
-        root.addChild(flipped);
-
-        var window = new ContainerBuilder();
-        window.setName("Window");
-        window.setSize(30, 5).setPosition(1, 26).setTransparent(true).setMaskActive(true);
-        root.addChild(window);
-
-        var label = new TextBoxBuilder();
-        label.setName("Scroll");
-        label.setSize(60, 5)
-             .setPosition(-6, 0)
-             .setFont(Kaisa.Font.SMALL)
-             .setTransparent(true)
-             .setText("DISPLAY LIST OK");
-        window.addChild(label);
-
-        var cursor = new RectangleBuilder();
-        cursor.setName("Cursor");
-        cursor.setSize(2, 5).setPosition(29, 26).setFlickPeriodMs(500, true);
-        root.addChild(cursor);
     }
 
     function proveSave() as Void {
@@ -191,16 +208,10 @@ class DTectorView extends WatchUi.View {
             var events = _queue.drain();
             for (var i = 0; i < events.size(); i += 1) {
                 _lastEvent = Kaisa.Input.eventName(events[i]);
+                dispatch(events[i]);
             }
         }
-        if (_demoSprite != null) {
-            if (_frame % 24 == 0) {
-                _demoAction = (_demoAction + 1) % 3;   // cycle base -> at -> cr
-            }
-            var ref = _data.spriteRef(_demoIndex, _demoAction);
-            if (ref == null) { ref = _data.spriteRef(_demoIndex, _data.ACTION_BASE); }
-            _demoSprite.setSprite(ref);
-        }
+        if (_app != null) { _app.tick(TICK_MS); }
         advanceFlicks(_root, TICK_MS);
         WatchUi.requestUpdate();
     }

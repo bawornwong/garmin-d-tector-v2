@@ -14,9 +14,11 @@ import Toybox.System;
 //     768 KB budget, for a screen that shows one at a time.
 //   - every query that only needs numbers (rarity, base level, stage) reads
 //     them straight out of the blob without building anything.
-//   - lookups are by index, not by name (ADR 7). `indexOfName` exists for the
-//     three places the source starts from a literal name -- the two default
-//     Digimon and the six player spirits -- and is resolved once at load.
+//   - lookups are by index, not by name (ADR 7). The eight literal names the
+//     source uses -- the two default Digimon and the six player spirits --
+//     are resolved at BUILD time by tools/gen_wellknown.py. Resolving them at
+//     runtime tripped the watchdog on the first lookup: a scan of 593 rows,
+//     each one a base64-backed string decode.
 class Database {
     const CACHE_CAP = 8;
 
@@ -34,28 +36,23 @@ class Database {
         _data = data;
     }
 
-    // Database.LoadDatabases: everything it loaded is already in the blob, so
-    // what is left is resolving the handful of hard-coded names to indices.
+    // Database.LoadDatabases: everything it loaded is already in the blob,
+    // and the names it resolved are already indices (Data/WellKnown.mc), so
+    // startup does no work at all.
     function load() as Void {
-        defaultDigimon = indexOfName(Kaisa.Constants.DEFAULT_DIGIMON);
-        defaultSpiritDigimon = indexOfName(Kaisa.Constants.DEFAULT_SPIRIT_DIGIMON);
-        // Database.SetupPlayerSpirit, in GameChar order.
-        playerSpirit = [
-            indexOfName("agunimon"),    // Takuya
-            indexOfName("lobomon"),     // Koji
-            indexOfName("kazemon"),     // Zoe
-            indexOfName("beetlemon"),   // JP
-            indexOfName("kumamon"),     // Tommy
-            indexOfName("loweemon")     // Koichi
-        ];
+        defaultDigimon = Kaisa.WellKnown.DEFAULT_DIGIMON;
+        defaultSpiritDigimon = Kaisa.WellKnown.DEFAULT_SPIRIT_DIGIMON;
+        playerSpirit = Kaisa.WellKnown.PLAYER_SPIRIT;
     }
 
     function count() as Number {
         return _data.digimonCount();
     }
 
-    // Database.GetDigimon(string). Linear, as the original's is, but it is
-    // called only at load time (see above) rather than per frame.
+    // Database.GetDigimon(string). Nothing on a frame or startup path may
+    // call this: it decodes 593 strings, which is a watchdog trip on its own.
+    // It survives for tools and for the debug console.
+    (:debug)
     function indexOfName(wantName as String) as Number {
         var n = count();
         for (var i = 0; i < n; i += 1) {
@@ -214,7 +211,9 @@ class Database {
 
     // Database.GetDigimonFromCode. The codes are five characters, stored one
     // row per Digimon in the packed blob, and the CodeInput app hits this once
-    // per entered code.
+    // per entered code -- a single user action, not a frame, but it is still
+    // 593 string decodes and will need comparing at the byte level before
+    // CodeInput ships (the same watchdog that caught indexOfName).
     function indexOfCode(code as String) as Number {
         var wanted = code.toLower();
         var n = count();

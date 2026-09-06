@@ -135,13 +135,17 @@ class SpriteBuilder extends ScreenElement {
     var sprite as Array<Number>? = null;    // GameData sprite ref, or null
     var componentX as Number = 0;
     var componentY as Number = 0;
-    var componentWidth as Number = 0;
-    var componentHeight as Number = 0;
+    // The prefab's own sizeDelta, in game pixels: SolidSprite is 768 Unity
+    // units square, which is 32 x 32. Call sites rely on it -- BuildSprite is
+    // routinely used with no SetSize at all for a full-screen background.
+    var componentWidth as Number = 32;
+    var componentHeight as Number = 32;
     var flipH as Boolean = false;
     var flipV as Boolean = false;
 
     function initialize() {
         ScreenElement.initialize();
+        baseSetSize(32, 32);
     }
 
     // BaseSetSize is overridden in the source to resize the component too.
@@ -228,11 +232,14 @@ class TextBoxBuilder extends ScreenElement {
     var alignment as Number = Kaisa.Text.ANCHOR_UPPER_LEFT;
     var componentX as Number = 0;
     var componentY as Number = 0;
-    var componentWidth as Number = 0;
-    var componentHeight as Number = 0;
+    // TextBox.prefab is 768 x 120 Unity units: 32 x 5 game pixels, one line
+    // of Regular or Small.
+    var componentWidth as Number = 32;
+    var componentHeight as Number = 5;
 
     function initialize() {
         ScreenElement.initialize();
+        baseSetSize(32, 5);
     }
 
     function setSize(w as Number, h as Number) as TextBoxBuilder {
@@ -291,6 +298,7 @@ class RectangleBuilder extends ScreenElement {
 
     function initialize() {
         ScreenElement.initialize();
+        baseSetSize(1, 1);      // Rectangle.prefab, 24 Unity units square
     }
 
     function center() as RectangleBuilder { baseCenter(); return self; }
@@ -346,6 +354,7 @@ class ContainerBuilder extends ScreenElement {
 
     function initialize() {
         ScreenElement.initialize();
+        baseSetSize(1, 1);      // Container.prefab, 24 Unity units square
     }
 
     function center() as ContainerBuilder { baseCenter(); return self; }

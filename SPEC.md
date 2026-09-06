@@ -83,7 +83,13 @@ Three generators, all run before `monkeyc`, all self-verifying.
 - Places all 113 glyphs inside **one standard atlas row** so text blits on the 312 µs plateau.
 - Generates `app/source/Render/FontMetrics.mc`, the table the renderer reads: flat `Number` arrays, five entries per character code from 32 to 90 ([ADR 12](docs/adr/0012-verification-is-generated-not-transcribed.md)).
 
-**Data packer** (`prototype/data/pack_data.py`)
+**UI sprite resolver** (`tools/pack_ui_sprites.py`)
+- `SpriteDatabase.cs` declares ~90 named sprite fields and assigns none of them: the wiring is in the Unity scene. The resolver walks `SpriteDatabase.cs` → `DigiviceFrontier.unity` → the sheet `.meta` files' `fileIDToRecycleName` → the sprite index, and generates `app/source/Render/SpriteDatabase.mc` — 215 sprites, each `[atlasClass, x, y, w, h]`, the same shape `GameData.spriteRef` returns. One field (`emptySprite`) is genuinely unassigned in the scene and comes out `null`.
+
+**Well-known indices** (`tools/gen_wellknown.py`)
+- Resolves the eight Digimon the source names as string literals — `Constants.DEFAULT_DIGIMON`, `DEFAULT_SPIRIT_DIGIMON` and the six `Database.SetupPlayerSpirit` entries — to packed-data indices at build time. Doing it at runtime **tripped the watchdog**: each lookup is a linear scan of 593 rows and every row's name is a base64-backed string decode.
+
+**Data packer** (`tools/pack_data.py`)
 - Packs `digimonDB.json` + `frontier_rarities.json` + `worlds.json` + `initials.json` into the byte layout, base64s it, and writes the string resources ([ADR 6](docs/adr/0006-packed-data-in-string-resources.md)).
 - Row order is `digimonDB.json` order, shared with the sprite and save tables ([ADR 7](docs/adr/0007-one-row-order-shared-by-three-tables.md)).
 
