@@ -51,6 +51,10 @@ CONVERTED = {
     "RewardEmpty": 1,
     "PaySpiritPower": 2,
     "AWardSpiritPower": 3,
+    "CharHappyShort": 4,
+    "CharHappy": 5,
+    "OpenCamp": 6,
+    "CloseCamp": 7,
 }
 
 HOST_ELEMENTS = ("Anim Parent",)

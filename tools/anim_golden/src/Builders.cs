@@ -8,7 +8,11 @@ namespace Kaisa.Digivice {
 
     public class ScreenElement {
         public string name;
-        public int Width = 24, Height = 24;
+        // The prefabs' own sizeDelta, in game pixels (Unity units / 24):
+        // SolidSprite 768x768, TextBox 768x120, Rectangle and Container 24x24.
+        // It decides where Center() puts an element that was never sized, so a
+        // made-up default silently moves the first frame of OpenCamp.
+        public int Width = 32, Height = 32;
         protected ScreenElement(string n) { name = n; Trace.Log.E("build " + Kind() + " " + n); }
         protected virtual string Kind() { return "element"; }
 
@@ -77,7 +81,7 @@ namespace Kaisa.Digivice {
         public SpriteBuilder SetActive(bool v) { L("setActive", v); return this; }
         public SpriteBuilder SetTransparent(bool v) { L("setTransparent", v); return this; }
         public SpriteBuilder FlipHorizontal(bool v) { L("flip", v); return this; }
-        public SpriteBuilder Move(Direction d) { L("move", d); return this; }
+        public SpriteBuilder Move(Direction d) { L("move", d, 1); return this; }
         public SpriteBuilder Move(Direction d, int n) { L("move", d, n); return this; }
         public SpriteBuilder PlaceOutside(Direction d) {
             L("placeOutside", d);
@@ -123,7 +127,7 @@ namespace Kaisa.Digivice {
         public ScreenElement GetChildBuilder(int i) { return new TextBoxBuilder(name + ".child" + i); }
         public TextBoxBuilder SetColor(object c) { L("setColor"); return this; }
 
-        public TextBoxBuilder(string n) : base(n) { }
+        public TextBoxBuilder(string n) : base(n) { Width = 32; Height = 5; }
         protected override string Kind() { return "textBox"; }
         public TextBoxBuilder SetText(string s) { Text = s; return this; }
         // TextBoxBuilder.BaseSetSize resizes the component too.
@@ -139,7 +143,7 @@ namespace Kaisa.Digivice {
         public TextBoxBuilder SetAlignment(object a) { L("setAlignment", a); return this; }
         public int ComponentWidth = 32, ComponentHeight = 5;
         public TextBoxBuilder SetComponentSize(int w, int h) { ComponentWidth = w; ComponentHeight = h; L("setComponentSize", w, h); return this; }
-        public TextBoxBuilder Move(Direction d) { L("move", d); return this; }
+        public TextBoxBuilder Move(Direction d) { L("move", d, 1); return this; }
         public TextBoxBuilder Move(Direction d, int n) { L("move", d, n); return this; }
         public TextBoxBuilder PlaceOutside(Direction d) {
             L("placeOutside", d);
@@ -165,7 +169,7 @@ namespace Kaisa.Digivice {
         public ScreenElement GetChildBuilder(int i) { return new TextBoxBuilder(name + ".child" + i); }
         public RectangleBuilder SetColor(object c) { L("setColor"); return this; }
 
-        public RectangleBuilder(string n) : base(n) { }
+        public RectangleBuilder(string n) : base(n) { Width = 1; Height = 1; }
         protected override string Kind() { return "rectangle"; }
         public RectangleBuilder SetSize(int w, int h) { Width = w; Height = h; L("setSize", w, h); return this; }
         public RectangleBuilder SetPosition(UnityEngine.Vector2Int v) { L("setPosition", v.x, v.y); return this; }
@@ -175,7 +179,7 @@ namespace Kaisa.Digivice {
         public RectangleBuilder Center() { L("center"); SetPosition(Half(SCREEN, Width), Half(SCREEN, Height)); return this; }
         public RectangleBuilder SetActive(bool v) { L("setActive", v); return this; }
         public RectangleBuilder SetColor(Color c) { L("setColor"); return this; }
-        public RectangleBuilder Move(Direction d) { L("move", d); return this; }
+        public RectangleBuilder Move(Direction d) { L("move", d, 1); return this; }
         public RectangleBuilder Move(Direction d, int n) { L("move", d, n); return this; }
         public RectangleBuilder PlaceOutside(Direction d) {
             L("placeOutside", d);
@@ -201,7 +205,7 @@ namespace Kaisa.Digivice {
         public ScreenElement GetChildBuilder(int i) { return new TextBoxBuilder(name + ".child" + i); }
         public ContainerBuilder SetColor(object c) { L("setColor"); return this; }
 
-        public ContainerBuilder(string n) : base(n) { }
+        public ContainerBuilder(string n) : base(n) { Width = 1; Height = 1; }
         protected override string Kind() { return "container"; }
         public ContainerBuilder SetSize(int w, int h) { Width = w; Height = h; L("setSize", w, h); return this; }
         public ContainerBuilder SetPosition(UnityEngine.Vector2Int v) { L("setPosition", v.x, v.y); return this; }
@@ -210,7 +214,7 @@ namespace Kaisa.Digivice {
         public ContainerBuilder SetY(int y) { L("setY", y); return this; }
         public ContainerBuilder Center() { L("center"); SetPosition(Half(SCREEN, Width), Half(SCREEN, Height)); return this; }
         public ContainerBuilder SetActive(bool v) { L("setActive", v); return this; }
-        public ContainerBuilder Move(Direction d) { L("move", d); return this; }
+        public ContainerBuilder Move(Direction d) { L("move", d, 1); return this; }
         public ContainerBuilder Move(Direction d, int n) { L("move", d, n); return this; }
         public ContainerBuilder PlaceOutside(Direction d) {
             L("placeOutside", d);

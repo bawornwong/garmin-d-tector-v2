@@ -230,3 +230,196 @@ class AWardSpiritPower extends Routine {
         return Routine.DONE;
     }
 }
+
+// port of Animations.cs:631  CharHappyShort
+class CharHappyShort extends Routine {
+    var gm as GameManager;
+    var charIdle as Array<Number>?;
+    var charHappy as Array<Number>?;
+    var sbChar as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager) {
+        Routine.initialize();
+        gm = gmIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                var sprites = gm.characterSprites(gm.saved.playerChar());
+                charIdle = sprites[0];
+                charHappy = sprites[6];
+
+                gm.audioMgr.playSound("charHappy");
+
+                sbChar = Kaisa.ScreenBuilder.buildSprite("CharHappy", gm.screenMgr.animParent)
+                    .setSprite(charIdle);
+
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                             // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 4; return 0.0; }
+                sbChar.setSprite(charIdle);
+                pc = 2;
+                return 0.5;
+            case 2:
+                sbChar.setSprite(charHappy);
+                pc = 3;
+                return 0.5;
+            case 3:
+                i += 1;
+                pc = 1;
+                return 0.0;
+            case 4:
+                sbChar.dispose();
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:627  CharHappy -- two CharHappyShorts back to back,
+// and the first converted coroutine that yields another one.
+class CharHappy extends Routine {
+    var gm as GameManager;
+
+    function initialize(gmIn as GameManager) {
+        Routine.initialize();
+        gm = gmIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                pc = 1;
+                rt.call(new CharHappyShort(gm));    // yield return CharHappyShort()
+                return 0.0;
+            case 1:
+                pc = 2;
+                rt.call(new CharHappyShort(gm));
+                return 0.0;
+            case 2:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2567  OpenCamp -- the character walks off to the left
+// and the camp walks in from the right. TOTAL DURATION: 7.2s.
+class OpenCamp extends Routine {
+    var gm as GameManager;
+    var character as Array;
+    var sbCharacter as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Array) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Character", gm.screenMgr.animParent)
+                    .center().setSprite(character[0]);
+                pc = 1;
+                return 0.2;
+            case 1:                             // for (i = 0; i < 32; i++)
+                i = 0;
+                pc = 2;
+                return 0.0;
+            case 2:
+                if (i >= 32) { pc = 4; return 0.0; }
+                sbCharacter.setSprite(character[4 + (i % 2)]);
+                sbCharacter.move(Kaisa.DIR_LEFT, 1);
+                pc = 3;
+                return 3.0 / 32;
+            case 3:
+                i += 1;
+                pc = 2;
+                return 0.0;
+            case 4:
+                sbCharacter.setSize(24, 24).setY(4).move(Kaisa.DIR_RIGHT, 4)
+                           .setSprite(Kaisa.Sprites.CAMP[0]);
+                i = 0;
+                pc = 5;
+                return 0.0;
+            case 5:                             // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 7; return 0.0; }
+                sbCharacter.move(Kaisa.DIR_RIGHT, 1);
+                pc = 6;
+                return 3.0 / 32;
+            case 6:
+                i += 1;
+                pc = 5;
+                return 0.0;
+            case 7:
+                pc = 8;
+                return 1.0;
+            case 8:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2584  CloseCamp -- the reverse. TOTAL DURATION: 7.2s.
+class CloseCamp extends Routine {
+    var gm as GameManager;
+    var character as Array;
+    var sbCharacter as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Array) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        switch (pc) {
+            case 0:
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Character", gm.screenMgr.animParent)
+                    .setSize(24, 24).center().setSprite(Kaisa.Sprites.CAMP[0]);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                             // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 3; return 0.0; }
+                sbCharacter.move(Kaisa.DIR_LEFT, 1);
+                pc = 2;
+                return 3.0 / 32;
+            case 2:
+                i += 1;
+                pc = 1;
+                return 0.0;
+            case 3:
+                sbCharacter.setSize(32, 32).setY(0).move(Kaisa.DIR_LEFT, 4)
+                           .flipHorizontal(true).setSprite(character[0]);
+                i = 0;
+                pc = 4;
+                return 0.0;
+            case 4:                             // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 6; return 0.0; }
+                sbCharacter.setSprite(character[4 + (i % 2)]);
+                sbCharacter.move(Kaisa.DIR_RIGHT, 1);
+                pc = 5;
+                return 3.0 / 32;
+            case 5:
+                i += 1;
+                pc = 4;
+                return 0.0;
+            case 6:
+                sbCharacter.setSprite(character[0]);
+                pc = 7;
+                return 0.2;
+            case 7:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}

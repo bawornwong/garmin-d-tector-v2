@@ -174,6 +174,18 @@ class DTectorView extends WatchUi.View {
         } else if (_probeAnim == 3) {
             name = "AWardSpiritPower";
             routine = new AWardSpiritPower(_gm, 1);
+        } else if (_probeAnim == 4) {
+            name = "CharHappyShort";
+            routine = new CharHappyShort(_gm);
+        } else if (_probeAnim == 5) {
+            name = "CharHappy";
+            routine = new CharHappy(_gm);
+        } else if (_probeAnim == 6) {
+            name = "OpenCamp";
+            routine = new OpenCamp(_gm, _gm.characterSprites(Kaisa.CHAR_TAKUYA));
+        } else if (_probeAnim == 7) {
+            name = "CloseCamp";
+            routine = new CloseCamp(_gm, _gm.characterSprites(Kaisa.CHAR_TAKUYA));
         }
         System.println("=== " + name + " ===");
         // Enqueueing builds the Anim Parent container the animation draws

@@ -19,16 +19,20 @@ class Camp extends DigiviceApp {
         endCamp();
     }
 
+    function playerSprites() as Array {
+        return gm.characterSprites(gm.saved.playerChar());
+    }
+
     function startApp() as Void {
-        gm.enqueueAnimation(null);      // Animations.OpenCamp(PlayerSprites)
+        gm.enqueueAnimation(new OpenCamp(gm, playerSprites()));
         sbCamp = Kaisa.ScreenBuilder.buildSprite("Camp", screen)
             .setSize(24, 24).center().setSprite(Kaisa.Sprites.CAMP[0]);
         animCamp = gm.runner.start(new PAnimateCamp(sbCamp));
     }
 
     function endCamp() as Void {
-        gm.enqueueAnimation(null);      // Animations.CloseCamp(PlayerSprites)
-        gm.enqueueAnimation(null);      // Animations.CharHappy()
+        gm.enqueueAnimation(new CloseCamp(gm, playerSprites()));
+        gm.enqueueAnimation(new CharHappy(gm));
         gm.setCharacterDefeated(false);
         if (animCamp != null) {
             gm.runner.stop(animCamp);

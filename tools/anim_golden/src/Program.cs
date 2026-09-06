@@ -23,7 +23,16 @@ public static class Program {
         if (t == typeof(bool)) { return false; }
         if (t == typeof(GameChar)) { return GameChar.takuya; }
         if (t == typeof(Sprite)) { return new Sprite("sprite"); }
-        if (t == typeof(Sprite[])) { return db.GetAllDigimonSprites("agumon"); }
+        if (t == typeof(Sprite[])) {
+            // A Sprite[] parameter is either a character's ten sprites or a
+            // Digimon's set, and which one decides what the trace says. The
+            // port's probe passes the character sprites where the parameter is
+            // named for a character, so the reference has to as well or the
+            // two runs are not of the same animation.
+            var pn = p.Name.ToLower();
+            if (pn.Contains("char")) { return db.GetCharacterSprites(GameChar.takuya); }
+            return db.GetAllDigimonSprites("agumon");
+        }
         if (t == typeof(List<string>)) { return new List<string> { "agunimon", "lobomon" }; }
         if (t == typeof(Action<bool>)) { return (Action<bool>)(b => { }); }
         if (t.IsValueType) { return Activator.CreateInstance(t); }
