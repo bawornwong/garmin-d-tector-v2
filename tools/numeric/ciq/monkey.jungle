@@ -1,0 +1,2 @@
+project.manifest = manifest.xml
+base.sourcePath = source;../../../app/source/Logic/Digimon.mc;../../../app/source/Logic/Enums.mc;../../../app/source/Logic/MathExt.mc;../../../app/source/Logic/Constants.mc

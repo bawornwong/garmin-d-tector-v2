@@ -19,26 +19,9 @@ import Toybox.Math;
 //     drawing; the source's Destroy() is deferred to end of frame, ours is
 //     immediate, and no call site depends on the difference (they all drop
 //     the reference at the same time).
-module Kaisa {
-    module Screen {
-        // Constants.SCREEN_WIDTH / SCREEN_HEIGHT
-        const WIDTH = 32;
-        const HEIGHT = 32;
-
-        // Direction, in MenuEnums.cs order.
-        const LEFT = 0;
-        const RIGHT = 1;
-        const UP = 2;
-        const DOWN = 3;
-        const NONE = 4;
-
-        // DFont, in TextBoxBuilder.cs order. Kaisa.Font uses the same ids.
-        const FONT_REGULAR = 1;
-        const FONT_BIG = 0;
-        const FONT_SMALL = 2;
-    }
-}
-
+// DFont maps straight onto Kaisa.Font's face ids, so a TextBoxBuilder's
+// `font` field is the same number FontMetrics indexes by and no translation
+// table exists to fall out of step.
 class ScreenElement {
     var name as String = "";
     var x as Number = 0;
@@ -103,22 +86,22 @@ class ScreenElement {
     // (SCREEN - size) here is even for the sizes the game centres, so plain
     // integer division matches. Sizes are small and non-negative.
     function baseCenter() as Void {
-        baseSetPosition((Kaisa.Screen.WIDTH - width) / 2,
-                        (Kaisa.Screen.HEIGHT - height) / 2);
+        baseSetPosition((Kaisa.Constants.SCREEN_WIDTH - width) / 2,
+                        (Kaisa.Constants.SCREEN_HEIGHT - height) / 2);
     }
 
     function basePlaceOutside(direction as Number) as Void {
-        if (direction == Kaisa.Screen.UP) { baseSetY(-height); }
-        else if (direction == Kaisa.Screen.DOWN) { baseSetY(Kaisa.Screen.HEIGHT); }
-        else if (direction == Kaisa.Screen.LEFT) { baseSetX(-width); }
-        else if (direction == Kaisa.Screen.RIGHT) { baseSetX(Kaisa.Screen.WIDTH); }
+        if (direction == Kaisa.DIR_UP) { baseSetY(-height); }
+        else if (direction == Kaisa.DIR_DOWN) { baseSetY(Kaisa.Constants.SCREEN_HEIGHT); }
+        else if (direction == Kaisa.DIR_LEFT) { baseSetX(-width); }
+        else if (direction == Kaisa.DIR_RIGHT) { baseSetX(Kaisa.Constants.SCREEN_WIDTH); }
     }
 
     function baseMove(direction as Number, amount as Number) as Void {
-        if (direction == Kaisa.Screen.UP) { y -= amount; }
-        else if (direction == Kaisa.Screen.DOWN) { y += amount; }
-        else if (direction == Kaisa.Screen.LEFT) { x -= amount; }
-        else if (direction == Kaisa.Screen.RIGHT) { x += amount; }
+        if (direction == Kaisa.DIR_UP) { y -= amount; }
+        else if (direction == Kaisa.DIR_DOWN) { y += amount; }
+        else if (direction == Kaisa.DIR_LEFT) { x -= amount; }
+        else if (direction == Kaisa.DIR_RIGHT) { x += amount; }
     }
 
     // --- tree ---
@@ -212,10 +195,10 @@ class SpriteBuilder extends ScreenElement {
 
     function snapComponentToSide(side as Number, center as Boolean) as SpriteBuilder {
         if (center) { centerComponent(); }
-        if (side == Kaisa.Screen.LEFT) { setComponentX(0); }
-        else if (side == Kaisa.Screen.RIGHT) { setComponentX(width - componentWidth); }
-        else if (side == Kaisa.Screen.UP) { setComponentY(0); }
-        else if (side == Kaisa.Screen.DOWN) { setComponentY(height - componentHeight); }
+        if (side == Kaisa.DIR_LEFT) { setComponentX(0); }
+        else if (side == Kaisa.DIR_RIGHT) { setComponentX(width - componentWidth); }
+        else if (side == Kaisa.DIR_UP) { setComponentY(0); }
+        else if (side == Kaisa.DIR_DOWN) { setComponentY(height - componentHeight); }
         return self;
     }
 
@@ -241,7 +224,7 @@ class SpriteBuilder extends ScreenElement {
 // (HorizontalOverflow: Overflow in the prefab).
 class TextBoxBuilder extends ScreenElement {
     var text as String = "";
-    var font as Number = Kaisa.Screen.FONT_REGULAR;
+    var font as Number = Kaisa.Font.REGULAR;
     var alignment as Number = Kaisa.Text.ANCHOR_UPPER_LEFT;
     var componentX as Number = 0;
     var componentY as Number = 0;

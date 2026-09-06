@@ -45,14 +45,14 @@ class Renderer {
     function draw(dc as Dc, root as ScreenElement) as Void {
         dc.setColor(_field, _field);
         dc.fillRectangle(_originX, _originY,
-                         Kaisa.Screen.WIDTH * _scale, Kaisa.Screen.HEIGHT * _scale);
+                         Kaisa.Constants.SCREEN_WIDTH * _scale, Kaisa.Constants.SCREEN_HEIGHT * _scale);
         // The canvas itself is the outermost clip: the game's 32x32 screen is
         // a window onto elements that are routinely parked outside it
         // (PlaceOutside), and text is explicitly allowed to overflow its own
         // rect but never the screen.
         drawElement(dc, root, _originX, _originY,
                     _originX, _originY,
-                    Kaisa.Screen.WIDTH * _scale, Kaisa.Screen.HEIGHT * _scale);
+                    Kaisa.Constants.SCREEN_WIDTH * _scale, Kaisa.Constants.SCREEN_HEIGHT * _scale);
         dc.clearClip();
     }
 

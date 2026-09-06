@@ -125,13 +125,15 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 | Sprite round-trip against source PNGs | 2,423 / 2,423 |
 | Glyph round-trip | 113 / 113 |
 | Database read back from the device | 593 records, 9,488 fields, 0 mismatches |
-| Numeric parity, C# ↔ Monkey C | 6,059 values, 0 differences |
+| Numeric parity, C# ↔ Monkey C | 16,211 values, 0 differences (floats bit-exact) |
 | Animation events against the golden trace | 150 / 150 |
 | Coroutines traceable from the real source | 53 / 53, 6,911 events |
 | Rendered frame against the atlas, read back off the device | 576 / 576 pixels per cell, two cells |
 | Same, drawn inverted (tinted ink over a black box) | 576 / 576 |
 | Flipped blits (h, v, both) against the atlas | 576 / 576 each |
 | Text canvas against the font metrics, read back off the device | 102,400 / 102,400 device pixels, 5 strings |
+
+`tools/verify_numeric.py` runs the numeric-parity check on both sides at once: the C# side compiles the **original** `Logic/Models/Digimon.cs` against a Mathf shim, the Monkey C side compiles the **ported** `app/source/Logic/Digimon.mc` through its own jungle `sourcePath`, and the two sweeps are diffed line for line. Float results are compared as IEEE-754 bit patterns, so a one-ULP difference — the thing that moves a floor boundary elsewhere — cannot hide behind a decimal rendering. It covers `MaxExtraLevel`, `GetSpiritCost`, `GetCallCost`, `GetBossLevel`, `GetObeyChance`, `GetIdleChance`, `GetEvolveChance`, `GetBossStats`, `GetFriendlyStats` and `GetEnergyRank`. **`Mathf.RoundToInt` is half-to-even and Monkey C's `Math.round` is not**, so the port has its own `roundToInt`; this check is what would have caught the difference.
 
 `tools/verify_render.py` runs the render-parity check: it resolves the sprite reference out of `build/data.bin` — the bytes the device itself reads — samples the centre of each 10× block of a captured frame, and diffs. It is what caught both device behaviours above; neither was visible in a screenshot at a glance.
 

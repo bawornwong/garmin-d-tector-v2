@@ -167,6 +167,22 @@ class GameData {
         return [cls, u16(o + 1), u16(o + 3), u8(o + 5), u8(o + 6)];
     }
 
+    // Boss stats are packed as a SPARSE table -- u16 count, then one
+    // (index, HP, EN, CR, AB) row of u16s per Digimon that has them -- because
+    // only a handful of the 593 do. Returns [HP, EN, CR, AB], or null when the
+    // row has none, which is the case the model's constructor falls back on.
+    function bossStats(idx as Number) as Array<Number>? {
+        var base = _secOff[SEC_BOSS_STATS];
+        var n = u16(base);
+        for (var i = 0; i < n; i += 1) {
+            var o = base + 2 + i * 10;
+            if (u16(o) == idx) {
+                return [u16(o + 2), u16(o + 4), u16(o + 6), u16(o + 8)];
+            }
+        }
+        return null;
+    }
+
     function abilitySpriteRef(abilityIdx as Number) as Array<Number>? {
         var o = _secOff[SEC_ABILITY_SPRITES] + abilityIdx * 7;
         var cls = u8(o);

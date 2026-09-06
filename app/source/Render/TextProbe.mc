@@ -12,19 +12,19 @@ module TextProbe {
 
     function build(root as ContainerBuilder) as Void {
         // Big is monospaced, and its letters carry a 2 px vertical bearing its digits do not
-        add(root, "AGUMON 12", Kaisa.Screen.FONT_BIG,
+        add(root, "AGUMON 12", Kaisa.Font.BIG,
             0, 0, 32, Kaisa.Text.ANCHOR_UPPER_LEFT, false);
         // proportional advances, right-aligned, and the only punctuation any face has
-        add(root, "LV 99!", Kaisa.Screen.FONT_REGULAR,
+        add(root, "LV 99!", Kaisa.Font.REGULAR,
             0, 9, 30, Kaisa.Text.ANCHOR_UPPER_RIGHT, false);
         // centre alignment rounds in game pixels, not device pixels
-        add(root, "HP 1234", Kaisa.Screen.FONT_SMALL,
+        add(root, "HP 1234", Kaisa.Font.SMALL,
             0, 15, 30, Kaisa.Text.ANCHOR_UPPER_CENTER, false);
         // parentheses have no glyph and are skipped entirely (ADR 10); the line break advances by lineSpacing
-        add(root, "(BOSS)\nX9", Kaisa.Screen.FONT_SMALL,
+        add(root, "(BOSS)\nX9", Kaisa.Font.SMALL,
             0, 21, 30, Kaisa.Text.ANCHOR_UPPER_LEFT, false);
         // inverted text: the box paints ink and the glyphs paint the field colour
-        add(root, "INV 07", Kaisa.Screen.FONT_REGULAR,
+        add(root, "INV 07", Kaisa.Font.REGULAR,
             2, 26, 12, Kaisa.Text.ANCHOR_UPPER_LEFT, true);
     }
 

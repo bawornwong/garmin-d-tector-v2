@@ -94,7 +94,7 @@ class DTectorView extends WatchUi.View {
     function buildScene() as Void {
         var root = new ContainerBuilder();
         root.setName("Root");
-        root.setSize(Kaisa.Screen.WIDTH, Kaisa.Screen.HEIGHT).setTransparent(true);
+        root.setSize(Kaisa.Constants.SCREEN_WIDTH, Kaisa.Constants.SCREEN_HEIGHT).setTransparent(true);
         _root = root;
 
         if (_probeText) {
@@ -150,7 +150,7 @@ class DTectorView extends WatchUi.View {
         label.setName("Scroll");
         label.setSize(60, 5)
              .setPosition(-6, 0)
-             .setFont(Kaisa.Screen.FONT_SMALL)
+             .setFont(Kaisa.Font.SMALL)
              .setTransparent(true)
              .setText("DISPLAY LIST OK");
         window.addChild(label);

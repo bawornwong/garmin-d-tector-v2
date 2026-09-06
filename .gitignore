@@ -13,3 +13,7 @@ build/dtector.prg.debug.xml
 build/gen/
 build/mir/
 build/internal-mir/
+
+# dotnet build output for the numeric parity reference
+tools/numeric/bin/
+tools/numeric/obj/

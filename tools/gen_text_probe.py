@@ -15,9 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import app as app_path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FACE_CONST = {"Big": "Kaisa.Screen.FONT_BIG",
-              "Regular": "Kaisa.Screen.FONT_REGULAR",
-              "Small": "Kaisa.Screen.FONT_SMALL"}
+FACE_CONST = {"Big": "Kaisa.Font.BIG",
+              "Regular": "Kaisa.Font.REGULAR",
+              "Small": "Kaisa.Font.SMALL"}
 ANCHOR_CONST = ["Kaisa.Text.ANCHOR_UPPER_LEFT",
                 "Kaisa.Text.ANCHOR_UPPER_CENTER",
                 "Kaisa.Text.ANCHOR_UPPER_RIGHT"]
