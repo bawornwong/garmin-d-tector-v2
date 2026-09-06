@@ -146,8 +146,17 @@ translation.
    and re-measure before anything else is decided on those numbers.
 2. **Play the whole loop by hand.** The animation diffs prove each coroutine
    matches event for event; they say nothing about whether the game *plays*.
-   A new game, a battle won and lost, an event triggered from the character
+   Two scripted tours have run unattended in the simulator without an error --
+   the menu into Status, the Database and the Map and back out, and a full
+   random battle from the encounter through several turns with its animations
+   playing -- which is evidence that the paths hold together, not that the
+   game is right. What still wants a person: a new game from the character
+   selection, a battle won and lost, an event triggered from the character
    screen, a jackpot, a spirit lost and recovered.
+
+   The tool for the unattended half is `_probeInputs` in `DTectorView`: a list
+   of `Kaisa.Input.EVT_*`, one dispatched per second, each printing the screen
+   it landed on.
 3. **Try the input mapping on the watch.** It is decided and implemented --
    swipe left/right for Left/Right, a tap in the middle of the screen or the
    upper button for A, the lower button for B, a still hold on either half for

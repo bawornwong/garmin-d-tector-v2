@@ -61,11 +61,15 @@ class DTectorView extends WatchUi.View {
     // 4 = a random Battle (which has no menu entry of its own).
     var _sliceApp as Number = 0;
     var _probeStatusScreen as Number = 0;
-    // A scripted input sequence, one event per frame from frame 5, so a
-    // capture can reach a screen several presses deep. It goes through
-    // dispatch() like a real press, so the probe exercises the input path
-    // rather than reaching around it.
+    // A scripted input sequence, one event per second from frame 5, so a
+    // capture can reach a screen several presses deep and a smoke test can
+    // walk the game unattended. It goes through dispatch() like a real press,
+    // so the probe exercises the input path rather than reaching around it,
+    // and each press prints where the game was when it landed.
+    // A smoke tour: open the menu, walk it, open Status, back out, open the
+    // Database, back out, open the Map, back out.
     var _probeInputs as Array<Number> = [];
+    const PROBE_INPUT_EVERY = 20;       // one scripted press per second
     var _probeInputAt as Number = 0;
     // Which converted animation to play, traced, for tools/verify_anim.py:
     // -1 plays none. The arguments match the ones the C# harness synthesises
@@ -484,8 +488,16 @@ class DTectorView extends WatchUi.View {
                 dispatch(events[i]);
             }
         }
-        if (_probeInputAt < _probeInputs.size() && _frame > 4) {
-            dispatch(_probeInputs[_probeInputAt]);
+        if (_probeInputAt < _probeInputs.size() && _frame > 4
+                && _frame % PROBE_INPUT_EVERY == 0) {
+            var ev = _probeInputs[_probeInputAt];
+            if (_gm != null) {
+                System.println("SMOKE f=" + _frame + " send=" + Kaisa.Input.eventName(ev)
+                    + " screen=" + _gm.logicMgr.currentScreen
+                    + " app=" + ((_gm.logicMgr.loadedApp == null) ? "-" : "yes")
+                    + " anim=" + _gm.screenMgr.playingAnimations);
+            }
+            dispatch(ev);
             _probeInputAt += 1;
         }
         if (_gm != null && _probeAnim >= 0) {
