@@ -148,16 +148,24 @@ translation.
    those numbers.
 2. **Play the whole loop by hand.** The animation diffs prove each coroutine
    matches event for event; they say nothing about whether the game *plays*.
-   Four scripted tours have run unattended in the simulator without an error:
-   the menu into Status, the Database and the Map and back out; a random
-   battle from the encounter through several turns with its animations
-   playing; a new game, where the character-selection screen's intro plays, a
-   press picks the character, and the 53-second opening animation runs to the
-   end; and an armed event, where the character screen offers it and a press
-   turns it into a battle. That is evidence the paths hold together, not that
-   the game is right. What still wants a person: a battle played to its end,
-   won and lost, a jackpot, a spirit lost and recovered -- and all of it on a
-   watch rather than in a simulator.
+   Six scripted tours have run unattended in the simulator without an error,
+   a watchdog trip or a stall:
+
+   - the menu into Status, the Database and the Map, and back out
+   - a new game: the character-selection intro plays, a press picks the
+     character, and the 53-second opening animation runs to the end
+   - an armed event: the character screen offers it, a press turns it into a
+     battle
+   - battles played to their end, six of them back to back over seven
+     minutes -- encounter, turns, the ending animations, the rewards, and back
+     to the menu each time
+   - the Finder
+   - the Jackpot Box, from the box's own encounter animation into the game
+
+   That is evidence the paths hold together, not that the game is *right*: a
+   trace diff cannot tell you a screen looked wrong, and none of it has run on
+   a watch. What wants a person is the feel -- the input mapping, the pacing,
+   and whether the numbers on the screens are the ones the original shows.
 
    The tool for the unattended half is `_probeInputs` in `DTectorView`: a list
    of `Kaisa.Input.EVT_*`, one dispatched per second, each printing the screen
