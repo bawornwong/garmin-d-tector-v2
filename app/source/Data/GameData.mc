@@ -227,13 +227,147 @@ class GameData {
 
     // --- worlds/areas/bosses: layout mirrors tools/pack_data.py's `wblob` ---
     //   u16 worldCount, then per world:
-    //     u8 number, u8 multiMap, u8 shuffle, u8 removePlayer, u8 semibossMode
+    //     u8 number, u8 multiMap, u8 shuffle, u8 removePlayer, u8 semibossMode,
+    //     u8 showEyes, u8 lockTravel, u8 bossMode
+    //     4 x 7-byte map sprite refs (Maps/<worldSprite>_0..3; class 0xFF
+    //       where that map does not exist)
     //     u8 areaCount, then areaCount x (u8 number, u8 map, u32 distance,
     //                                     u8 x, u8 y)                = 8 bytes
     //     u8 bossSlotCount, then per slot: u8 nameCount, nameCount x s16
     //     u8 semibossGroupCount, then per group: u8 nameCount, nameCount x s16
+    // number, multiMap, shuffle, removePlayer, semibossMode, showEyes,
+    // lockTravel, bossMode, then four 7-byte map sprite refs.
+    const WORLD_HEADER = 8 + 4 * 7;
+
     function worldCount() as Number {
         return u16(_secOff[SEC_WORLDS]);
+    }
+
+    // Walks to a world's header. The section is variable-length, so reaching
+    // world n means stepping over the areas and boss lists of the n before it.
+    function worldOffset(world as Number) as Number {
+        var o = _secOff[SEC_WORLDS] + 2;
+        for (var w = 0; w < world; w += 1) {
+            o += WORLD_HEADER;
+            var areaCount = u8(o); o += 1;
+            o += areaCount * 8;
+            var bossCount = u8(o); o += 1;
+            for (var b = 0; b < bossCount; b += 1) {
+                var nc = u8(o); o += 1;
+                o += nc * 2;
+            }
+            var semiCount = u8(o); o += 1;
+            for (var g = 0; g < semiCount; g += 1) {
+                var nc = u8(o); o += 1;
+                o += nc * 2;
+            }
+        }
+        return o;
+    }
+
+    function worldMultiMap(world as Number) as Boolean {
+        return u8(worldOffset(world) + 1) != 0;
+    }
+
+    function worldShuffle(world as Number) as Boolean {
+        return u8(worldOffset(world) + 2) != 0;
+    }
+
+    function worldRemovePlayer(world as Number) as Boolean {
+        return u8(worldOffset(world) + 3) != 0;
+    }
+
+    // 0 none, 1 Fill, 2 Gank, 3 Pseudo
+    function worldSemibossMode(world as Number) as Number {
+        return u8(worldOffset(world) + 4);
+    }
+
+    function worldShowEyes(world as Number) as Boolean {
+        return u8(worldOffset(world) + 5) != 0;
+    }
+
+    // "If true, the player can't travel between areas, areas will be traveled
+    // in order, and datastorms can't happen."
+    function worldLockTravel(world as Number) as Boolean {
+        return u8(worldOffset(world) + 6) != 0;
+    }
+
+    // 0 Evolve, 1 UseBurst
+    function worldBossMode(world as Number) as Number {
+        return u8(worldOffset(world) + 7);
+    }
+
+    // The world's map art, 0..3; null where a single-map world has no such map.
+    function worldMapSprite(world as Number, map as Number) as Array<Number>? {
+        var o = worldOffset(world) + 8 + map * 7;
+        var cls = u8(o);
+        if (cls == 0xFF) { return null; }
+        return [cls, u16(o + 1), u16(o + 3), u8(o + 5), u8(o + 6)];
+    }
+
+    function worldAreaCount(world as Number) as Number {
+        return u8(worldOffset(world) + WORLD_HEADER);
+    }
+
+    // [number, map, distance, x, y] for one area.
+    function worldArea(world as Number, area as Number) as Array<Number> {
+        var o = worldOffset(world) + WORLD_HEADER + 1 + area * 8;
+        return [u8(o), u8(o + 1), u32(o + 2), u8(o + 6), u8(o + 7)];
+    }
+
+    // The Digimon indices in one boss slot (usually one, more where the slot
+    // is a choice), and the same for a semiboss group.
+    function worldBossSlotCount(world as Number) as Number {
+        var o = worldOffset(world) + WORLD_HEADER;
+        var areaCount = u8(o); o += 1 + areaCount * 8;
+        return u8(o);
+    }
+
+    function worldBossSlot(world as Number, slot as Number) as Array<Number> {
+        var o = worldOffset(world) + WORLD_HEADER;
+        var areaCount = u8(o); o += 1 + areaCount * 8;
+        var count = u8(o); o += 1;
+        for (var b = 0; b < count; b += 1) {
+            var nc = u8(o); o += 1;
+            if (b == slot) {
+                var out = [] as Array<Number>;
+                for (var i = 0; i < nc; i += 1) { out.add(s16(o + i * 2)); }
+                return out;
+            }
+            o += nc * 2;
+        }
+        return [];
+    }
+
+    function worldSemibossGroupCount(world as Number) as Number {
+        var o = semibossOffset(world);
+        return u8(o);
+    }
+
+    function worldSemibossGroup(world as Number, group as Number) as Array<Number> {
+        var o = semibossOffset(world);
+        var count = u8(o); o += 1;
+        for (var g = 0; g < count; g += 1) {
+            var nc = u8(o); o += 1;
+            if (g == group) {
+                var out = [] as Array<Number>;
+                for (var i = 0; i < nc; i += 1) { out.add(s16(o + i * 2)); }
+                return out;
+            }
+            o += nc * 2;
+        }
+        return [];
+    }
+
+    function semibossOffset(world as Number) as Number {
+        var o = worldOffset(world) + WORLD_HEADER;
+        var areaCount = u8(o); o += 1 + areaCount * 8;
+        var bossCount = u8(o); o += 1;
+        for (var b = 0; b < bossCount; b += 1) {
+            var nc = u8(o); o += 1;
+            o += nc * 2;
+        }
+        return o;
     }
 
     // Walks the variable-length worlds section once and returns totals
@@ -245,7 +379,7 @@ class GameData {
         var semibossTotal = 0;
         var wc = worldCount();
         for (var w = 0; w < wc; w += 1) {
-            o += 5;                          // number,multiMap,shuffle,removePlayer,semibossMode
+            o += WORLD_HEADER;
             var areaCount = u8(o); o += 1;
             areaTotal += areaCount;
             o += areaCount * 8;              // 1+1+4+1+1

@@ -124,20 +124,39 @@ def main():
     for i, bs in bosses_stats:
         boss_stats_table += struct.pack("<HHHHH", i, bs["HP"], bs["EN"], bs["CR"], bs["AB"])
 
-    # worlds: number, multiMap, shuffle, removePlayer, semibossMode(0=None,1=Fill,2=Gank,3=Pseudo),
-    #   worldSprite(Maps/<worldSprite>_<map> ref per area's map, resolved lazily by the reader),
+    # worlds: number, multiMap, shuffle, removePlayer,
+    #   semibossMode(0=None,1=Fill,2=Gank,3=Pseudo,4=Deva), showEyes,
+    #   lockTravel, bossMode(0=Evolve,1=UseBurst),
+    #   4 x map sprite ref (Maps/<worldSprite>_<0..3>, 7 bytes each, class 0xFF
+    #     where that map does not exist -- a single-map world has only _0),
     #   areas[{number,map,distance,x,y}], bosses[][ (as digimon indices, variable length per slot)],
     #   semibosses[][ digimon indices ]
-    SEMIBOSS_MODE = {None: 0, "Fill": 1, "Gank": 2, "Pseudo": 3}
+    #
+    # The map sprites are resolved here rather than by name at runtime for the
+    # same reason every other sprite is (ADR 7): a name lookup on the device is
+    # a scan of the sprite index.
+    SEMIBOSS_MODE = {None: 0, "Fill": 1, "Gank": 2, "Pseudo": 3, "Deva": 4}
+    BOSS_MODE = {None: 0, "Evolve": 0, "UseBurst": 1}
     wblob = struct.pack("<H", len(worlds))
     for w in worlds:
         areas = w["areas"]
         bosses = w.get("bosses") or []
         semibosses = w.get("semibosses") or []
-        wblob += struct.pack("<BBBBB", w["number"], 1 if w["multiMap"] else 0,
+        wblob += struct.pack("<BBBBBBBB", w["number"], 1 if w["multiMap"] else 0,
                               1 if w.get("shuffle") else 0,
                               1 if w.get("removePlayer") else 0,
-                              SEMIBOSS_MODE.get(w.get("semibossMode"), 0))
+                              SEMIBOSS_MODE.get(w.get("semibossMode"), 0),
+                              1 if w.get("showEyes") else 0,
+                              1 if w.get("lockTravel") else 0,
+                              BOSS_MODE.get(w.get("bossMode"), 0))
+        for m in range(4):
+            key = f"Maps/{w['worldSprite']}_{m}"
+            e = sprite_index.get(key)
+            if e is None:
+                wblob += struct.pack("<BHHBB", NO_SPRITE, 0, 0, 0, 0)
+            else:
+                wblob += struct.pack("<BHHBB", ATLAS_CODE[e["atlas"]], e["x"], e["y"],
+                                      e["w"], e["h"])
         wblob += struct.pack("<B", len(areas))
         for a in areas:
             wblob += struct.pack("<BBIBB", a["number"], a["map"], a["distance"],
