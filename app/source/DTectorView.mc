@@ -76,6 +76,8 @@ class DTectorView extends WatchUi.View {
     // (every int is 1), so the two traces are of the same run.
     var _probeAnim as Number = -1;
     var _probeAnimDone as Boolean = false;
+    // Draws the Status app's screens for tools/verify_screens.py.
+    var _probeScreens as Boolean = false;
     // The roll the animation probe pins Kaisa.Rand to, so an animation whose
     // length depends on one can be diffed; -1 leaves the RNG alone.
     var _probeRand as Number = 17;
@@ -171,6 +173,11 @@ class DTectorView extends WatchUi.View {
         // off; nothing else in the port depends on them running.
         if (_probeAnim < 0) { screenMgr.startFlashRoutines(); }
 
+        if (_probeScreens) {
+            startScreenProbe();
+            return;
+        }
+
         if (_probeAnim >= 0) {
             startAnimProbe();
             return;
@@ -201,6 +208,35 @@ class DTectorView extends WatchUi.View {
 
     (:release)
     function pinRand(v as Number) as Void {
+    }
+
+    // Draws the Status app's seven screens with the numbers the C# harness
+    // pins (tools/anim_golden AppFixture), so tools/verify_screens.py can diff
+    // what each screen builds against what the ORIGINAL Status.cs builds.
+    (:debug)
+    function startScreenProbe() as Void {
+        var record = _gm.saved.record;
+        record.currentDistance = 4321;
+        record.steps = 8765;
+        record.playerExperience = 12 * 12 * 12;     // level is the cube root
+        record.spiritPower = 47;
+        record.totalBattles = 9;
+        record.totalWins = 4;
+        record.ddockDigimon[0] = _demoIndex;
+        record.ddockDigimon[1] = _demoIndex;
+        record.ddockDigimon[2] = _demoIndex;
+        record.ddockDigimon[3] = _demoIndex;
+
+        var app = new Status(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        for (var i = 0; i < 7; i += 1) {
+            System.println("=== Status" + i + " ===");
+            Kaisa.Trace.enable();
+            app.drawScreen();
+            Kaisa.Trace.disable();
+            System.println("--- Status" + i + " end=0.0000ms");
+            app.inputRight();
+        }
+        System.println("SCREENEND");
     }
 
     // Plays one converted animation through the real queue -- so it draws

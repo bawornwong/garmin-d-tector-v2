@@ -281,6 +281,9 @@ namespace Kaisa.Digivice {
     public class InputManager { public void ConsumeLastKey(params object[] a) { } }
     public class WorldManager {
         public int CurrentDistance = 100;
+        // Status draws these two; the fixture pins them so the port can be
+        // told the same numbers.
+        public int TotalSteps = AppFixture.TotalSteps;
         public int CurrentWorld = 0;
         public int CurrentArea = 0;
         public bool GetAreaCompleted(int w, int a) { return false; }
@@ -288,7 +291,23 @@ namespace Kaisa.Digivice {
         public string GetArea(int w, int a) { return "area" + a; }
     }
 
+    // What Status asks LogicManager for.
+    public class LogicManager {
+        public int SpiritPower = AppFixture.SpiritPower;
+        public int TotalBattles = AppFixture.TotalBattles;
+        public int TotalWins = AppFixture.TotalWins;
+        public int GetPlayerLevel() { return AppFixture.PlayerLevel; }
+        public float WinPercentage {
+            get {
+                if (TotalBattles == 0) { return 0f; }
+                return (float)TotalWins / TotalBattles;
+            }
+        }
+    }
+
     public class GameManager {
+        public LogicManager logicMgr = new LogicManager();
+        public AudioManager audioMgr = new AudioManager();
         public ScreenManager screenMgr = ScreenManager.Shared;
         public InputManager inputMgr = new InputManager();
         public WorldManager WorldMgr = new WorldManager();
@@ -299,7 +318,7 @@ namespace Kaisa.Digivice {
             PlayerCharSprites = db.GetCharacterSprites(GameChar.takuya);
         }
         public void UnlockInput() { Trace.Log.E("unlockInput"); }
-        // GameManager.cs:281 BuildMapScreen -- a container with one map
+
         // sprite, or four for a multi-map world. Stubbing it as a bare
         // "MapScreen" container hid every one of those.
         public ContainerBuilder BuildMapScreen(int w, Transform p = null) {
@@ -323,9 +342,12 @@ namespace Kaisa.Digivice {
         // dock's own name is the literal "$DDock{ddock}": the original wrote a
         // C# interpolation without the $ prefix, so the brace text IS the name.
         public SpriteBuilder GetDDockScreenElement(int d, Transform p = null) {
-            new SpriteBuilder("$DDock{ddock}").SetSprite(spriteDB.status_ddock[d]);
-            return new SpriteBuilder("DigimonDDock" + d)
-                .SetSize(24, 24).SetPosition(4, 8).SetSprite(new Sprite("agumon"));
+            SpriteBuilder sbDDockName = ScreenElement.BuildSprite("$DDock{ddock}", p)
+                .SetSprite(spriteDB.status_ddock[d]);
+            Sprite dockDigimon = spriteDB.GetDigimonSprite("agumon");
+            if (dockDigimon == null) { dockDigimon = spriteDB.status_ddockEmpty; }
+            return ScreenElement.BuildSprite("DigimonDDock" + d, sbDDockName.transform)
+                .SetSize(24, 24).SetPosition(4, 8).SetSprite(dockDigimon);
         }
         public Coroutine StartCoroutine(IEnumerator r) {
             Trace.Log.E("startCoroutine");

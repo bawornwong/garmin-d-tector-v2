@@ -54,6 +54,30 @@ public static class Program {
         return null;
     }
 
+    // The Status app's seven screens, traced the way an animation is: what a
+    // screen builds is a display list, and the numbers on it are events. The
+    // app is walked with its own InputRight, so the order the screens come in
+    // is the original's too.
+    static void TraceStatusApp() {
+        var gm = new GameManager(db);
+        gm.WorldMgr.CurrentDistance = AppFixture.Distance;
+        var status = new Kaisa.Digivice.Apps.Status();
+        status.Setup(gm, null);
+        status.AttachScreen("Screen");
+
+        for (int i = 0; i < 7; i++) {
+            Trace.Log.Now = 0.0;
+            Trace.Log.Events.Clear();
+            ScreenElement.AnimParent.Clear();
+            status.Draw();
+            Console.WriteLine("=== Status" + i + " ===");
+            foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+            Console.WriteLine(string.Format("--- Status{0} end=0.0000ms events={1}",
+                i, Trace.Log.Events.Count));
+            status.InputRight();
+        }
+    }
+
     public static int Main(string[] args) {
         db = new SpriteDatabase();
         var audio = new AudioManager();
@@ -95,6 +119,8 @@ public static class Program {
                 failed++;
             }
         }
+        TraceStatusApp();
+
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");
         foreach (var l in summary) { Console.WriteLine(l); }

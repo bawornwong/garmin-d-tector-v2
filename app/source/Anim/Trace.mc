@@ -32,6 +32,15 @@ module Kaisa {
         }
 
         (:debug)
+        function disable() as Void {
+            enabled = false;
+        }
+
+        (:release)
+        function disable() as Void {
+        }
+
+        (:debug)
         function event(text as String) as Void {
             if (!enabled) { return; }
             System.println(nowMs.format("%12.4f") + " " + text);

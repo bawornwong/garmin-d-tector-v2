@@ -15,5 +15,11 @@
     <!-- The ORIGINAL animation file, compiled straight out of the checkout:
          the golden has to come from the source, not from a copy of it. -->
     <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Data/Animations.cs" />
+    <!-- And the Status app, whose screens are diffed the same way: what a
+         screen builds is a display list like any other. -->
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Apps/Status.cs" />
+    <!-- CircularAdd, which Status walks its screens with: the original's own
+         arithmetic rather than a copy of it. -->
+    <Compile Include="$(DTectorSrc)/Assets/Scripts/Logic/Extensions/MathExt.cs" />
   </ItemGroup>
 </Project>

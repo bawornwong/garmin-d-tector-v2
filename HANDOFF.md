@@ -102,7 +102,8 @@ Every check reads a frame back off the device or diffs two real implementations.
 | Numeric parity, original C# ↔ ported Monkey C | 16,211 values, 0 differences, floats bit-exact | `tools/verify_numeric.py` |
 | Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
 | Packed world layout vs `worlds.json` | 225 / 225 fields | `tools/verify_worlds.py` |
-| Converted animations vs a golden trace of the original | 53 / 53 | `tools/verify_anim.py` (~15 minutes: it rebuilds and runs the app once per animation) |
+| Converted animations vs a golden trace of the original | 53 / 53 | `tools/verify_anim.py` (~20 minutes: it rebuilds and runs the app once per animation) |
+| The Status app's screens vs the original's | 7 / 7 screens, 76 events | `tools/verify_screens.py` |
 | Rendered sprite vs atlas (normal) | 576 / 576 | set `_probeIndex`, capture, `tools/verify_render.py <png> 8` |
 | Rendered sprite vs atlas (inverted) | 576 / 576 | also set `_probeInvert`, then `... --inverted` |
 | Text canvas vs font metrics | 102,400 / 102,400 device px | set `_probeText`, capture, `tools/verify_text.py <png>` |
@@ -162,10 +163,16 @@ translation.
    - the Finder
    - the Jackpot Box, from the box's own encounter animation into the game
 
-   That is evidence the paths hold together, not that the game is *right*: a
-   trace diff cannot tell you a screen looked wrong, and none of it has run on
-   a watch. What wants a person is the feel -- the input mapping, the pacing,
-   and whether the numbers on the screens are the ones the original shows.
+   That is evidence the paths hold together. What a *screen* draws is now
+   checked too, by the same golden-diff trick: `tools/verify_screens.py`
+   compiles the original `Status.cs` into the harness, walks its seven screens
+   with its own `InputRight`, and diffs them against the port drawing the same
+   seven with the same numbers -- 7/7, including which number lands in which
+   box and how it is aligned. The other apps can follow the same way when they
+   are worth the stubs.
+
+   What is left for a person is the feel: the input mapping, the pacing, and a
+   watch to judge them on.
 
    The tool for the unattended half is `_probeInputs` in `DTectorView`: a list
    of `Kaisa.Input.EVT_*`, one dispatched per second, each printing the screen

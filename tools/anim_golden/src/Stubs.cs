@@ -159,6 +159,9 @@ namespace Kaisa.Digivice {
         public SpriteSet rewards;
         public SpriteSet spirit_absorber;
         public SpriteSet spirit_explosion;
+        public SpriteSet status_distance;
+        public SpriteSet status_level;
+        public SpriteSet status_victories;
         public SpriteSet status_ddock;
         public SpriteSet status_ddockEmpty;
         public SpriteSet stealSpiritAttractor;
@@ -203,6 +206,9 @@ namespace Kaisa.Digivice {
             rewards = new SpriteSet("rewards");
             spirit_absorber = new SpriteSet("spirit_absorber");
             spirit_explosion = new SpriteSet("spirit_explosion");
+            status_distance = new SpriteSet("status_distance");
+            status_level = new SpriteSet("status_level");
+            status_victories = new SpriteSet("status_victories");
             status_ddock = new SpriteSet("status_ddock");
             status_ddockEmpty = new SpriteSet("status_ddockEmpty");
             stealSpiritAttractor = new SpriteSet("stealSpiritAttractor");
@@ -359,6 +365,7 @@ namespace Kaisa.Digivice {
         public void PlaySound(string s) { Trace.Log.E("sound " + s); }
         public void StopSound() { Trace.Log.E("stopSound"); }
         public void PlayButtonA() { Trace.Log.E("sound buttonA"); }
+        public void PlayButtonB() { Trace.Log.E("sound buttonB"); }
         public void PlayCharHappy() { Trace.Log.E("sound charHappy"); }
     }
 }
