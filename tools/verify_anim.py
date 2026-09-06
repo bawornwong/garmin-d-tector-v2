@@ -100,6 +100,8 @@ CONVERTED = {
     "TransitionToMap1": 48,
     "LoadCharacterSelection": 49,
     "StartAppDigiHunter": 50,
+    "SusanoomonEvolution": 51,
+    "TransitionToMap3": 52,
 }
 
 # The roll both sides are pinned to: an animation that rolls for a length
@@ -157,6 +159,11 @@ def normalise(lines, cells):
             continue
         if ev.startswith("setSprite "):
             head, _, sprite = ev.rpartition(" ")
+            # An inverted sprite is named after the one it was made from, on
+            # both sides: `inv:` then whatever that sprite is called.
+            prefix = ""
+            if sprite.startswith("inv:"):
+                prefix, sprite = "inv:", sprite[len("inv:"):]
             # The port prints `sprite(cls,x,y)` for art the debug name table
             # does not carry (every Digimon sprite); that IS the cell.
             m2 = re.fullmatch(r"sprite\((\d+),(\d+),(\d+)\)", sprite)
@@ -164,7 +171,7 @@ def normalise(lines, cells):
                 sprite = f"cell({m2.group(1)},{m2.group(2)},{m2.group(3)})"
             else:
                 sprite = cells.get(sprite, sprite)
-            ev = head + " " + sprite
+            ev = head + " " + prefix + sprite
         # A flick period is seconds in the original and milliseconds in the
         # port -- Connect IQ counts frames, not float seconds -- so the
         # reference's value is converted rather than the port faking a unit

@@ -367,13 +367,13 @@ class Battle extends DigiviceApp {
 
     function assignEnemyDigimon() as Void {
         if (isBossBattle) {
-            gm.enqueueAnimation(null);          // Animations.EncounterBoss
+            gm.enqueueAnimation(new EncounterBoss(gm, enemyDigimon.index));
             bossLevel = gm.logicMgr.getPlayerLevel();
             enemyStats = enemyDigimon.getBossStats(bossLevel);
             victoryExp = gm.logicMgr.getExperienceGained(playerLevel, bossLevel);
             defeatExp = gm.logicMgr.getExperienceGained(bossLevel, playerLevel);
         } else {
-            gm.enqueueAnimation(null);          // Animations.EncounterEnemy
+            gm.enqueueAnimation(new EncounterEnemy(gm, enemyDigimon.index, 1.0, null, null));
             enemyStats = enemyDigimon.getRegularStats();
             victoryExp = gm.logicMgr.getExperienceGained(playerLevel, enemyDigimon.baseLevel);
             defeatExp = gm.logicMgr.getExperienceGained(enemyDigimon.baseLevel, playerLevel);
@@ -409,8 +409,9 @@ class Battle extends DigiviceApp {
 
             assignFriendlyDigimon(digimon, CALL_REGULAR);
 
-            gm.enqueueAnimation(null);          // Animations.SpendCallPoints
-            gm.enqueueAnimation(null);          // Animations.SummonDigimon
+            gm.enqueueAnimation(new SpendCallPoints(gm, callPointsBefore,
+                                                    currentCallPoints()));
+            gm.enqueueAnimation(new SummonDigimon(gm, digimon));
         } else if (ddockPurpose == 1) {
             currentScreen = SCREEN_COMBAT_MENU;
             combatMenuIndex = 0;
@@ -475,17 +476,24 @@ class Battle extends DigiviceApp {
 
         if (chosen == Kaisa.WellKnown.DEFAULT_SPIRIT_DIGIMON) {
             assignFriendlyDigimon(chosen, CALL_ANCIENT);
-            gm.enqueueAnimation(null);          // Animations.SpiritEvolution
+            gm.enqueueAnimation(new SpiritEvolution(gm, gm.saved.playerChar(), chosen));
         } else if (chosenDigimon.spiritType == Kaisa.SPIRIT_ANCIENT) {
             var spBefore = spiritPower();
             assignFriendlyDigimon(chosen, CALL_ANCIENT);
             gm.enqueueAnimation(new PaySpiritPower(gm, spBefore, spiritPower()));
-            gm.enqueueAnimation(null);          // Animations.AncientEvolution
+            gm.enqueueAnimation(new AncientEvolution(gm, gm.saved.playerChar(), chosen));
         } else {
             assignFriendlyDigimon(chosen, CALL_SPIRIT);
-            // SpiritEvolution / FusionSpiritEvolution / SusanoomonEvolution,
-            // none converted yet.
-            gm.enqueueAnimation(null);
+            var spirit = chosenDigimon.spiritType;
+            if (spirit == Kaisa.SPIRIT_HUMAN || spirit == Kaisa.SPIRIT_ANIMAL) {
+                gm.enqueueAnimation(new SpiritEvolution(gm, gm.saved.playerChar(), chosen));
+            } else if (spirit == Kaisa.SPIRIT_FUSION
+                    && chosen != Kaisa.WellKnown.SUSANOOMON) {
+                gm.enqueueAnimation(new FusionSpiritEvolution(gm, gm.saved.playerChar(), chosen));
+            } else if (spirit == Kaisa.SPIRIT_FUSION
+                    && chosen == Kaisa.WellKnown.SUSANOOMON) {
+                gm.enqueueAnimation(new SusanoomonEvolution(gm, gm.saved.playerChar()));
+            }
         }
 
         availableMenuOptions = [0, 3, 4];
@@ -514,7 +522,7 @@ class Battle extends DigiviceApp {
         combatMenuIndex = 0;
 
         assignFriendlyDigimon(chosen, CALL_CODE);
-        gm.enqueueAnimation(null);              // Animations.SummonDigimon
+        gm.enqueueAnimation(new SummonDigimon(gm, chosen));
     }
 
     // IAppController, for the CodeInput app this one loads.
@@ -579,6 +587,9 @@ class Battle extends DigiviceApp {
 
     function attemptRegularDigivolve() as Void {
         var callPointsBefore = currentCallPoints();
+        // Who it was before the roll: RegularEvolution shows that Digimon
+        // turning into whatever it is afterwards.
+        var currentDigimon = friendlyDigimon.index;
         var target = (friendlyDigimon.evolutionIndex >= 0)
             ? gm.db.getDigimon(friendlyDigimon.evolutionIndex) : null;
 
@@ -594,8 +605,10 @@ class Battle extends DigiviceApp {
             assignFriendlyDigimon(target.index, CALL_DIGIVOLUTION);
         }
 
-        gm.enqueueAnimation(null);              // Animations.SpendCallPoints
-        gm.enqueueAnimation(null);              // Animations.RegularEvolution
+        gm.enqueueAnimation(new SpendCallPoints(gm, callPointsBefore,
+                                                currentCallPoints()));
+        gm.enqueueAnimation(new RegularEvolution(gm, currentDigimon,
+                                                 friendlyDigimon.index));
         closeDigivolve();
     }
 
@@ -622,9 +635,10 @@ class Battle extends DigiviceApp {
             friendlyStats.en += sacrificeStats.en;
             friendlyStats.cr += sacrificeStats.cr;
             friendlyStats.ab += sacrificeStats.ab;
-            gm.enqueueAnimation(null);          // Animations.BoostSucceed
+            gm.enqueueAnimation(new BoostSucceed(gm, friendlyDigimon.index,
+                                                 sacrifice.index));
         } else {
-            gm.enqueueAnimation(null);          // Animations.BoostFailed
+            gm.enqueueAnimation(new BoostFailed(gm, sacrifice.index));
         }
     }
 
@@ -642,9 +656,12 @@ class Battle extends DigiviceApp {
     }
 
     function playAnimationDeportDigimon() as Void {
-        // DeportSpirit for a spirit, DeportDigimon otherwise; neither is
-        // converted yet.
-        gm.enqueueAnimation(null);
+        if (friendlyDigimon.stage == Kaisa.STAGE_SPIRIT) {
+            gm.enqueueAnimation(new DeportSpirit(gm, friendlyDigimon.index,
+                                                 gm.saved.playerChar()));
+        } else {
+            gm.enqueueAnimation(new DeportDigimon(gm, friendlyDigimon.index));
+        }
     }
 
     // --- The turn ---
@@ -663,14 +680,19 @@ class Battle extends DigiviceApp {
         var chosenAttack = turn[0];
         var winner = turn[1];
         var loserHPbefore = turn[2];
+        var disobeyed = (turn[3] == 1);
         var loserHPnow = (winner == 0) ? enemyStats.hp : friendlyStats.hp;
 
-        gm.enqueueAnimation(null);              // Animations.DisplayTurn
+        gm.enqueueAnimation(new DisplayTurn(gm,
+            friendlyDigimon.index, chosenAttack, friendlyStats.getEnergyRank(),
+            enemyDigimon.index, enemyAttack, enemyStats.getEnergyRank(),
+            winner, disobeyed, loserHPbefore, loserHPnow));
 
         var battleEnded = (loserHPnow == 0);
 
         if (battleEnded && winner == 0 && winAnimation == END_ANIM_ENEMY_ESCAPES) {
-            gm.enqueueAnimation(null);          // Animations.EnemyEscapes
+            gm.enqueueAnimation(new EnemyEscapes(gm, enemyDigimon.index,
+                                                 friendlyDigimon.index));
         }
 
         if (attacksAwardSP) {
@@ -767,7 +789,8 @@ class Battle extends DigiviceApp {
         playAnimationDeportDigimon();
 
         if (gm.logicMgr.addPlayerExperience(victoryExp)) {
-            gm.enqueueAnimation(null);          // Animations.LevelUp
+            gm.enqueueAnimation(new LevelUp(gm, playerLevel,
+                                            gm.logicMgr.getPlayerLevel()));
         }
         gm.enqueueAnimation(new CharHappy(gm));
 
@@ -778,12 +801,24 @@ class Battle extends DigiviceApp {
             reward = isBossBattle ? 1 : ((Kaisa.Rand.rangeInt(0, 2) == 1) ? 1 : 0);
         }
         if (reward == 1) {
-            gm.logicMgr.rewardDigimon(enemyDigimon.index);
-            // ReceiveSpirit / UnlockDigimon / LevelUpDigimon, not converted.
-            gm.enqueueAnimation(null);
+            // rewardDigimon returns [alreadyOwned, levelBefore, levelAfter]:
+            // a Digimon the player already had is levelled up, a new one is
+            // unlocked, and a spirit is received either way.
+            var alreadyOwned = gm.logicMgr.rewardDigimon(enemyDigimon.index)[0] == 1;
+            if (enemyDigimon.stage == Kaisa.STAGE_SPIRIT) {
+                gm.enqueueAnimation(new ReceiveSpirit(gm, enemyDigimon.index));
+                if (!alreadyOwned) {
+                    gm.enqueueAnimation(new UnlockDigimon(gm, enemyDigimon.index, true));
+                }
+            } else if (alreadyOwned) {
+                gm.enqueueAnimation(new LevelUpDigimon(gm, enemyDigimon.index));
+            } else {
+                gm.enqueueAnimation(new UnlockDigimon(gm, enemyDigimon.index, false));
+            }
         } else if (gm.logicMgr.isAnySpiritLost() && Kaisa.Rand.rangeInt(0, 3) == 0) {
-            gm.logicMgr.recoverSpirit();
-            gm.enqueueAnimation(null);          // Animations.ReceiveSpirit
+            var recovered = gm.logicMgr.recoverSpirit();
+            gm.enqueueAnimation(new ReceiveSpirit(gm, recovered));
+            gm.enqueueAnimation(new UnlockDigimon(gm, recovered, true));
         }
 
         if (isBossBattle) {
@@ -804,9 +839,10 @@ class Battle extends DigiviceApp {
         playAnimationDeportDigimon();
 
         if (gm.logicMgr.removePlayerExperience(defeatExp)) {
-            gm.enqueueAnimation(null);          // Animations.LevelDown
+            gm.enqueueAnimation(new LevelDown(gm, playerLevel,
+                                              gm.logicMgr.getPlayerLevel()));
         }
-        gm.enqueueAnimation(null);              // Animations.CharSad
+        gm.enqueueAnimation(new CharSad(gm));
 
         var punishFriendly = Kaisa.Rand.rangeFloat(0.0, 1.0)
             > gm.db.getEraseChance(originalDigimon.index);
@@ -821,17 +857,18 @@ class Battle extends DigiviceApp {
                 var result = gm.logicMgr.punishDigimon(originalDigimon.index);
                 if (result[0] == 1) {           // levelled down rather than erased
                     if (Kaisa.Rand.rangeInt(0, 2) == 0) { gm.setCharacterDefeated(true); }
-                    gm.enqueueAnimation(null);  // Animations.LevelDownDigimon
+                    gm.enqueueAnimation(new LevelDownDigimon(gm, originalDigimon.index));
                 } else {
                     gm.setCharacterDefeated(true);
-                    gm.enqueueAnimation(null);  // Animations.EraseDigimon
+                    gm.enqueueAnimation(new EraseDigimon(gm, originalDigimon.index));
                 }
             }
         } else {
             // "Lose your Spirit if you were fighting with one."
             gm.setCharacterDefeated(true);
             gm.logicMgr.loseSpirit(originalDigimon.index);
-            gm.enqueueAnimation(null);          // Animations.LoseSpirit
+            gm.enqueueAnimation(new LoseSpirit(gm, originalDigimon.index,
+                                               enemyDigimon.index));
         }
 
         if (alterDistance) {
@@ -846,16 +883,18 @@ class Battle extends DigiviceApp {
 
     function escapeBattle() as Void {
         gm.disableLeaverBuster();
-        gm.enqueueAnimation(null);              // Animations.DeportSprite
+        gm.enqueueAnimation(new DeportSprite(gm,
+            gm.characterSprites(gm.saved.playerChar())[0], 32));
 
         if (gm.logicMgr.removePlayerExperience(defeatExp)) {
-            gm.enqueueAnimation(null);          // Animations.LevelDown
+            gm.enqueueAnimation(new LevelDown(gm, playerLevel,
+                                              gm.logicMgr.getPlayerLevel()));
         }
 
         var before = gm.worldMgr.currentDistance();
         gm.worldMgr.increaseDistance(2000);
 
-        gm.enqueueAnimation(null);              // Animations.CharSad
+        gm.enqueueAnimation(new CharSad(gm));
         gm.enqueueAnimation(new ChangeDistance(gm, before, gm.worldMgr.currentDistance()));
 
         gm.logicMgr.increaseTotalBattles();
@@ -876,7 +915,9 @@ class Battle extends DigiviceApp {
         if (available.size() > 0) {
             var newArea = Kaisa.Tools.getRandomElement(available);
             gm.worldMgr.moveToArea(currentMap, newArea);
-            gm.enqueueAnimation(null);          // Animations.ForcedTravelMap
+            var newDistance = gm.worldMgr.currentDistance();
+            gm.enqueueAnimation(new ForcedTravelMap(gm, currentWorld, currentArea,
+                                                    newArea, newDistance));
         } else {
             gm.completeWorld(currentWorld);
         }

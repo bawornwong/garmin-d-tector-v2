@@ -701,7 +701,9 @@ class AttackCollision extends Routine {
     var friendlyAttack as Number;
     var friendlySprites as Array;
     var enemyAttack as Number;
-    var enemySprites as Array;
+    // Null where the enemy has no sprites at all: the Jackpot Box's fight
+    // passes attack 3, which never reads them.
+    var enemySprites as Array?;
     var winner as Number;
 
     var sbFriendlyAttack as SpriteBuilder?;
@@ -711,7 +713,7 @@ class AttackCollision extends Routine {
 
     function initialize(gmIn as GameManager, friendlyAttackIn as Number,
                         friendlySpritesIn as Array, enemyAttackIn as Number,
-                        enemySpritesIn as Array, winnerIn as Number) {
+                        enemySpritesIn as Array?, winnerIn as Number) {
         Routine.initialize();
         gm = gmIn;
         friendlyAttack = friendlyAttackIn;
@@ -3813,17 +3815,36 @@ class EncounterEnemy extends Routine {
     var gm as GameManager;
     var digimonIndex as Number;
     var finalDelay as Float;
+    // The Jackpot Box is encountered like a Digimon but is not one -- it has
+    // art on the Digimon sheet and no row in the database -- so the two
+    // sprites it draws can be given directly. Null means "look them up from
+    // the index", which is what every other caller does.
+    var spriteBase as Array<Number>?;
+    var spriteAttack as Array<Number>?;
 
     var sbDigimon as SpriteBuilder?;
     var sbGivePower as SpriteBuilder?;
     var i as Number = 0;
 
     function initialize(gmIn as GameManager, digimonIndexIn as Number,
-                        finalDelayIn as Float) {
+                        finalDelayIn as Float, spriteBaseIn as Array<Number>?,
+                        spriteAttackIn as Array<Number>?) {
         Routine.initialize();
         gm = gmIn;
         digimonIndex = digimonIndexIn;
         finalDelay = finalDelayIn;
+        spriteBase = spriteBaseIn;
+        spriteAttack = spriteAttackIn;
+    }
+
+    function base() as Array<Number>? {
+        return (spriteBase != null)
+            ? spriteBase : gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE);
+    }
+
+    function attack() as Array<Number>? {
+        return (spriteAttack != null)
+            ? spriteAttack : gm.digimonSprite(digimonIndex, gm.data.ACTION_AT);
     }
 
     function step(rt as Fiber) as Float {
@@ -3831,8 +3852,7 @@ class EncounterEnemy extends Routine {
         switch (pc) {
             case 0:
                 sbDigimon = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
-                    .setSize(24, 24).center()
-                    .setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                    .setSize(24, 24).center().setSprite(base());
                 sbDigimon.flipHorizontal(true);
                 sbDigimon.setActive(false);
                 sbGivePower = Kaisa.ScreenBuilder.buildSprite("Power", parent)
@@ -3885,15 +3905,15 @@ class EncounterEnemy extends Routine {
                 pc = 11;
                 return 0.35;
             case 11:
-                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_AT));
+                sbDigimon.setSprite(attack());
                 pc = 12;
                 return 0.6;
             case 12:
-                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                sbDigimon.setSprite(base());
                 pc = 13;
                 return 0.6;
             case 13:
-                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_AT));
+                sbDigimon.setSprite(attack());
                 pc = 14;
                 return finalDelay;
             case 14:
@@ -5329,5 +5349,478 @@ class StartAppDigiHunter extends Routine {
 
     function setFaces(faces as Array<SpriteBuilder?>, active as Boolean) as Void {
         for (var n = 0; n < faces.size(); n += 1) { faces[n].setActive(active); }
+    }
+}
+
+// port of Animations.cs:1519  SusanoomonEvolution
+//
+// The two fusions show their five spirits each, all twenty fly past, and
+// Susanoomon is formed behind a curtain. The twenty spirits and the three
+// Digimon it names are resolved to indices at build time (WellKnown).
+class SusanoomonEvolution extends Routine {
+    var gm as GameManager;
+    var character as Number;
+
+    var sCharacter as Array = [];
+    var sSusanoomon as Array = [];
+    var sbBackground as SpriteBuilder?;
+    var sbCharacter as SpriteBuilder?;
+    var sbGiveMassivePower as SpriteBuilder?;
+    var sbTranscendent as SpriteBuilder?;
+    var sbSmallSpirit as SpriteBuilder?;
+    var sbSmallHuman as SpriteBuilder?;
+    var sbSmallAnimal as SpriteBuilder?;
+    var sbCurtain as SpriteBuilder?;
+    var i as Number = 0;
+    var j as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+    }
+
+    // The five positions the small spirit takes, in order.
+    function spiritPosition(n as Number) as Void {
+        if (n == 0) { sbSmallSpirit.setPosition(9, 0); }
+        else if (n == 1) { sbSmallSpirit.setPosition(0, 7); }
+        else if (n == 2) { sbSmallSpirit.setPosition(18, 7); }
+        else if (n == 3) { sbSmallSpirit.setPosition(2, 16); }
+        else if (n == 4) { sbSmallSpirit.setPosition(16, 16); }
+    }
+
+    function smallSpirit(list as Array<Number>, n as Number) as Array<Number>? {
+        return gm.digimonSprite(list[n], gm.data.ACTION_SM);
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sCharacter = gm.characterSprites(character);
+                sSusanoomon = gm.getAllDigimonSprites(Kaisa.WellKnown.SUSANOOMON);
+
+                // Common animation.
+                sbBackground = Kaisa.ScreenBuilder.buildSprite("BlackBackground", parent)
+                    .setSprite(Kaisa.Sprites.BLACK_SCREEN).setActive(false);
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Char", parent)
+                    .setSprite(sCharacter[0]);
+                gm.audioMgr.playSound("evolutionSpirit");
+                pc = 1;
+                return 0.5;
+            case 1:
+                sbGiveMassivePower = Kaisa.ScreenBuilder.buildSprite("Char", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setTransparent(true);
+                i = 0;
+                pc = 2;
+                return 0.0;
+            case 2:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 5; return 0.0; }
+                pc = 3;
+                return 0.2;
+            case 3:
+                sbGiveMassivePower.setActive(false);
+                pc = 4;
+                return 0.4;
+            case 4:
+                sbGiveMassivePower.setActive(true);
+                i += 1; pc = 2; return 0.0;
+            case 5:
+                sbCharacter.setSprite(sCharacter[9]);
+                pc = 6;
+                return 0.2;
+            case 6:
+                sbGiveMassivePower.setActive(false);
+                pc = 7;
+                return 0.3;
+            case 7:
+                sbGiveMassivePower.setActive(true);
+                pc = 8;
+                return 0.2;
+            case 8:
+                sbGiveMassivePower.setActive(false);
+                pc = 9;
+                return 0.2;
+            case 9:
+                sbCharacter.placeOutside(Kaisa.DIR_DOWN);
+                sbCharacter.setSprite(sCharacter[0]);
+                sbTranscendent = Kaisa.ScreenBuilder.buildSprite("Transcendent", parent)
+                    .setSize(24, 24)
+                    .setSprite(gm.digimonSprite(Kaisa.WellKnown.KAISERGREYMON, gm.data.ACTION_SP))
+                    .center();
+                sbSmallSpirit = Kaisa.ScreenBuilder.buildSprite("SmallSpirit", parent)
+                    .setSize(14, 16).setActive(false);
+                i = 0;
+                pc = 10;
+                return 0.0;
+            case 10:                                // KaiserGreymon: for (i < 4)
+                if (i >= 4) { i = 0; pc = 13; return 0.0; }
+                pc = 11;
+                return 0.15;
+            case 11:
+                sbTranscendent.setActive(false);
+                pc = 12;
+                return 0.15;
+            case 12:
+                sbTranscendent.setActive(true);
+                i += 1; pc = 10; return 0.0;
+            case 13:                                // its five spirits
+                if (i >= 5) { i = 0; pc = 17; return 0.0; }
+                pc = 14;
+                return 0.1;
+            case 14:
+                sbTranscendent.setActive(false);
+                sbSmallSpirit.setSprite(smallSpirit(Kaisa.WellKnown.SUSANOO_HUMANS, i));
+                spiritPosition(i);
+                sbSmallSpirit.setActive(true);
+                pc = 15;
+                return 0.28;
+            case 15:
+                sbSmallSpirit.setActive(false);
+                sbTranscendent.setActive(true);
+                pc = 16;
+                return 0.0;
+            case 16:
+                i += 1; pc = 13; return 0.0;
+            case 17:                                // MagnaGarurumon
+                sbTranscendent.setSprite(
+                    gm.digimonSprite(Kaisa.WellKnown.MAGNAGARURUMON, gm.data.ACTION_SP));
+                i = 0;
+                pc = 18;
+                return 0.0;
+            case 18:                                // for (i = 0; i < 4; i++)
+                if (i >= 4) { i = 0; pc = 21; return 0.0; }
+                pc = 19;
+                return 0.15;
+            case 19:
+                sbTranscendent.setActive(false);
+                pc = 20;
+                return 0.15;
+            case 20:
+                sbTranscendent.setActive(true);
+                i += 1; pc = 18; return 0.0;
+            case 21:                                // its five spirits
+                if (i >= 5) { i = 0; pc = 25; return 0.0; }
+                pc = 22;
+                return 0.1;
+            case 22:
+                sbTranscendent.setActive(false);
+                sbSmallSpirit.setSprite(smallSpirit(Kaisa.WellKnown.SUSANOO_HUMANS, 5 + i));
+                spiritPosition(i);
+                sbSmallSpirit.setActive(true);
+                pc = 23;
+                return 0.28;
+            case 23:
+                sbSmallSpirit.setActive(false);
+                sbTranscendent.setActive(true);
+                pc = 24;
+                return 0.0;
+            case 24:
+                i += 1; pc = 21; return 0.0;
+            case 25:
+                sbTranscendent.setActive(false);
+                i = 0;
+                pc = 26;
+                return 0.0;
+            case 26:                                // the player, quickly, upwards
+                if (i >= 12) { pc = 28; return 0.0; }
+                sbCharacter.move(Kaisa.DIR_UP, 6);
+                pc = 27;
+                return 1.0 / 12;
+            case 27:
+                i += 1; pc = 26; return 0.0;
+            case 28:                                // all twenty spirits
+                sbSmallHuman = Kaisa.ScreenBuilder.buildSprite("Human", parent).setSize(14, 16);
+                sbSmallAnimal = Kaisa.ScreenBuilder.buildSprite("Animal", parent).setSize(14, 16);
+                i = 0;
+                pc = 29;
+                return 0.0;
+            case 29:                                // for (i = 0; i < 10; i++)
+                if (i >= 10) { pc = 34; return 0.0; }
+                sbSmallHuman.setY(16).placeOutside(Kaisa.DIR_LEFT).move(Kaisa.DIR_LEFT, 1);
+                sbSmallAnimal.setY(16).placeOutside(Kaisa.DIR_RIGHT).move(Kaisa.DIR_RIGHT, 1);
+                sbSmallHuman.setSprite(smallSpirit(Kaisa.WellKnown.SUSANOO_HUMANS, i));
+                sbSmallAnimal.setSprite(smallSpirit(Kaisa.WellKnown.SUSANOO_ANIMALS, i));
+                j = 0;
+                pc = 30;
+                return 0.0;
+            case 30:                                // for (j = 0; j < 4; j++)
+                if (j >= 4) { j = 0; pc = 32; return 0.0; }
+                sbSmallHuman.move(Kaisa.DIR_RIGHT, 4);
+                sbSmallAnimal.move(Kaisa.DIR_LEFT, 4);
+                pc = 31;
+                return 0.6 / 10;
+            case 31:
+                j += 1; pc = 30; return 0.0;
+            case 32:                                // for (j = 0; j < 6; j++)
+                if (j >= 6) { i += 1; pc = 29; return 0.0; }
+                sbSmallHuman.move(Kaisa.DIR_UP, 4);
+                sbSmallAnimal.move(Kaisa.DIR_UP, 4);
+                pc = 33;
+                return 0.6 / 10;
+            case 33:
+                j += 1; pc = 32; return 0.0;
+            case 34:
+                sbSmallHuman.dispose();
+                sbSmallAnimal.dispose();
+                // Form Susanoomon.
+                sbTranscendent.setSprite(sSusanoomon[0]).setActive(true);
+                sbCurtain = Kaisa.ScreenBuilder.buildSprite("Curtain", parent)
+                    .setSprite(Kaisa.Sprites.CURTAIN_SPECIAL[1]);
+                i = 0;
+                pc = 35;
+                return 0.0;
+            case 35:                                // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 37; return 0.0; }
+                sbCurtain.move(Kaisa.DIR_UP, 1);
+                pc = 36;
+                return 2.2 / 32;
+            case 36:
+                i += 1; pc = 35; return 0.0;
+            case 37:
+                sbCurtain.placeOutside(Kaisa.DIR_DOWN);
+                sbTranscendent.setSprite(sSusanoomon[1]);
+                pc = 38;
+                return 0.8;
+            case 38:
+                sbTranscendent.setSprite(sSusanoomon[0]);
+                pc = 39;
+                return 0.6;
+            case 39:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:2771  TransitionToMap3
+//
+// The last of the three transitions and the longest: the player runs, the
+// absorbers take every spirit they have collected, the enemy appears and
+// destroys them four at a time, and leaves.
+class TransitionToMap3 extends Routine {
+    var gm as GameManager;
+    var character as Number;
+    var enemyIndex as Number;
+    var stolenSpirits as Array<Number>;
+
+    var sCharacter as Array = [];
+    var sEnemyDigimon as Array = [];
+    var sbAllSpirits as Array<SpriteBuilder?> = [];
+    var sbCharacter as SpriteBuilder?;
+    var sbAbsorber as Array<SpriteBuilder?> = [null, null];
+    var sbEnemyDigimon as SpriteBuilder?;
+    var rbEnemyDigimonInverted as RectangleBuilder?;
+    var sbSpirit as Array<SpriteBuilder?> = [null, null, null, null];
+    var i as Number = 0;
+    var group as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Number,
+                        enemyIndexIn as Number, stolenSpiritsIn as Array<Number>) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+        enemyIndex = enemyIndexIn;
+        stolenSpirits = stolenSpiritsIn;
+    }
+
+    function smallSpirit(n as Number) as Array<Number>? {
+        return gm.digimonSprite(stolenSpirits[n], gm.data.ACTION_SM);
+    }
+
+    function setAbsorbers(active as Boolean) as Void {
+        sbAbsorber[0].setActive(active);
+        sbAbsorber[1].setActive(active);
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sCharacter = gm.characterSprites(character);
+                sEnemyDigimon = gm.getAllDigimonSprites(enemyIndex);
+
+                sbAllSpirits = [];
+                for (var n = 0; n < stolenSpirits.size(); n += 1) {
+                    var sb = Kaisa.ScreenBuilder.buildSprite("Spirit", parent)
+                        .setSize(14, 16).setSprite(smallSpirit(n));
+                    sb.setPosition(32 + (Kaisa.MathExt.floorToInt(n / 2.0) * 16),
+                                   (n % 2) * 16);
+                    sbAllSpirits.add(sb);
+                }
+
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Character", parent)
+                    .setSprite(sCharacter[4]);
+                sbAbsorber[0] = Kaisa.ScreenBuilder.buildSprite("Absorber0", parent)
+                    .setSize(16, 32).setPosition(0, 0)
+                    .setSprite(Kaisa.Sprites.SPIRIT_ABSORBER[0]).setActive(false);
+                sbAbsorber[1] = Kaisa.ScreenBuilder.buildSprite("Absorber1", parent)
+                    .setSize(16, 32).setPosition(16, 0)
+                    .setSprite(Kaisa.Sprites.SPIRIT_ABSORBER[1]).setActive(false);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // the character runs
+                if (i >= 5) { i = 0; pc = 4; return 0.0; }
+                sbCharacter.setSprite(sCharacter[4]);
+                pc = 2;
+                return 0.25;
+            case 2:
+                sbCharacter.setSprite(sCharacter[5]);
+                pc = 3;
+                return 0.25;
+            case 3:
+                i += 1; pc = 1; return 0.0;
+            case 4:                                 // the absorbers appear
+                if (i == 0) { gm.audioMgr.playSound("stealAllSpirits"); }
+                if (i >= 5) { i = 0; pc = 7; return 0.0; }
+                setAbsorbers(true);
+                pc = 5;
+                return 0.35;
+            case 5:
+                setAbsorbers(false);
+                pc = 6;
+                return 0.35;
+            case 6:
+                i += 1; pc = 4; return 0.0;
+            case 7:                                 // the camera pans
+                if (i >= 16) { i = 0; pc = 9; return 0.0; }
+                sbCharacter.move(Kaisa.DIR_RIGHT, 1);
+                pc = 8;
+                return 1.0 / 16;
+            case 8:
+                i += 1; pc = 7; return 0.0;
+            case 9:
+                sbAbsorber[1].setSprite(Kaisa.Sprites.SPIRIT_ABSORBER[0]);
+                i = 0;
+                pc = 10;
+                return 0.0;
+            case 10:                                // the spirits are absorbed
+                if (i >= 192) { pc = 12; return 0.35; }
+                sbAbsorber[1].setActive(Kaisa.MathExt.floorToInt(i / 7.0) % 2 == 0);
+                for (var n = 0; n < sbAllSpirits.size(); n += 1) {
+                    sbAllSpirits[n].move(Kaisa.DIR_LEFT, 1);
+                }
+                pc = 11;
+                return 1.5 / 32;
+            case 11:
+                i += 1; pc = 10; return 0.0;
+            case 12:
+                sbAbsorber[1].setActive(false);
+                sbCharacter.setActive(false);
+
+                // The enemy appears.
+                sbEnemyDigimon = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
+                    .setSize(24, 24).flipHorizontal(true).center()
+                    .setSprite(sEnemyDigimon[0]);
+                rbEnemyDigimonInverted = Kaisa.ScreenBuilder.buildRectangle("Enemy inverted", parent)
+                    .setSize(32, 32).setColor(true).setActive(false);
+                Kaisa.ScreenBuilder.buildSprite("Enemy", rbEnemyDigimonInverted)
+                    .setSize(24, 24).flipHorizontal(true).setPosition(4, 4)
+                    .setInvertedSprite(sEnemyDigimon[1]);
+                i = 0;
+                pc = 13;
+                return 0.0;
+            case 13:                                // for (i = 0; i < 3; i++)
+                if (i >= 3) { i = 0; pc = 16; return 0.0; }
+                sbEnemyDigimon.setActive(false);
+                pc = 14;
+                return 0.25;
+            case 14:
+                sbEnemyDigimon.setActive(true);
+                pc = 15;
+                return 0.25;
+            case 15:
+                i += 1; pc = 13; return 0.0;
+            case 16:
+                sbEnemyDigimon.setSprite(sEnemyDigimon[1]);
+                i = 0;
+                pc = 17;
+                return 0.0;
+            case 17:                                // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 20; return 0.0; }
+                rbEnemyDigimonInverted.setActive(false);
+                pc = 18;
+                return 0.25;
+            case 18:
+                rbEnemyDigimonInverted.setActive(true);
+                pc = 19;
+                return 0.25;
+            case 19:
+                i += 1; pc = 17; return 0.0;
+            case 20:
+                rbEnemyDigimonInverted.setActive(false);
+                pc = 21;
+                return 0.25;
+            case 21:
+                sbEnemyDigimon.setActive(false);
+                group = 0;
+                pc = 22;
+                return 0.0;
+            case 22:                                // four spirits at a time
+                if (group >= stolenSpirits.size()) { pc = 30; return 0.1; }
+                sbSpirit[0] = spiritAt(parent, "Spirit1", group, 1, 0);
+                sbSpirit[1] = spiritAt(parent, "Spirit2", group + 1, 17, 0);
+                sbSpirit[2] = spiritAt(parent, "Spirit3", group + 2, 1, 16);
+                sbSpirit[3] = spiritAt(parent, "Spirit4", group + 3, 17, 16);
+                pc = 23;
+                return 0.4;
+            case 23:
+                gm.audioMgr.playSound("destroySpirits");
+                sbSpirit[0].setSprite(Kaisa.Sprites.SPIRIT_EXPLOSION);
+                pc = 24;
+                return 0.2;
+            case 24:
+                sbSpirit[0].setSprite(Kaisa.Sprites.EMPTY_SPRITE);
+                sbSpirit[3].setSprite(Kaisa.Sprites.SPIRIT_EXPLOSION);
+                pc = 25;
+                return 0.2;
+            case 25:
+                sbSpirit[3].setSprite(Kaisa.Sprites.EMPTY_SPRITE);
+                sbSpirit[1].setSprite(Kaisa.Sprites.SPIRIT_EXPLOSION);
+                pc = 26;
+                return 0.2;
+            case 26:
+                sbSpirit[1].setSprite(Kaisa.Sprites.EMPTY_SPRITE);
+                sbSpirit[2].setSprite(Kaisa.Sprites.SPIRIT_EXPLOSION);
+                pc = 27;
+                return 0.2;
+            case 27:
+                sbSpirit[2].setSprite(Kaisa.Sprites.EMPTY_SPRITE);
+                group += 4;
+                pc = 22;
+                return 0.0;
+            case 30:
+                Kaisa.ScreenBuilder.clearAnimParent(parent);
+                sbEnemyDigimon = Kaisa.ScreenBuilder.buildSprite("Enemy", parent)
+                    .setSize(24, 24).flipHorizontal(true).center()
+                    .setSprite(sEnemyDigimon[1]);
+                pc = 31;
+                return 0.4;
+            case 31:
+                sbEnemyDigimon.setSprite(sEnemyDigimon[0]);
+                i = 0;
+                pc = 32;
+                return 0.25;
+            case 32:                                // for (i = 0; i < 16; i++)
+                if (i >= 16) { pc = 34; return 0.5; }
+                sbEnemyDigimon.move(Kaisa.DIR_UP, 2);
+                pc = 33;
+                return 0.8 / 16;
+            case 33:
+                i += 1; pc = 32; return 0.0;
+            case 34:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+
+    // One of the four spirits in a group; the slots past the end of the list
+    // draw the empty sprite, as the original's `?? emptySprite` does.
+    function spiritAt(parent as ScreenElement, name as String, n as Number,
+                      x as Number, y as Number) as SpriteBuilder {
+        var ref = (n < stolenSpirits.size()) ? smallSpirit(n) : Kaisa.Sprites.EMPTY_SPRITE;
+        return Kaisa.ScreenBuilder.buildSprite(name, parent)
+            .setSize(14, 16).setPosition(x, y).setSprite(ref);
     }
 }

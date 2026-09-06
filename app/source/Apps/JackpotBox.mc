@@ -73,8 +73,11 @@ class JackpotBox extends DigiviceApp {
         friendlyDigimon = Kaisa.Tools.getRandomElement(docked);
         if (friendlyDigimon == null) { friendlyDigimon = -1; }
 
-        gm.enqueueAnimation(null);      // Animations.EncounterEnemy("jackpot", 0.5f)
-        gm.enqueueAnimation(null);      // Animations.SummonDigimon(friendlyDigimon)
+        // Animations.EncounterEnemy("jackpot", 0.5f): the box is drawn from
+        // the Digimon sheet but has no row, so its two sprites are passed in.
+        gm.enqueueAnimation(new EncounterEnemy(gm, -1, 0.5,
+            Kaisa.Sprites.JACKPOT, Kaisa.Sprites.JACKPOT_ATTACK));
+        gm.enqueueAnimation(new SummonDigimon(gm, friendlyDigimon));
 
         pattern = generatePattern(Kaisa.Rand.rangeInt(MINIMUM_LENGTH, MAXIMUM_LENGTH + 1));
         playerSelection = [];
@@ -145,15 +148,17 @@ class JackpotBox extends DigiviceApp {
             reward = Kaisa.REWARD_REDUCE_DISTANCE_500;
         }
 
-        // The battle against the box: LaunchAttack, AttackCollision, and then
-        // either BoxResists or DestroyBox. None are converted yet.
-        gm.enqueueAnimation(null);
-        gm.enqueueAnimation(null);
+        // The battle against the box: the player attacks with energy, the box
+        // does not attack back (attack 3), and then it either resists or is
+        // destroyed.
+        var friendlySprites = gm.getAllDigimonBattleSprites(friendlyDigimon, 0);
+        gm.enqueueAnimation(new LaunchAttack(gm, friendlySprites, 0, false, false));
+        gm.enqueueAnimation(new AttackCollision(gm, 0, friendlySprites, 3, null, 0));
 
         if (rewardCategory < 2) {
-            gm.enqueueAnimation(null);          // Animations.BoxResists
+            gm.enqueueAnimation(new BoxResists(gm, friendlyDigimon));
         } else {
-            gm.enqueueAnimation(null);          // Animations.DestroyBox
+            gm.enqueueAnimation(new DestroyBox(gm));
             if (Kaisa.Rand.rangeInt(0, 20) > gm.jackpotValue()) {
                 reward = Kaisa.REWARD_EMPTY;
             }

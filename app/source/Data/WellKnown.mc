@@ -49,6 +49,15 @@ module Kaisa {
             [399, 401, 427, 413, 415],   // kendogarurumon, metalkabuterimon, kaiserleomon, sephirothmon, calmaramon
         ];
 
+        // Animations.SusanoomonEvolution's Digimon, by name.
+        const SUSANOOMON = 425;   // susanoomon
+        const KAISERGREYMON = 421;   // kaisergreymon
+        const MAGNAGARURUMON = 422;   // magnagarurumon
+        const SUSANOO_HUMANS = [396, 402, 404, 408, 410, 398, 400, 426, 412, 414];
+        // agunimon, kazemon, kumamon, grumblemon, arbormon, lobomon, beetlemon, loweemon, mercurymon, lanamon
+        const SUSANOO_ANIMALS = [397, 403, 405, 409, 411, 399, 401, 427, 413, 415];
+        // burninggreymon, zephyrmon, korikakumon, gigasmon, petaldramon, kendogarurumon, metalkabuterimon, kaiserleomon, sephirothmon, calmaramon
+
         // GameManager.HasAllSpiritsForFusion's element sets.
         const FUSION_ELEMENTS = [
             [421, [0, 3, 4, 6, 7]],   // kaisergreymon: Fire, Wind, Ice, Earth, Wood

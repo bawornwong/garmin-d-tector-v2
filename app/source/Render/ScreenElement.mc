@@ -208,6 +208,19 @@ class SpriteBuilder extends ScreenElement {
     function setSprite(ref as Array<Number>?) as SpriteBuilder {
         Kaisa.Trace.sprite(name, "setSprite", ref);
         sprite = ref;
+        inverted = false;
+        return self;
+    }
+
+    // SpriteDatabase.GetInvertedSprite makes a second texture with the ink and
+    // the field swapped, and the caller sets that. There is no second texture
+    // here -- the renderer inverts as it blits -- so the port says the same
+    // thing as a property of the element, and the trace prints it the way the
+    // original names that sprite.
+    function setInvertedSprite(ref as Array<Number>?) as SpriteBuilder {
+        Kaisa.Trace.invertedSprite(name, ref);
+        sprite = ref;
+        inverted = true;
         return self;
     }
 

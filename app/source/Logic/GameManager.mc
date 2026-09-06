@@ -9,6 +9,7 @@ import Toybox.Lang;
 // port; the core is translated as the apps need it.
 class GameManager {
     var data as GameData;
+    var _jackpotMs as Number = 0;
     var db as Database;
     var saved as SavedGame;
     var logicMgr as LogicManager;
@@ -53,6 +54,69 @@ class GameManager {
         saved.touch();
     }
 
+    // GameManager.cs:180 -- the punishment for quitting mid-battle, applied
+    // on the next launch. `leaverBusterDigimonLoss` is -1 rather than "" when
+    // there is nothing to lose (ADR 7: Digimon are indices).
+    function checkLeaverBuster() as Void {
+        if (!saved.record.isLeaverBusterActive) { return; }
+
+        var expLoss = saved.record.leaverBusterExpLoss;
+        var digimonLoss = saved.record.leaverBusterDigimonLoss;
+        logicMgr.removePlayerExperience(expLoss);
+
+        if (digimonLoss >= 0) {
+            if (data.stage(digimonLoss) != Kaisa.STAGE_SPIRIT) {
+                logicMgr.punishDigimon(digimonLoss);
+            } else {
+                logicMgr.loseSpirit(digimonLoss);
+            }
+        }
+
+        worldMgr.increaseDistance(2000);
+        logicMgr.increaseTotalBattles();
+        disableLeaverBuster();
+    }
+
+    // GameManager.cs:115 IncreaseJackpotValue -- "InvokeRepeating", every five
+    // minutes, to a ceiling of 20. The port counts frames rather than starting
+    // a fiber for it: the runner's fibers belong to animations, and a
+    // five-minute wait would sit in the queue forever.
+    function tickJackpot(elapsedMs as Number) as Void {
+        _jackpotMs += elapsedMs;
+        if (_jackpotMs < 300000) { return; }
+        _jackpotMs -= 300000;
+        if (jackpotValue() < 20) { setJackpotValue(jackpotValue() + 1); }
+    }
+
+    // GameManager.cs:239 -- "Reduces distance by 1, if possible, and increases
+    // the step count by one." One step is one shake of the original; the port
+    // has no shake, so the character screen's B button stands in for it when
+    // the player is one kilometre out (LogicManager.inputB).
+    function takeAStep() as Void {
+        worldMgr.takeSteps(1);
+        worldMgr.reduceDistance(1);
+        if (worldMgr.currentDistance() == 1) { saved.setSavedEvent(2); }
+        checkPendingEvents();
+    }
+
+    // GameManager.cs:205 -- whether a saved event should start now. An app on
+    // screen defers it (the Status app excepted, as in the original), and so
+    // does an animation still playing.
+    function checkPendingEvents() as Void {
+        if (logicMgr.isAppLoaded() && !(logicMgr.loadedApp instanceof Status)) { return; }
+        if (screenMgr.playingAnimations) { return; }
+
+        var savedEvent = saved.savedEvent();
+        if (savedEvent == 0) { return; }
+        if (savedEvent == 1) {
+            logicMgr.enqueueRegularEvent();
+            if (logicMgr.isAppLoaded()) { logicMgr.closeLoadedApp(Kaisa.SCREEN_CHARACTER); }
+        } else if (savedEvent == 2) {
+            logicMgr.enqueueBossEvent();
+            if (logicMgr.isAppLoaded()) { logicMgr.closeLoadedApp(Kaisa.SCREEN_CHARACTER); }
+        }
+    }
+
     // GameManager.cs:131 CreateNewGame -- everything a fresh save needs, and
     // the opening animation.
     //
@@ -86,6 +150,9 @@ class GameManager {
                                                 spiritEnergy, randomInitial, enemyEnergy));
 
         logicMgr.currentScreen = Kaisa.SCREEN_CHARACTER;
+        // The original writes the save as it goes; the port batches and this
+        // is the point the new game becomes real.
+        saved.commit();
     }
 
     // GameManager.cs:446 EnqueueRewardAnimation -- every reward's animation,
@@ -185,18 +252,20 @@ class GameManager {
     }
 
     // GameManager.cs:526 -- finishing a world moves the player to the next
-    // one. Both transitions play animations that are not converted yet, and
-    // CompleteWorld2 also strips the player of their human and animal
-    // spirits, which IS logic and happens here.
+    // one, and CompleteWorld2 also strips the player of their human and
+    // animal spirits, which is why the animation is given the list before the
+    // stripping and not after.
     function completeWorld(world as Number) as Void {
         if (world == 0) {
             worldMgr.moveToArea(1, 0);
             setCharacterDefeated(true);
-            enqueueAnimation(null);         // Animations.TransitionToMap1
+            enqueueAnimation(new TransitionToMap1(self, saved.playerChar()));
         } else if (world == 2) {
             worldMgr.moveToArea(3, 0);
             setCharacterDefeated(true);
-            enqueueAnimation(null);         // Animations.TransitionToMap3
+            enqueueAnimation(new TransitionToMap3(self, saved.playerChar(),
+                worldMgr.getBossOfCurrentArea(),
+                getAllUnlockedHumanAndAnimalSpirits()));
             var spirits = getAllUnlockedHumanAndAnimalSpirits();
             for (var i = 0; i < spirits.size(); i += 1) {
                 logicMgr.loseSpirit(spirits[i]);
@@ -283,14 +352,13 @@ class GameManager {
     }
 
     // GameManager.cs:268 -- applies a minigame's score to the distance and
-    // plays the animation for beating it. Animations.AwardDistance is not
-    // converted yet.
+    // plays the animation for beating it.
     function submitGameScore(score as Number) as Void {
         var oldDistance = worldMgr.currentDistance();
         worldMgr.reduceDistance(score);
         var newDistance = worldMgr.currentDistance();
         worldMgr.takeSteps(Kaisa.MathExt.roundToInt(score / 5.0));
-        enqueueAnimation(null);     // Animations.AwardDistance(score, old, new)
+        enqueueAnimation(new AwardDistance(self, score, oldDistance, newDistance));
     }
 
     // GameManager.GetDDockScreenElement -- the dock plate with its Digimon.

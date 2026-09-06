@@ -29,6 +29,13 @@ class LogicManager {
 
     var loadedApp as DigiviceApp?;
     var isEventPending as Boolean = false;
+    // Which event is waiting on the character screen, in place of the
+    // original's `triggerEvent` delegate.
+    const EVENT_NONE = 0;
+    const EVENT_RANDOM_BATTLE = 1;
+    const EVENT_DATA_STORM = 2;
+    const EVENT_BOSS_BATTLE = 3;
+    var pendingEvent as Number = EVENT_NONE;
 
     function initialize(saved as SavedGame, db as Database) {
         _saved = saved;
@@ -111,9 +118,7 @@ class LogicManager {
             }
         } else if (currentScreen == Kaisa.SCREEN_CHAR_SELECTION) {
             _gm.audioMgr.playButtonA();
-            // SelectCharacterAndCreateGame: new-game creation is not
-            // translated yet (it belongs with the Map app and the world
-            // rules SPEC section 8 lists as unsurveyed).
+            selectCharacterAndCreateGame();
         }
     }
 
@@ -122,10 +127,10 @@ class LogicManager {
             if (isEventPending) {
                 _gm.audioMgr.playButtonB();
                 triggerEvent();
+            } else if (_gm.worldMgr.currentDistance() == 1) {
+                // "Alternative to shaking the phone to trigger a boss battle."
+                _gm.takeAStep();
             } else {
-                // The original also has a shortcut here that takes a step when
-                // CurrentDistance == 1, standing in for shaking the phone;
-                // TakeAStep belongs to the world rules and is not translated.
                 _gm.audioMgr.playButtonB();
             }
         } else if (currentScreen == Kaisa.SCREEN_MAIN_MENU) {
@@ -200,10 +205,55 @@ class LogicManager {
     function inputLeftUp() as Void { if (currentScreen == Kaisa.SCREEN_APP) { loadedApp.inputLeftUp(); } }
     function inputRightUp() as Void { if (currentScreen == Kaisa.SCREEN_APP) { loadedApp.inputRightUp(); } }
 
-    // The pending-event delegate. Events belong to the world rules, so for now
-    // nothing sets isEventPending and this only clears it.
+    // LogicManager.cs:256 EnqueueRegularEvent / EnqueueBossEvent.
+    //
+    // The original holds the pending event as a delegate it assigns and adds a
+    // clean-up lambda to; Monkey C has no delegates, so the event is a kind
+    // (EVENT_* below) and triggerEvent dispatches on it. The clean-up the
+    // lambda does -- clearing the saved event and the flag -- happens there
+    // too, and in the same order.
+    function enqueueRegularEvent() as Void {
+        if (loadedApp == null) { currentScreen = Kaisa.SCREEN_CHARACTER; }
+        _gm.audioMgr.playSound("triggerEvent");
+        isEventPending = true;
+        pendingEvent = (Kaisa.Rand.rangeFloat(0.0, 1.0) < 0.85)
+            ? EVENT_RANDOM_BATTLE : EVENT_DATA_STORM;
+    }
+
+    function enqueueBossEvent() as Void {
+        if (loadedApp == null) { currentScreen = Kaisa.SCREEN_CHARACTER; }
+        _gm.audioMgr.playSound("triggerEvent");
+        isEventPending = true;
+        pendingEvent = EVENT_BOSS_BATTLE;
+    }
+
     function triggerEvent() as Void {
+        // The event runs first and the clean-up after, because that is the
+        // order the original's delegate chain has them in: the battle or the
+        // storm starts while the flag is still set.
+        if (pendingEvent == EVENT_RANDOM_BATTLE) {
+            callRandomBattle(false);            // CallRandomBattleForEvent
+        } else if (pendingEvent == EVENT_DATA_STORM) {
+            triggerDataStorm();
+        } else if (pendingEvent == EVENT_BOSS_BATTLE) {
+            callBossBattle();
+        }
+
+        _saved.setSavedEvent(0);
         isEventPending = false;
+        pendingEvent = EVENT_NONE;
+    }
+
+    // LogicManager.cs:809
+    function triggerDataStorm() as Void {
+        var result = applyDataStorm();
+        _gm.enqueueAnimation(new DataStorm(_gm,
+            _gm.characterSprites(_saved.playerChar()), result[0] == 1));
+    }
+
+    // LogicManager.cs:306
+    function selectCharacterAndCreateGame() as Void {
+        _gm.createNewGame(charSelectionIndex);
     }
 
     // LogicManager.cs:289 -- a random battle against a Digimon near the
@@ -265,16 +315,15 @@ class LogicManager {
         if (loadedApp == null) { return; }
 
         // LogicManager.cs:384 -- a code entered successfully unlocks the
-        // Digimon it names, and plays three animations. Two of them
-        // (SummonDigimon, UnlockDigimon) are not converted yet.
+        // Digimon it names, and plays three animations.
         if (loadedApp instanceof CodeInput) {
             var digimon = (loadedApp as CodeInput).returnedDigimon;
             if (digimon >= 0) {
                 setDigimonUnlocked(digimon, true);
                 setDigicodeUnlocked(digimon, true);
 
-                _gm.enqueueAnimation(null);     // Animations.SummonDigimon
-                _gm.enqueueAnimation(null);     // Animations.UnlockDigimon
+                _gm.enqueueAnimation(new SummonDigimon(_gm, digimon));
+                _gm.enqueueAnimation(new UnlockDigimon(_gm, digimon, false));
                 _gm.enqueueAnimation(new CharHappy(_gm));
             }
         }
@@ -284,6 +333,7 @@ class LogicManager {
 
         loadedApp.dispose();
         loadedApp = null;
+        _gm.checkPendingEvents();
         // The save is RAM-resident (ADR 8); closing an app is one of the
         // checkpoints where it is worth writing.
         _saved.commit();

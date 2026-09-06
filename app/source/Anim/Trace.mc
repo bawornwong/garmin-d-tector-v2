@@ -70,5 +70,16 @@ module Kaisa {
         (:release)
         function sprite(name as String, op as String, ref as Array<Number>?) as Void {
         }
+
+        // The original sets an inverted COPY of a sprite, and prints it as
+        // "inv:<the sprite it was made from>".
+        (:debug)
+        function invertedSprite(name as String, ref as Array<Number>?) as Void {
+            event("setSprite " + name + " inv:" + Kaisa.Sprites.nameOf(ref));
+        }
+
+        (:release)
+        function invertedSprite(name as String, ref as Array<Number>?) as Void {
+        }
     }
 }

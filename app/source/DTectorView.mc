@@ -70,7 +70,7 @@ class DTectorView extends WatchUi.View {
     // Which converted animation to play, traced, for tools/verify_anim.py:
     // -1 plays none. The arguments match the ones the C# harness synthesises
     // (every int is 1), so the two traces are of the same run.
-    var _probeAnim as Number = 1;
+    var _probeAnim as Number = -1;
     var _probeAnimDone as Boolean = false;
     // The roll the animation probe pins Kaisa.Rand to, so an animation whose
     // length depends on one can be diffed; -1 leaves the RNG alone.
@@ -143,21 +143,24 @@ class DTectorView extends WatchUi.View {
         var screenMgr = new ScreenManager(_gm, root);
         _gm.attachScreenManager(screenMgr);
 
-        // A save that did not exist is a new game, which is what
-        // GameManager.CreateNewGame is for: it seeds the save, sets the worlds
-        // up and plays the opening animation. The character-selection screen
-        // that would choose the character is not converted yet, so the default
-        // record's character stands in.
-        //
-        // The animation probe wants an empty display, so it skips all of it
-        // and only makes sure the worlds are set up.
+        // GameManager.cs:88 -- a save with no character chosen yet opens on
+        // the character-selection screen, and CreateNewGame runs when the
+        // player picks one. The animation probe wants an empty display, so it
+        // skips all of it and only makes sure the worlds are set up.
         if (isNewGame && _probeAnim < 0) {
-            _gm.createNewGame(record.gameChar);
-            saved.commit();
+            _gm.logicMgr.currentScreen = Kaisa.SCREEN_CHAR_SELECTION;
+            _gm.enqueueAnimation(new LoadCharacterSelection(_gm));
         } else if (_gm.worldMgr.getBossOfCurrentArea() < 0) {
             _gm.worldMgr.setupWorlds(
                 Kaisa.WellKnown.PLAYER_SPIRIT[record.gameChar]);
             saved.commit();
+        }
+        // GameManager.cs:94 -- an existing game opens on the character screen,
+        // pays for any battle the player walked out of, and asks whether an
+        // event was saved from last time.
+        if (!isNewGame && _probeAnim < 0) {
+            _gm.checkLeaverBuster();
+            _gm.checkPendingEvents();
         }
         // The three blinking overlays run forever and would interleave their
         // events into an animation trace, so the animation probe leaves them
@@ -298,7 +301,7 @@ class DTectorView extends WatchUi.View {
                                              _demoIndex, 1);
         } else if (_probeAnim == 32) {
             name = "EncounterEnemy";
-            routine = new EncounterEnemy(_gm, _demoIndex, 1.0);
+            routine = new EncounterEnemy(_gm, _demoIndex, 1.0, null, null);
         } else if (_probeAnim == 33) {
             name = "EncounterBoss";
             routine = new EncounterBoss(_gm, _demoIndex);
@@ -360,6 +363,16 @@ class DTectorView extends WatchUi.View {
         } else if (_probeAnim == 50) {
             name = "StartAppDigiHunter";
             routine = new StartAppDigiHunter(_gm, null);
+        } else if (_probeAnim == 51) {
+            name = "SusanoomonEvolution";
+            routine = new SusanoomonEvolution(_gm, Kaisa.CHAR_TAKUYA);
+        } else if (_probeAnim == 52) {
+            name = "TransitionToMap3";
+            // The harness synthesises the stolen-spirit list as agunimon and
+            // lobomon, which WellKnown carries as the first spirit of each
+            // fusion set.
+            routine = new TransitionToMap3(_gm, Kaisa.CHAR_TAKUYA, _demoIndex,
+                [Kaisa.WellKnown.SUSANOO_HUMANS[0], Kaisa.WellKnown.SUSANOO_HUMANS[5]]);
         } else if (_probeAnim == 8) {
             name = "SwapDDock";
             // The animation reads the dock it is about to overwrite, so the
@@ -500,6 +513,7 @@ class DTectorView extends WatchUi.View {
             // PlayerCharacter.UpdateSprite runs on a 0.5 s InvokeRepeating,
             // which is ten frames.
             if (_frame % 10 == 0) { _gm.playerChar.updateSprite(); }
+            _gm.tickJackpot(TICK_MS);
             _gm.screenMgr.updateDisplay();
             var app = _gm.logicMgr.loadedApp;
             if (app != null) { app.tick(TICK_MS); }

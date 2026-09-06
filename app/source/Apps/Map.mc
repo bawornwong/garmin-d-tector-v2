@@ -126,14 +126,14 @@ class Map extends DigiviceApp {
     }
 
     function navigateMap(dir as Number) as Void {
+        var mapBefore = displayMap;
         if (dir == Kaisa.DIR_LEFT) {
             displayMap = Kaisa.MathExt.circularAdd(displayMap, -1, 3, 0);
         } else {
             displayMap = Kaisa.MathExt.circularAdd(displayMap, 1, 3, 0);
         }
         areasInCurrentMap = gm.worldMgr.areasInMap(originalWorld, displayMap);
-        // Animations.TravelMap is not converted yet.
-        gm.enqueueAnimation(null);
+        gm.enqueueAnimation(new TravelMap(gm, originalWorld, mapBefore, displayMap, 1.5));
         focusCurrentMap();
     }
 

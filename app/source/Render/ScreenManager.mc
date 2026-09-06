@@ -68,6 +68,9 @@ class ScreenManager {
                 animParent = null;
             }
             gm.unlockInput();
+            // ScreenManager.cs:101 -- the queue draining is when a saved event
+            // gets its chance: nothing else is on screen now.
+            gm.checkPendingEvents();
             return;
         }
         playingAnimations = true;

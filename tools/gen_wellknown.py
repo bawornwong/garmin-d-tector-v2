@@ -72,6 +72,7 @@ def main():
 
     anims = read(ANIMATIONS_CS)
     ancient, fusion = ancient_pairs(anims), fusion_sets(anims)
+    susanoo = susanoo_names(anims)
     elements, element_sets = element_values(read(DIGIMON_CS)), \
         fusion_elements(read(GAME_MANAGER_CS))
 
@@ -124,6 +125,20 @@ def main():
 
     lines += [""]
 
+    # SusanoomonEvolution names the two fusions it shows, the Digimon it forms,
+    # and all ten spirits of each kind in the order they appear.
+    lines.append("        // Animations.SusanoomonEvolution's Digimon, by name.")
+    lines.append(f"        const SUSANOOMON = {resolve(susanoo['susanoomon'])};"
+                 f"   // {susanoo['susanoomon']}")
+    for key in ("kaisergreymon", "magnagarurumon"):
+        lines.append(f"        const {key.upper()} = {resolve(susanoo[key])};   // {key}")
+    for label in ("humans", "animals"):
+        names = susanoo[label]
+        idx = ", ".join(str(resolve(n)) for n in names)
+        lines.append(f"        const SUSANOO_{label.upper()} = [{idx}];")
+        lines.append(f"        // {', '.join(names)}")
+    lines += [""]
+
     # GameManager.HasAllSpiritsForFusion: each of the two named fusions counts
     # the spirits of five elements; every other fusion counts all twenty.
     lines.append("        // GameManager.HasAllSpiritsForFusion's element sets.")
@@ -167,6 +182,28 @@ def fusion_elements(gm_cs):
         out.append((name, els))
     if len(out) != 2:
         raise SystemExit("HasAllSpiritsForFusion should name two fusions")
+    return out
+
+
+def susanoo_names(anims):
+    """SusanoomonEvolution's literals: the two fusions, Susanoomon, the spirits."""
+    body = method_body(anims, "SusanoomonEvolution")
+    out = {}
+    m = re.search(r'GetAllDigimonSprites\("(\w+)"\)', body)
+    if not m:
+        raise SystemExit("SusanoomonEvolution's Digimon did not parse")
+    out["susanoomon"] = m.group(1)
+    for key in ("kaisergreymon", "magnagarurumon"):
+        if f'GetDigimonSprite("{key}"' not in body:
+            raise SystemExit(f"SusanoomonEvolution does not name {key}")
+        out[key] = key
+    for label, var in (("humans", "sHumans"), ("animals", "sAnimals")):
+        pairs = re.findall(
+            rf'{var}\[(\d+)\] = spriteDB\.GetDigimonSprite\("(\w+)", SpriteAction\.SpiritSmall\);',
+            body)
+        if len(pairs) != 10:
+            raise SystemExit(f"SusanoomonEvolution's {var} did not parse")
+        out[label] = [n for _, n in sorted(pairs, key=lambda p: int(p[0]))]
     return out
 
 
