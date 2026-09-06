@@ -57,8 +57,11 @@ class AppLoader {
         if (app == Kaisa.APP_SPEED_RUNNER) { return new SpeedRunner(gm, controller, parent); }
         if (app == Kaisa.APP_MAZE) { return new Maze(gm, controller, parent); }
         if (app == Kaisa.APP_JACKPOT_BOX) { return new JackpotBox(gm, controller, parent); }
+        // Battle is opened through LogicManager's callRandomBattle rather than
+        // from a menu, so it is constructed there with its enemy.
+        if (app == Kaisa.APP_BATTLE) { return new Battle(gm, controller, parent); }
 
-        // Battle, EnergyWars, DigiCatch, Asteroids -- step 8, and two games
+        // EnergyWars, DigiCatch, Asteroids -- two games
         // the original never implemented. (Connect has no implementation in the original
         // either: the App enum has an entry, the Logic/Apps folder does not.)
         // of SPEC's order of work.

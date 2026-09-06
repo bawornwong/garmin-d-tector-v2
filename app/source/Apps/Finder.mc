@@ -98,11 +98,12 @@ class Finder extends DigiviceApp {
     }
 
     // The tail of AnimateSuccessBar: close, then start the battle the search
-    // found. Battle is step 8 and is not translated, so the app closes and the
-    // call site says what is missing rather than pretending it happened.
+    // found.
     function finishSuccess() as Void {
         closeApp(Kaisa.SCREEN_MAIN_MENU);
-        // logicMgr.CallRandomBattle(true) -- waits on Battle.
+        if (controller instanceof LogicManager) {
+            (controller as LogicManager).callRandomBattle(true);
+        }
     }
 }
 

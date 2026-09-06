@@ -206,6 +206,38 @@ class LogicManager {
         isEventPending = false;
     }
 
+    // LogicManager.cs:289 -- a random battle against a Digimon near the
+    // player's level; `reduceDistance` decides whether winning shortens the
+    // journey.
+    function callRandomBattle(reduceDistance as Boolean) as Void {
+        var enemy = _db.getRandomDigimonForBattle(getPlayerLevel());
+        if (enemy == null) { return; }
+        startBattle(enemy.index, reduceDistance, false);
+    }
+
+    // LogicManager.cs:294 -- the boss of the area the player is standing in.
+    function callBossBattle() as Void {
+        var boss = _gm.worldMgr.getBossOfCurrentArea();
+        if (boss < 0) { return; }
+        startBattle(boss, true, true);
+    }
+
+    // LogicManager.cs:300 CallFixedBattle
+    function callFixedBattle(digimonIndex as Number, alterDistance as Boolean,
+                             isBossBattle as Boolean) as Void {
+        startBattle(digimonIndex, alterDistance, isBossBattle);
+    }
+
+    function startBattle(enemyIndex as Number, alterDistance as Boolean,
+                         isBossBattle as Boolean) as Void {
+        var battle = _gm.appLoader.loadApp(Kaisa.APP_BATTLE, self,
+                                           _gm.screenMgr.screenDisplay);
+        if (battle == null) { return; }
+        currentScreen = Kaisa.SCREEN_APP;
+        loadedApp = (battle as Battle).setup(enemyIndex, alterDistance, isBossBattle);
+        loadedApp.startApp();
+    }
+
     // LogicManager.cs:311
     function openGameMenu() as Void {
         currentMainMenu = 0;
@@ -255,6 +287,36 @@ class LogicManager {
         // The save is RAM-resident (ADR 8); closing an app is one of the
         // checkpoints where it is worth writing.
         _saved.commit();
+    }
+
+    // LogicManager.cs:412 -- "Adds an amount of experience to the player, and
+    // returns true if their level changed. This method will disable player
+    // insurance if able."
+    function addPlayerExperience(val as Number) as Boolean {
+        var before = getPlayerLevel();
+        var xp = _saved.playerExperience() + val;
+        if (xp > 1000000) { xp = 1000000; }
+        _saved.setPlayerExperience(xp);
+        _saved.setPlayerInsured(false);
+        return before != getPlayerLevel();
+    }
+
+    // LogicManager.cs:429 -- the mirror, with the insurance that softens the
+    // first level a player loses: it eats one loss, then re-arms when a level
+    // does go.
+    function removePlayerExperience(val as Number) as Boolean {
+        var before = getPlayerLevel();
+
+        if (_saved.isPlayerInsured()) {
+            _saved.setPlayerInsured(false);
+        } else {
+            _saved.setPlayerExperience(_saved.playerExperience() - val);
+        }
+        if (_saved.playerExperience() < 0) { _saved.setPlayerExperience(0); }
+
+        var now = getPlayerLevel();
+        if (now < before) { _saved.setPlayerInsured(true); }
+        return before != now;
     }
 
     // LogicManager.cs:449

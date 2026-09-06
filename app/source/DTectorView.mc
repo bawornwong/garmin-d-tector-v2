@@ -57,7 +57,8 @@ class DTectorView extends WatchUi.View {
     // Which app to open at startup instead of beginning on the character
     // screen, and which of its screens: the apps page with left/right as
     // usual, this only saves pressing them to capture a given screen.
-    // 0 = none (the game's own start), 1 = Database, 2 = Status, 3 = Camp.
+    // 0 = none (the game's own start), 1 = Database, 2 = Status, 3 = Camp,
+    // 4 = a random Battle (which has no menu entry of its own).
     var _sliceApp as Number = 0;
     var _probeStatusScreen as Number = 0;
     // A scripted input sequence, one event per frame from frame 5, so a
@@ -69,7 +70,7 @@ class DTectorView extends WatchUi.View {
     // Which converted animation to play, traced, for tools/verify_anim.py:
     // -1 plays none. The arguments match the ones the C# harness synthesises
     // (every int is 1), so the two traces are of the same run.
-    var _probeAnim as Number = -1;
+    var _probeAnim as Number = 3;
     var _probeAnimDone as Boolean = false;
 
     function initialize() {
@@ -157,7 +158,11 @@ class DTectorView extends WatchUi.View {
 
         // The character screen is where the original starts, and _sliceApp
         // still lets a capture open one app directly.
-        if (_sliceApp == 1) {
+        if (_sliceApp == 4) {
+            // Battle has no menu entry: the game starts it from an event or a
+            // minigame, so the probe calls the same entry point they do.
+            _gm.logicMgr.callRandomBattle(false);
+        } else if (_sliceApp == 1) {
             _gm.logicMgr.openApp(Kaisa.APP_DATABASE);
         } else if (_sliceApp == 2) {
             _gm.logicMgr.openApp(Kaisa.APP_STATUS);

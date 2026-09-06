@@ -61,6 +61,66 @@ class GameManager {
         enqueueAnimation(null);
     }
 
+    // GameManager.cs:301 -- "Returns one of the three seeds of this game at
+    // random."
+    function getRandomSavedSeed() as Number {
+        return saved.randomSeed(Kaisa.Rand.rangeInt(0, 3));
+    }
+
+    // GameManager.cs:429 -- LeaverBuster remembers what a player would have
+    // lost if they quit mid-battle, so the loss can be applied next launch.
+    function updateLeaverBuster(expLoss as Number, digimonLoss as Number) as Void {
+        saved.record.isLeaverBusterActive = true;
+        saved.record.leaverBusterExpLoss = expLoss;
+        saved.record.leaverBusterDigimonLoss = digimonLoss;
+        saved.touch();
+    }
+
+    function disableLeaverBuster() as Void {
+        saved.record.isLeaverBusterActive = false;
+        saved.record.leaverBusterExpLoss = 0;
+        saved.record.leaverBusterDigimonLoss = -1;
+        saved.touch();
+    }
+
+    // GameManager.cs:526 -- finishing a world moves the player to the next
+    // one. Both transitions play animations that are not converted yet, and
+    // CompleteWorld2 also strips the player of their human and animal
+    // spirits, which IS logic and happens here.
+    function completeWorld(world as Number) as Void {
+        if (world == 0) {
+            worldMgr.moveToArea(1, 0);
+            setCharacterDefeated(true);
+            enqueueAnimation(null);         // Animations.TransitionToMap1
+        } else if (world == 2) {
+            worldMgr.moveToArea(3, 0);
+            setCharacterDefeated(true);
+            enqueueAnimation(null);         // Animations.TransitionToMap3
+            var spirits = getAllUnlockedHumanAndAnimalSpirits();
+            for (var i = 0; i < spirits.size(); i += 1) {
+                logicMgr.loseSpirit(spirits[i]);
+            }
+        }
+    }
+
+    // GameManager.cs:335
+    function getAllUnlockedHumanAndAnimalSpirits() as Array<Number> {
+        var out = [] as Array<Number>;
+        var n = data.orderCount();
+        for (var k = 0; k < n; k += 1) {
+            var i = data.orderIndex(k);
+            if (db.isDisabled(i)) { continue; }
+            if (data.stage(i) == Kaisa.STAGE_SPIRIT) {
+                var st = data.spiritType(i);
+                if ((st == Kaisa.SPIRIT_HUMAN || st == Kaisa.SPIRIT_ANIMAL)
+                        && logicMgr.getDigimonUnlocked(i)) {
+                    out.add(i);
+                }
+            }
+        }
+        return out;
+    }
+
     // GameManager.cs:44
     function isCharacterDefeated() as Boolean {
         return saved.record.isPlayerDefeated;
@@ -217,6 +277,37 @@ class GameManager {
             }
         }
         return out;
+    }
+
+    // GameManager.cs:360 -- "Returns true if the player has both the Human
+    // and Animal form of a spirit."
+    function hasBothFormsOfSpirit(element as Number) as Boolean {
+        var count = 0;
+        var n = db.count();
+        for (var i = 0; i < n; i += 1) {
+            if (db.isDisabled(i)) { continue; }
+            if (data.stage(i) == Kaisa.STAGE_SPIRIT && data.element(i) == element) {
+                var st = data.spiritType(i);
+                if ((st == Kaisa.SPIRIT_HUMAN || st == Kaisa.SPIRIT_ANIMAL)
+                        && logicMgr.getDigimonUnlocked(i)) {
+                    count += 1;
+                }
+            }
+        }
+        return count == 2;
+    }
+
+    // GameManager.cs:376 -- whether the player holds every spirit a fusion
+    // needs. The original branches on the fusion's NAME; here the same three
+    // fusions are matched by index through WellKnown, and the element sets
+    // they require are the source's.
+    //
+    // NOT TRANSLATED YET: the per-fusion element lists are 90 lines of
+    // conditions in the original and belong with the evolution animations.
+    // Until then this reports false, which makes the fusion refuse rather
+    // than let an unearned evolution through.
+    function hasAllSpiritsForFusion(fusionIndex as Number) as Boolean {
+        return false;
     }
 
     // GameManager.cs:348

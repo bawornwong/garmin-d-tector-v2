@@ -45,6 +45,18 @@ class SavedGame {
     function playerName() as String { return record.name; }
     function playerChar() as Number { return record.gameChar; }
 
+    function isPlayerInsured() as Boolean { return record.isPlayerInsured; }
+    function setPlayerInsured(v as Boolean) as Void {
+        record.isPlayerInsured = v;
+        touch();
+    }
+
+    // The three seeds a game is created with; a battle draws one of them so
+    // the enemy's attack sequence is fixed for that battle.
+    function randomSeed(index as Number) as Number {
+        return record.battleSeed[index];
+    }
+
     function playerExperience() as Number { return record.playerExperience; }
     function setPlayerExperience(v as Number) as Void {
         record.playerExperience = v;

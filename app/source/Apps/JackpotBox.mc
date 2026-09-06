@@ -162,9 +162,11 @@ class JackpotBox extends DigiviceApp {
         if (reward == Kaisa.REWARD_EMPTY) {
             gm.enqueueRewardAnimation(reward, -1, -1, -1);
         } else if (reward == Kaisa.REWARD_TRIGGER_BATTLE) {
-            // Animations.TriggerBattle closes the app and calls
-            // logicMgr.CallRandomBattle(true); Battle is step 8.
+            // JackpotBox.TriggerBattle: close, then fight.
             closeApp(Kaisa.SCREEN_GAMES_REWARD_MENU);
+            if (controller instanceof LogicManager) {
+                (controller as LogicManager).callRandomBattle(true);
+            }
             return;
         } else {
             var objective = (reward == Kaisa.REWARD_PUNISH_DIGIMON) ? friendlyDigimon : -1;

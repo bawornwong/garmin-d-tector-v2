@@ -66,6 +66,7 @@ app/source/
               Maze.mc             the 15x12 maze minigame
               Map.mc              the world map: pan, pick an area, travel
               JackpotBox.mc       the pattern-repeating reward minigame
+              Battle.mc           eight screens, the turn loop, win/lose/escape
               Camp.mc             the smallest app; clears the defeated flag
 ```
 
@@ -82,8 +83,8 @@ Against SPEC section 6's order of work:
 | 5. Text renderer | done |
 | 6. Vertical slice: Status + Database | **done** — both apps run, opened from the real main menu |
 | 7. Runner + fibers, then the 4 linear coroutines | **done** — runner with concurrent fibers, the 4 linear coroutines converted and diffed against the original, plus 6 app-local ones |
-| 8. Battle | not started |
-| 9. The remaining apps and minigames | not started |
+| 8. Battle | **done** — every screen, the turn loop and the three endings; its animations are not converted |
+| 9. The remaining apps and minigames | **done** — every app the original implements is translated |
 | 10. `StartGameAnimation` | not started |
 
 ## 3. What is proven, and how to re-run it
@@ -126,9 +127,14 @@ All measured, all already encoded in the code that depends on them — listed he
 
 ## 5. What to do next
 
-**Immediately: `Battle` (step 8)**, the heaviest surface: `Battle.cs` is 1,068 lines and its animations are the hardest in `Animations.cs` (`AttackCollision` alone has 35 `if`s and five nested coroutines). Everything it needs now exists — the runner handles parallel fibers, the display list is verified, and `verify_anim.py` will check each converted animation as it lands.
+**Every app the original implements is now translated.** What is left is `Animations.cs`: 51 of its 60 coroutines, and they are what the game looks like. Convert them in the order the apps need them, checking each with `tools/verify_anim.py` as it lands:
 
-**Then, in order:**
+1. **The battle animations** -- `LaunchAttack`, `AttackCollision`, `DestroyLoser`, `DisplayTurn`. They are the hardest in the file (`AttackCollision` has 35 `if`s and five nested coroutines) and the most visible: without them a battle resolves silently.
+2. **The summon and evolution set** -- `SummonDigimon`, `UnlockDigimon`, `SpiritEvolution`, `AncientEvolution`, `FusionSpiritEvolution`, `RegularEvolution`. `GameManager.hasAllSpiritsForFusion` is a stub returning false and belongs with these.
+3. **The reward animations** behind `GameManager.enqueueRewardAnimation`, which currently discards them.
+4. **`StartGameAnimation`** (236 lines, 48 yields) last, as SPEC says.
+
+**Then:**
 
 - **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
 - **`Battle`** (1,068 lines) and its animations: the last app and the heaviest surface. Its rules ARE surveyed now (SPEC section 8 lists them) and every piece of shared logic it needs is translated and checked -- the turn resolution, the disobey chances, the evolution and spirit costs. What is left is the app: six screens, the D-Dock and spirit menus, the turn loop, and the battle animations, which are the hardest in `Animations.cs` (`AttackCollision` alone has 35 `if`s and five nested coroutines).
