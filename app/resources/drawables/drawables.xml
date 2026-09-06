@@ -1,10 +1,33 @@
 <drawables>
     <bitmap id="LauncherIcon" filename="launcher.png" />
-    <bitmap id="Atlas24" filename="atlas_24x24.png" />
-    <bitmap id="Atlas32" filename="atlas_32x32.png" />
-    <bitmap id="Atlas14x16" filename="atlas_14x16.png" />
-    <bitmap id="AtlasOdd" filename="atlas_odd.png" />
-    <bitmap id="FontBig" filename="font_big.png" />
-    <bitmap id="FontRegular" filename="font_regular.png" />
-    <bitmap id="FontSmall" filename="font_small.png" />
+
+    <!-- Both attributes are load-bearing, not decoration. Without an
+         explicit <palette> the resource compiler picks automaticPalette,
+         which on this 16 bpp device quantises to 4 bpp; without
+         dithering="none" it then Floyd-Steinbergs the result. Between them
+         they silently dropped 10 of the 576 pixels of one 24x24 cell:
+         isolated single ink pixels, the kind that make up a sprite's
+         outline. Measured by reading the rendered frame back off the
+         simulator and diffing it against the atlas PNG. -->
+    <bitmap id="Atlas24" filename="atlas_24x24.png" dithering="none">
+        <palette><color>000000</color><color>819376</color></palette>
+    </bitmap>
+    <bitmap id="Atlas32" filename="atlas_32x32.png" dithering="none">
+        <palette><color>000000</color><color>819376</color></palette>
+    </bitmap>
+    <bitmap id="Atlas14x16" filename="atlas_14x16.png" dithering="none">
+        <palette><color>000000</color><color>819376</color></palette>
+    </bitmap>
+    <bitmap id="AtlasOdd" filename="atlas_odd.png" dithering="none">
+        <palette><color>000000</color><color>819376</color></palette>
+    </bitmap>
+    <bitmap id="FontBig" filename="font_big.png" dithering="none">
+        <palette><color>000000</color><color>819376</color></palette>
+    </bitmap>
+    <bitmap id="FontRegular" filename="font_regular.png" dithering="none">
+        <palette><color>000000</color><color>819376</color></palette>
+    </bitmap>
+    <bitmap id="FontSmall" filename="font_small.png" dithering="none">
+        <palette><color>000000</color><color>819376</color></palette>
+    </bitmap>
 </drawables>

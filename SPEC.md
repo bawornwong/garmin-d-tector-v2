@@ -72,6 +72,7 @@ Three generators, all run before `monkeyc`, all self-verifying.
 - Reads `Assets/Resources/Sprites/**` and the five `Assets/Sprites/*.png` sheets, slicing the latter by the rects in their `.meta` files — never by a guessed grid.
 - Thresholds each pixel: **on when `alpha > 0` and `luma > 128`**. Alpha alone would turn eight Digimon sprites into solid blocks; luma alone would lose the fonts, whose art is in the alpha channel.
 - Packs one atlas per size class, **24 cells wide**, with a Digimon's group never straddling a row.
+- Every `<bitmap>` it feeds `drawables.xml` carries `dithering="none"` and an explicit two-colour `<palette>`. Without both, the resource compiler quantises to 4 bpp and dithers, silently losing isolated ink pixels ([ADR 3](docs/adr/0003-sprite-atlas-and-row-buffers.md)).
 - Emits `DIGIMON_CELLS[index][action]`, 603 rows × 6, `-1` where an action has no art.
 - Verifies by unpacking its own output and diffing every cell.
 
@@ -86,13 +87,13 @@ Three generators, all run before `monkeyc`, all self-verifying.
 
 ## 5. Runtime
 
-**Startup** — load the packed data (35,312 chars → 26,484 bytes, about 1 ms), build the index tables, restore the save slot. Row buffers are *not* pre-filled.
+**Startup** — load the packed data (35,312 chars → 26,484 bytes, about 1 ms), build the index tables, restore the save slot. Decode each base64 string resource to a `ByteArray` **separately** and join with `addAll`: **Monkey C string concatenation wraps modulo 65,536** rather than throwing, so joining the chunks first silently truncates the blob (70,876 chars came back as 5,340 = 70,876 − 65,536). Row buffers are *not* pre-filled.
 
 **Row residency** — an LRU of 16 row buffers, each holding a strong reference; eviction drops the reference. A fill costs 8 ms, affordable on a screen transition and not inside an animation. Allocation is wrapped in `try`: overcommitting the pool throws. A row whose strong reference was dropped is treated as empty and refilled.
 
 **Frame** — a 50 ms timer drives: drain the input queue → advance the runner → redraw. The runner keeps the original millisecond schedule and executes every step whose scheduled time has arrived, so sub-tick waits still fire and durations are exact ([ADR 5](docs/adr/0005-fractional-scheduler-at-20-fps.md)).
 
-**Drawing a sprite** — `drawBitmap2` from a row buffer with `:bitmapX`/`:bitmapY`/`:bitmapWidth`/`:bitmapHeight`, `:transform` = `AffineTransform.setToScale(10, 10)`, `:filterMode` = `FILTER_MODE_POINT`.
+**Drawing a sprite** — `drawBitmap2` from a row buffer with `:bitmapX`/`:bitmapY`/`:bitmapWidth`/`:bitmapHeight`, `:transform` = `AffineTransform.setToScale(10, 10)`, `:filterMode` = `FILTER_MODE_POINT`. **Pass `x - 10 * srcX`, `y - 10 * srcY` as the destination**: with a transform set the device draws at `(x, y) + T * (bitmapX, bitmapY)`, so an uncompensated call puts the sprite off-screen and draws nothing.
 
 **Drawing text** — uppercase the string, then blit glyph by glyph, advancing by each glyph's own advance. `\n` breaks lines; **nothing wraps**. Characters with no glyph are skipped entirely ([ADR 10](docs/adr/0010-missing-glyphs-are-skipped.md)). Text clips at the canvas, not at its own rect; the rect exists for alignment.
 
@@ -125,6 +126,9 @@ Every check runs in CI ([ADR 12](docs/adr/0012-verification-is-generated-not-tra
 | Numeric parity, C# ↔ Monkey C | 6,059 values, 0 differences |
 | Animation events against the golden trace | 150 / 150 |
 | Coroutines traceable from the real source | 53 / 53, 6,911 events |
+| Rendered frame against the atlas, read back off the device | 576 / 576 pixels per cell, two cells |
+
+`tools/verify_render.py` runs the render-parity check: it resolves the sprite reference out of `build/data.bin` — the bytes the device itself reads — samples the centre of each 10× block of a captured frame, and diffs. It is what caught both device behaviours above; neither was visible in a screenshot at a glance.
 
 Two checks still to be built: **font metrics** (render a fixed string set, compare widths and positions against values computed from the `.fontsettings`; include a name with parentheses), and **per-coroutine golden diffs** as each of the 60 is converted.
 
@@ -133,6 +137,6 @@ Two checks still to be built: **font metrics** (render a fixed string set, compa
 - **Every render timing here is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
 - `:tintColor` on the row-buffer path is untested; until it is, the original's configurable screen colours are not preserved.
 - Whether Unity draws *nothing* for a missing glyph, or a blank box that consumes advance, needs confirming against a running original.
-- `worlds.json`'s `bosses`, `semibosses`, `removePlayer` and `semibossMode` are not yet in the packed layout — only areas are.
+- `SaveFormat`'s seeding of `bosses` and `semibossGroup` has not been checked against `WorldManager.cs`; the round-trip proves the format, not the initial values.
 - The 20-entry cap on `lostSpirits` is inferred, not verified against the game's own maximum.
 - Per-minigame timing and input treatment, the D-Tector frame art around the canvas, localization, and the evolution/D-Dock/spirit rules are unsurveyed.
