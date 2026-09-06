@@ -2,3 +2,5 @@
 .scratch/d-tector-venu4/prototype/golden/obj/
 .scratch/d-tector-venu4/prototype/numeric/bin/
 .scratch/d-tector-venu4/prototype/numeric/obj/
+
+tools/__pycache__/

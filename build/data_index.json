@@ -1,0 +1,47 @@
+{
+ "sections": {
+  "entries": {
+   "offset": 82,
+   "length": 37952
+  },
+  "names": {
+   "offset": 38034,
+   "length": 7212
+  },
+  "codes": {
+   "offset": 45246,
+   "length": 2965
+  },
+  "abilities": {
+   "offset": 48211,
+   "length": 2275
+  },
+  "abilitySprites": {
+   "offset": 50486,
+   "length": 1351
+  },
+  "energySprites": {
+   "offset": 51837,
+   "length": 112
+  },
+  "extraEvo": {
+   "offset": 51949,
+   "length": 296
+  },
+  "bossStats": {
+   "offset": 52245,
+   "length": 132
+  },
+  "worlds": {
+   "offset": 52377,
+   "length": 740
+  },
+  "initials": {
+   "offset": 53117,
+   "length": 38
+  }
+ },
+ "entrySize": 64,
+ "digimonCount": 593,
+ "abilityCount": 193
+}

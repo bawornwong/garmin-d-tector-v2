@@ -1,0 +1,10 @@
+<drawables>
+    <bitmap id="LauncherIcon" filename="launcher.png" />
+    <bitmap id="Atlas24" filename="atlas_24x24.png" />
+    <bitmap id="Atlas32" filename="atlas_32x32.png" />
+    <bitmap id="Atlas14x16" filename="atlas_14x16.png" />
+    <bitmap id="AtlasOdd" filename="atlas_odd.png" />
+    <bitmap id="FontBig" filename="font_big.png" />
+    <bitmap id="FontRegular" filename="font_regular.png" />
+    <bitmap id="FontSmall" filename="font_small.png" />
+</drawables>

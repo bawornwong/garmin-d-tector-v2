@@ -1,0 +1,16 @@
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+    <iq:application entry="DTectorApp"
+                     id="a4b7c2e91f3d5680294b7c1e6a3f8092"
+                     launcherIcon="@Drawables.LauncherIcon"
+                     minSdkVersion="6.0.0"
+                     name="@Strings.AppName"
+                     type="watch-app">
+        <iq:products>
+            <iq:product id="venu445mm"/>
+        </iq:products>
+        <iq:permissions/>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+    </iq:application>
+</iq:manifest>
