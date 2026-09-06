@@ -15,6 +15,12 @@ class GameManager {
     var worldMgr as WorldManager;
     var audioMgr as AudioManager;
     var runner as Runner;
+    var appLoader as AppLoader;
+    var screenMgr as ScreenManager?;
+    var playerChar as PlayerCharacter;
+
+    var isCharacterWalking as Boolean = false;
+    var isInputLocked as Boolean = false;
 
     function initialize(dataIn as GameData, dbIn as Database, savedIn as SavedGame) {
         data = dataIn;
@@ -24,6 +30,61 @@ class GameManager {
         worldMgr = new WorldManager(savedIn);
         audioMgr = new AudioManager();
         runner = new Runner();
+        appLoader = new AppLoader(self);
+        playerChar = new PlayerCharacter(self, savedIn.playerChar());
+        logicMgr.setGameManager(self);
+    }
+
+    // GameManager.Awake's tail: the screen manager needs the root element,
+    // which the view owns, so it is attached rather than constructed here.
+    function attachScreenManager(sm as ScreenManager) as Void {
+        screenMgr = sm;
+    }
+
+    // GameManager.cs:44
+    function isCharacterDefeated() as Boolean {
+        return saved.record.isPlayerDefeated;
+    }
+
+    function setCharacterDefeated(val as Boolean) as Void {
+        saved.record.isPlayerDefeated = val;
+        saved.touch();
+    }
+
+    // GameManager.cs:48
+    function isEventActive() as Boolean {
+        return logicMgr.isEventPending;
+    }
+
+    // GameManager.cs:50 -- a per-world flag. The worlds section is packed but
+    // its reader belongs with the Map app (SPEC section 8), so this is the
+    // default the first world carries until then.
+    function showEyes() as Boolean {
+        return false;
+    }
+
+    // GameManager.cs:257
+    function lockInput() as Void {
+        isInputLocked = true;
+    }
+
+    function unlockInput() as Void {
+        isInputLocked = false;
+    }
+
+    // GameManager.cs:254 -- the ten sprites of one character.
+    function characterSprites(gameChar as Number) as Array {
+        if (gameChar == Kaisa.CHAR_KOJI) { return Kaisa.Sprites.KOJI; }
+        if (gameChar == Kaisa.CHAR_ZOE) { return Kaisa.Sprites.ZOE; }
+        if (gameChar == Kaisa.CHAR_JP) { return Kaisa.Sprites.JP; }
+        if (gameChar == Kaisa.CHAR_TOMMY) { return Kaisa.Sprites.TOMMY; }
+        if (gameChar == Kaisa.CHAR_KOICHI) { return Kaisa.Sprites.KOICHI; }
+        return Kaisa.Sprites.TAKUYA;
+    }
+
+    // GameManager.cs:262 -- the sprite the character is showing right now.
+    function playerCharSprite() as Array<Number>? {
+        return characterSprites(saved.playerChar())[playerChar.currentSprite];
     }
 
     // GameManager.EnqueueAnimation. The original queues an animation coroutine
@@ -35,7 +96,11 @@ class GameManager {
     // holes are visible here rather than scattered.
     function enqueueAnimation(routine as Routine?) as Void {
         if (routine == null) { return; }
-        runner.start(routine);
+        if (screenMgr != null) {
+            screenMgr.enqueueAnimation(routine);
+        } else {
+            runner.start(routine);
+        }
     }
 
     // GameManager.GetDDockScreenElement -- the dock plate with its Digimon.

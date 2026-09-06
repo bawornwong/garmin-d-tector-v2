@@ -44,16 +44,20 @@ app/source/
               Renderer.mc         walks the display list once per frame
               ScreenElement.mc    the display list: 4 builders, ~24 operations
               ScreenBuilder.mc    ScreenElement.cs's static creators
+              ScreenManager.mc    the character/menu screens, the blinking
+                                  overlays and the animation queue
               TextRenderer.mc     glyph-by-glyph bitmap text
               FontMetrics.mc      GENERATED from the .fontsettings
               SpriteDatabase.mc   GENERATED from the Unity scene: 215 UI sprites
               TextProbe.mc        GENERATED from tools/text_probe.json
   Logic/      CInt.mc, Enums.mc, Constants.mc, MathExt.mc, Digimon.mc,
               Database.mc, SavedGame.mc, LogicManager.mc, WorldManager.mc,
-              GameManager.mc, IllegalBoundsException.mc
+              GameManager.mc, PlayerCharacter.mc, IllegalBoundsException.mc
   Apps/       DigiviceApp.mc      base app: the twelve inputs, screen, tick
+              AppLoader.mc        the App enum; makes an app, null if untranslated
               Status.mc           the first real app, all seven of its screens
               DatabaseApp.mc      six screens, three converted coroutines
+              Camp.mc             the smallest app; clears the defeated flag
 ```
 
 Generated files are marked GENERATED and say which tool writes them. Never hand-edit one; ADR 12 is the reason.
@@ -67,7 +71,7 @@ Against SPEC section 6's order of work:
 | 3. Input adapter | done |
 | 4. Logic layer | **in progress** — the foundation and the Status/Database dependencies are translated; everything else is not |
 | 5. Text renderer | done |
-| 6. Vertical slice: Status + Database | **done** — both apps run |
+| 6. Vertical slice: Status + Database | **done** — both apps run, opened from the real main menu |
 | 7. Runner + fibers, then the 4 linear coroutines | **runner done** (concurrent fibers, ADR 5 schedule); 3 coroutines converted (DatabaseApp's), the 4 linear ones from `Animations.cs` not yet |
 | 8. Battle | not started |
 | 9. The remaining apps and minigames | not started |
@@ -111,22 +115,19 @@ All measured, all already encoded in the code that depends on them — listed he
 
 ## 5. What to do next
 
-**Immediately: the host that owns the apps.** `LogicManager`'s screen state machine plus `AppLoader`, the main menu and `Camp`, so apps can be opened and closed for real. Today `DTectorView.closeLoadedApp` only logs and the slice starts one app directly, which is the last piece of scaffolding standing between the port and a playable shell. It needs:
-
-1. `Logic/Models/Menu.cs` (43 lines) and the `MainMenu` / `Screen` enums (already translated in `Logic/Enums.mc`).
-2. `LogicManager`'s screen region — the state machine that owns `currentScreen`, the menu indices and the app lifecycle.
-3. `AppLoader.cs` (93 lines), reduced to "make the app object": the original instantiates prefabs.
-4. `Camp.cs` (47 lines), the smallest remaining app, as the second consumer of the host.
+**Immediately: the four linear coroutines from `Animations.cs`**, each with its golden diff, to finish step 7 — the conversion pipeline is currently validated only against app-local animations, not against the reference trace. `.scratch/d-tector-venu4/prototype/anim/golden.py` is the shape the check takes.
 
 **Then, in order:**
 
-- **The rest of step 7**: the four linear coroutines from `Animations.cs`, each with its golden diff, to validate the conversion pipeline against the reference trace rather than against three app-local animations.
+- **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
+- **`CodeInput`**, which also needs `indexOfCode` rewritten to compare bytes rather than decode 593 strings.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
 
 ## 6. Traps and loose ends
 
-- **`DTectorView` is scaffolding.** `seedSkeletonStats` writes demo stats and a spread of unlocked Digimon into the save record in RAM (never committed) so the screens have something to show; `_sliceApp` picks which app to start; `_probeInputs` replays a scripted press sequence so a capture can reach a screen several presses deep. All of it comes out when the real host lands.
+- **`DTectorView` still carries scaffolding**, though it now boots the real host: `seedSkeletonStats` writes demo stats and a spread of unlocked Digimon into the save record in RAM (never committed) so the screens have something to show; `_sliceApp` can open one app directly instead of starting on the character screen; `_probeInputs` replays a scripted press sequence so a capture can reach a screen several presses deep.
+- **The character screen shows a character but nothing else.** `CreateNewGame`, the pending-event machinery and `TakeAStep` are not translated, so `isEventPending` is never set and the event/eyes overlays never show.
 - **`Animations.cs` is not translated at all.** `GameManager.enqueueAnimation` takes null from every call site that would play one, and each such site says so. The three coroutines that exist are DatabaseApp's own.
 - **`Database.indexOfCode` will trip the watchdog** the way `indexOfName` did: it decodes 593 strings. Compare at the byte level before CodeInput ships.
 - **Every render timing in SPEC is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.

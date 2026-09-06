@@ -40,7 +40,6 @@ class DTectorView extends WatchUi.View {
     var _renderer as Renderer?;
     var _root as ContainerBuilder?;
     var _gm as GameManager?;
-    var _app as DigiviceApp?;
 
     var _demoIndex as Number = 0;      // digimonDB.json index being shown
     var _frame as Number = 0;
@@ -55,9 +54,10 @@ class DTectorView extends WatchUi.View {
     var _probeIndex as Number = -1;
     var _probeInvert as Boolean = false;
     var _probeText as Boolean = false;
-    // Which app the slice starts, and which of its screens: the apps page with
-    // left/right as usual, this only saves pressing them to capture a given
-    // screen. 0 = Status, 1 = Database.
+    // Which app to open at startup instead of beginning on the character
+    // screen, and which of its screens: the apps page with left/right as
+    // usual, this only saves pressing them to capture a given screen.
+    // 0 = none (the game's own start), 1 = Database, 2 = Status, 3 = Camp.
     var _sliceApp as Number = 0;
     var _probeStatusScreen as Number = 0;
     // A scripted input sequence, one event per frame from frame 5, so a
@@ -113,15 +113,14 @@ class DTectorView extends WatchUi.View {
         } else if (_probeIndex >= 0) {
             buildSpriteProbe(root);
         } else {
-            startStatusApp(root);
+            startGame(root);
         }
     }
 
-    // The vertical slice (SPEC step 6): the real Status app, on the real
-    // display list, over the real save. There is no main menu yet, so the app
-    // is started directly and closeLoadedApp only logs -- the host that owns
-    // the menu is LogicManager's screen state machine, which arrives with it.
-    function startStatusApp(root as ContainerBuilder) as Void {
+    // The game proper: GameManager, the screen manager and LogicManager's
+    // screen state machine, with input routed at the state machine rather than
+    // at one app. What the original does in GameManager.Awake.
+    function startGame(root as ContainerBuilder) as Void {
         var db = new Database(_data);
         db.load();
         var record = _save.readSlot(0);
@@ -130,16 +129,18 @@ class DTectorView extends WatchUi.View {
         var saved = new SavedGame(_save, 0, record);
         _gm = new GameManager(_data, db, saved);
 
+        var screenMgr = new ScreenManager(_gm, root);
+        _gm.attachScreenManager(screenMgr);
+        screenMgr.startFlashRoutines();
+
+        // The character screen is where the original starts, and _sliceApp
+        // still lets a capture open one app directly.
         if (_sliceApp == 1) {
-            var app = new DatabaseApp(_gm, self, root);
-            app.currentScreen = _probeStatusScreen;
-            app.startApp();
-            _app = app;
-        } else {
-            var app = new Status(_gm, self, root);
-            app.currentScreen = _probeStatusScreen;
-            app.startApp();
-            _app = app;
+            _gm.logicMgr.openApp(Kaisa.APP_DATABASE);
+        } else if (_sliceApp == 2) {
+            _gm.logicMgr.openApp(Kaisa.APP_STATUS);
+        } else if (_sliceApp == 3) {
+            _gm.logicMgr.openApp(Kaisa.APP_CAMP);
         }
     }
 
@@ -166,27 +167,25 @@ class DTectorView extends WatchUi.View {
         record.digicodeUnlocked[_demoIndex] = true;
     }
 
-    // IAppController.CloseLoadedApp
-    function closeLoadedApp(newScreen as Number) as Void {
-        System.println("closeLoadedApp(" + newScreen + ") -- no menu to return to yet");
-    }
-
-    // Routes the adapter's twelve abstract events at the loaded app, which is
-    // what InputManager.cs does in the original.
+    // port of InputManager.cs: the adapter's twelve abstract events go to
+    // LogicManager, which either handles them itself or passes them to the
+    // loaded app. Input is dropped entirely while an animation is playing,
+    // which is what gm.LockInput does in the original.
     function dispatch(event as Number) as Void {
-        if (_app == null) { return; }
-        if (event == Kaisa.Input.EVT_A) { _app.inputA(); }
-        else if (event == Kaisa.Input.EVT_A_DOWN) { _app.inputADown(); }
-        else if (event == Kaisa.Input.EVT_A_UP) { _app.inputAUp(); }
-        else if (event == Kaisa.Input.EVT_B) { _app.inputB(); }
-        else if (event == Kaisa.Input.EVT_B_DOWN) { _app.inputBDown(); }
-        else if (event == Kaisa.Input.EVT_B_UP) { _app.inputBUp(); }
-        else if (event == Kaisa.Input.EVT_LEFT) { _app.inputLeft(); }
-        else if (event == Kaisa.Input.EVT_LEFT_DOWN) { _app.inputLeftDown(); }
-        else if (event == Kaisa.Input.EVT_LEFT_UP) { _app.inputLeftUp(); }
-        else if (event == Kaisa.Input.EVT_RIGHT) { _app.inputRight(); }
-        else if (event == Kaisa.Input.EVT_RIGHT_DOWN) { _app.inputRightDown(); }
-        else if (event == Kaisa.Input.EVT_RIGHT_UP) { _app.inputRightUp(); }
+        if (_gm == null || _gm.isInputLocked) { return; }
+        var lm = _gm.logicMgr;
+        if (event == Kaisa.Input.EVT_A) { lm.inputA(); }
+        else if (event == Kaisa.Input.EVT_A_DOWN) { lm.inputADown(); }
+        else if (event == Kaisa.Input.EVT_A_UP) { lm.inputAUp(); }
+        else if (event == Kaisa.Input.EVT_B) { lm.inputB(); }
+        else if (event == Kaisa.Input.EVT_B_DOWN) { lm.inputBDown(); }
+        else if (event == Kaisa.Input.EVT_B_UP) { lm.inputBUp(); }
+        else if (event == Kaisa.Input.EVT_LEFT) { lm.inputLeft(); }
+        else if (event == Kaisa.Input.EVT_LEFT_DOWN) { lm.inputLeftDown(); }
+        else if (event == Kaisa.Input.EVT_LEFT_UP) { lm.inputLeftUp(); }
+        else if (event == Kaisa.Input.EVT_RIGHT) { lm.inputRight(); }
+        else if (event == Kaisa.Input.EVT_RIGHT_DOWN) { lm.inputRightDown(); }
+        else if (event == Kaisa.Input.EVT_RIGHT_UP) { lm.inputRightUp(); }
     }
 
     // tools/verify_render.py knows this position and size.
@@ -238,8 +237,16 @@ class DTectorView extends WatchUi.View {
             dispatch(_probeInputs[_probeInputAt]);
             _probeInputAt += 1;
         }
-        if (_gm != null) { _gm.runner.advance(TICK_MS.toFloat()); }
-        if (_app != null) { _app.tick(TICK_MS); }
+        if (_gm != null) {
+            _gm.runner.advance(TICK_MS.toFloat());
+            _gm.screenMgr.updateQueue();
+            // PlayerCharacter.UpdateSprite runs on a 0.5 s InvokeRepeating,
+            // which is ten frames.
+            if (_frame % 10 == 0) { _gm.playerChar.updateSprite(); }
+            _gm.screenMgr.updateDisplay();
+            var app = _gm.logicMgr.loadedApp;
+            if (app != null) { app.tick(TICK_MS); }
+        }
         advanceFlicks(_root, TICK_MS);
         WatchUi.requestUpdate();
     }
