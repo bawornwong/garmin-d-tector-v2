@@ -1,3 +1,4 @@
+import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.Math;
 
@@ -144,6 +145,14 @@ class ScreenElement {
 // what moves the whole thing.
 class SpriteBuilder extends ScreenElement {
     var sprite as Array<Number>? = null;    // GameData sprite ref, or null
+    // A bitmap built at runtime, which the renderer draws INSTEAD of `sprite`
+    // when it is set. This is the port's answer to the original's
+    // `Sprite.Create(texture, ...)`: the Maze app draws its walls by writing
+    // pixels into a Texture2D, and Connect IQ's equivalent is a
+    // BufferedBitmap the element can carry.
+    var runtimeBitmap as Graphics.BufferedBitmap? = null;
+    var runtimeWidth as Number = 0;
+    var runtimeHeight as Number = 0;
     var componentX as Number = 0;
     var componentY as Number = 0;
     // The prefab's own sizeDelta, in game pixels: SolidSprite is 768 Unity
@@ -176,6 +185,15 @@ class SpriteBuilder extends ScreenElement {
     function setTransparent(val as Boolean) as SpriteBuilder { baseSetTransparent(val); return self; }
     function setX(px as Number) as SpriteBuilder { baseSetX(px); return self; }
     function setY(py as Number) as SpriteBuilder { baseSetY(py); return self; }
+
+    function setRuntimeBitmap(bmp as Graphics.BufferedBitmap?, w as Number,
+                              h as Number) as SpriteBuilder {
+        Kaisa.Trace.el2(name, "setRuntimeBitmap", w, h);
+        runtimeBitmap = bmp;
+        runtimeWidth = w;
+        runtimeHeight = h;
+        return self;
+    }
 
     function setSprite(ref as Array<Number>?) as SpriteBuilder {
         Kaisa.Trace.sprite(name, "setSprite", ref);

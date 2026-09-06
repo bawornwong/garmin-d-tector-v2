@@ -117,6 +117,16 @@ class Renderer {
 
     function drawSprite(dc as Dc, el as SpriteBuilder, x as Number, y as Number,
                         ink as Number) as Void {
+        // A runtime bitmap (the Maze's walls) draws in place of the sprite,
+        // through the same tinted, point-filtered path as an atlas cell.
+        if (el.runtimeBitmap != null) {
+            Render.blitFlipped(dc, el.runtimeBitmap, 0, 0,
+                               el.runtimeWidth, el.runtimeHeight,
+                               x + el.componentX * _scale, y + el.componentY * _scale,
+                               _scale.toFloat(), _scale.toFloat(), ink,
+                               el.flipH, el.flipV);
+            return;
+        }
         var ref = el.sprite;
         if (ref == null) { return; }
         var located = _atlas.locate(ref[0], ref[1], ref[2]);

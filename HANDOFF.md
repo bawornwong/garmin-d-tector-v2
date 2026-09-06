@@ -24,7 +24,7 @@ openssl pkcs8 -topk8 -inform PEM -outform DER -in /tmp/dev.pem \
   -out .scratch/keys/developer_key.der -nocrypt
 ```
 
-Then: `tools/build.sh` builds (debug, `venu445mm`, currently 491 KB against a 786 KB ceiling). The simulator has to be running for anything that executes: `"$CIQ_SDK/bin/connectiq" &`, then `"$CIQ_SDK/bin/monkeydo" build/dtector.prg venu445mm`.
+Then: `tools/build.sh` builds (debug, `venu445mm`, currently 603 KB against a 786 KB ceiling — worth watching, though release builds are about 2.7x smaller and the simulator is what needs the debug one). The simulator has to be running for anything that executes: `"$CIQ_SDK/bin/connectiq" &`, then `"$CIQ_SDK/bin/monkeydo" build/dtector.prg venu445mm`.
 
 `~/.dotnet/dotnet` is needed only by the numeric parity check.
 
@@ -63,6 +63,7 @@ app/source/
               Finder.mc           the battle-search minigame
               DigiHunter.mc       the 3x3 face-hunting minigame
               SpeedRunner.mc      the three-lane rocket minigame
+              Maze.mc             the 15x12 maze minigame
               Camp.mc             the smallest app; clears the defeated flag
 ```
 
@@ -127,7 +128,7 @@ All measured, all already encoded in the code that depends on them — listed he
 **Then, in order:**
 
 - **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
-- **`Maze`** (423 lines) and **`Connect`**. `JackpotBox` is deliberately later: it pulls in the whole reward system (`ApplyReward`, `EnqueueRewardAnimation`, the data storm, spirit loss), which overlaps the unsurveyed spirit rules.
+- **`Connect`**, the only untranslated app that does not depend on unsurveyed rules. `JackpotBox` is deliberately later: it pulls in the whole reward system (`ApplyReward`, `EnqueueRewardAnimation`, the data storm, spirit loss), which overlaps the unsurveyed spirit rules, and `Battle` and `Map` wait on those rules outright.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
 
