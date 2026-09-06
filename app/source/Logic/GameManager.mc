@@ -344,6 +344,7 @@ class GameManager {
     // holes are visible here rather than scattered.
     function enqueueAnimation(routine as Routine?) as Void {
         if (routine == null) { return; }
+        Kaisa.Trace.event("enqueueAnimation");
         if (screenMgr != null) {
             screenMgr.enqueueAnimation(routine);
         } else {

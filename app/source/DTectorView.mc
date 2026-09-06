@@ -318,6 +318,14 @@ class DTectorView extends WatchUi.View {
         Kaisa.Trace.disable();
         System.println("--- CodeInputStart end=0.0000ms");
 
+        // The DigiHunter board: the clock, the arrows and the nine faces.
+        var hunter = new DigiHunter(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        System.println("=== DigiHunterStart ===");
+        Kaisa.Trace.enable();
+        hunter.startApp();
+        Kaisa.Trace.disable();
+        System.println("--- DigiHunterStart end=0.0000ms");
+
         System.println("SCREENEND");
     }
 

@@ -194,6 +194,25 @@ public static class Program {
             Trace.Log.Events.Count));
     }
 
+    // The DigiHunter board: the clock, the two arrows and the nine faces it
+    // builds before its coroutines start. Only StartApp is traced -- what the
+    // coroutines do afterwards is timing, which the animation goldens cover.
+    static void TraceDigiHunterScreen() {
+        var gm = new GameManager(db);
+        var app = new Kaisa.Digivice.Apps.DigiHunter();
+        app.Setup(gm, null);
+        app.AttachScreen("Screen");
+
+        Trace.Log.Now = 0.0;
+        Trace.Log.Events.Clear();
+        ScreenElement.AnimParent.Clear();
+        app.StartApp();
+        Console.WriteLine("=== DigiHunterStart ===");
+        foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+        Console.WriteLine(string.Format("--- DigiHunterStart end=0.0000ms events={0}",
+            Trace.Log.Events.Count));
+    }
+
     public static int Main(string[] args) {
         db = new SpriteDatabase();
         var audio = new AudioManager();
@@ -240,6 +259,7 @@ public static class Program {
         TraceMapScreens();
         TraceBattleScreens();
         TraceCodeInputScreen();
+        TraceDigiHunterScreen();
 
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");

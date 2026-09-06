@@ -37,7 +37,7 @@ def golden():
 
     out, current = {}, None
     for line in r.stdout.splitlines():
-        m = re.match(r"=== (Status\d|DatabasePage\d|Map\w+|Battle\w+|CodeInput\w+) ===$", line)
+        m = re.match(r"=== (Status\d|DatabasePage\d|Map\w+|Battle\w+|CodeInput\w+|DigiHunter\w+) ===$", line)
         if m:
             current = m.group(1)
             out[current] = []
@@ -72,7 +72,7 @@ def port(attempts=3):
             reap()
             out, current = {}, None
             for line in lines:
-                m = re.match(r"=== (Status\d|DatabasePage\d|Map\w+|Battle\w+|CodeInput\w+) ===$", line)
+                m = re.match(r"=== (Status\d|DatabasePage\d|Map\w+|Battle\w+|CodeInput\w+|DigiHunter\w+) ===$", line)
                 if m:
                     current = m.group(1)
                     out[current] = []
@@ -90,6 +90,23 @@ def port(attempts=3):
         open(VIEW, "w").write(text)
 
 
+def drop_queue_start(events):
+    """Drop the fiber start that follows an enqueue in the port's stream.
+
+    The original queues an animation and a long-lived coroutine consumes it;
+    the port starts the fiber there and then when nothing else is playing
+    (ADR 4). Same animation, one extra event, and it is the runner's rather
+    than the screen's -- so the enqueue is compared and the start that belongs
+    to it is not.
+    """
+    out = []
+    for t, ev in events:
+        if ev == "startCoroutine" and out and out[-1][1] == "enqueueAnimation":
+            continue
+        out.append((t, ev))
+    return out
+
+
 def main():
     cells = sprite_cells()
     want, got = golden(), port()
@@ -99,7 +116,7 @@ def main():
     failures = 0
     for name in sorted(want):
         a = normalise(want[name], cells)
-        b = normalise(got.get(name, []), cells)
+        b = drop_queue_start(normalise(got.get(name, []), cells))
         bad = []
         for i in range(max(len(a), len(b))):
             x = a[i] if i < len(a) else ("-", "(missing)")
