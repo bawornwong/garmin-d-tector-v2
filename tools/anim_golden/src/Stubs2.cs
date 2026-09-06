@@ -112,12 +112,34 @@ namespace Kaisa.Digivice {
         // Digimon.rarity reads it; nothing a screen draws depends on it, and
         // the packed data carries the real value for the port.
         public static Rarity GetDigimonRarity(string name) { return Rarity.Common; }
+        public static float GetEraseChance(string name) { return 0f; }
 
         public static Digimon GetDigimon(string name) {
             foreach (var d in Digimons) {
                 if (d.name == name.ToLower()) { return d; }
             }
             return null;
+        }
+    }
+
+    // The App enum the original declares beside AppLoader. Battle names one
+    // value (CodeInput) when it opens the code app inside itself.
+    public enum App {
+        Map, Status, Database, CodeInput, Camp, Connect, Finder, Battle,
+        JackpotBox, EnergyWars, DigiCatch, SpeedRunner, Asteroids, DigiHunter,
+        Maze
+    }
+
+    // AppLoader, which Battle uses to open the code-input app inside itself.
+    public class AppLoader {
+        public T LoadApp<T>(App app, object controller) where T : class { return null; }
+    }
+
+    // Tools.GetRandomElement, which Battle uses to pick an area; the harness
+    // never runs that path, and a deterministic first element keeps it so.
+    public static class ListExt {
+        public static int GetRandomElement(this List<int> list) {
+            return (list.Count == 0) ? 0 : list[0];
         }
     }
 

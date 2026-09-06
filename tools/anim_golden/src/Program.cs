@@ -137,6 +137,44 @@ public static class Program {
         }
     }
 
+    // The Battle app's screens: its main menu, the D-Dock chooser, the combat
+    // menu's five options, the attack menu's four, and the call-point bar the
+    // regular evolution draws. The state each screen reads is set directly --
+    // reaching them by input would mean playing a whole battle.
+    static void TraceBattleScreens() {
+        var gm = new GameManager(db);
+        var app = new Kaisa.Digivice.Apps.Battle();
+        app.Setup(gm, null);
+        app.AttachScreen("Screen");
+
+        // (name, screen, the index the screen reads)
+        var screens = new (string, int, string, int)[] {
+            ("BattleMainMenu0", 0, "menuIndex", 0),
+            ("BattleMainMenu1", 0, "menuIndex", 1),
+            ("BattleDDocks", 1, "ddockIndex", 0),
+            ("BattleCombat0", 5, "combatMenuIndex", 0),
+            ("BattleCombat1", 5, "combatMenuIndex", 1),
+            ("BattleAttack0", 6, "attackIndex", 0),
+            ("BattleAttack1", 6, "attackIndex", 1),
+            ("BattleEvolve", 7, "callPointsForEvolution", 2),
+        };
+
+        foreach (var (name, screen, field, value) in screens) {
+            app.SetPrivate("currentScreen", screen);
+            app.SetPrivate(field, value);
+            if (screen == 5) {
+                app.SetPrivate("availableMenuOptions", new int[] { 0, 1, 2, 3, 4 });
+            }
+            Trace.Log.Now = 0.0;
+            Trace.Log.Events.Clear();
+            app.Draw();
+            Console.WriteLine("=== " + name + " ===");
+            foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }
+            Console.WriteLine(string.Format("--- {0} end=0.0000ms events={1}",
+                name, Trace.Log.Events.Count));
+        }
+    }
+
     public static int Main(string[] args) {
         db = new SpriteDatabase();
         var audio = new AudioManager();
@@ -181,6 +219,7 @@ public static class Program {
         TraceStatusApp();
         TraceDatabasePages();
         TraceMapScreens();
+        TraceBattleScreens();
 
         Console.WriteLine();
         Console.WriteLine("######## SUMMARY ########");

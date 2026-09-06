@@ -297,6 +297,10 @@ namespace Kaisa.Digivice {
         public int CurrentWorld = 0;
         public int CurrentArea = 0;
         public bool GetAreaCompleted(int w, int a) { return false; }
+        public List<int> GetUncompletedAreas(int w) { return new List<int> { 0, 1 }; }
+        public void SetAreaCompleted(int w, int a, bool v) { }
+        public int ReduceDistance(int d) { return d; }
+        public void IncreaseDistance(int d) { }
         public int GetAreaDistance(int w, int a) { return 1000; }
         public string GetArea(int w, int a) { return "area" + a; }
     }
@@ -307,6 +311,24 @@ namespace Kaisa.Digivice {
         public int TotalBattles = AppFixture.TotalBattles;
         public int TotalWins = AppFixture.TotalWins;
         public int GetPlayerLevel() { return AppFixture.PlayerLevel; }
+        // What Battle asks of it. Nothing a Battle SCREEN draws depends on
+        // these -- the screens are sprites and the two elements beside them --
+        // so they answer with the fixture and stay out of the way.
+        public string GetDDockDigimon(int ddock) { return AppFixture.PageDigimon; }
+        public uint GetExperienceGained(int a, int b) { return 100; }
+        public bool AddPlayerExperience(uint exp) { return false; }
+        public bool RemovePlayerExperience(uint exp) { return false; }
+        public void IncreaseTotalBattles() { }
+        public void IncreaseTotalWins() { }
+        public bool IsAnySpiritLost { get { return false; } }
+        public string RecoverSpirit() { return AppFixture.PageDigimon; }
+        public bool RewardDigimon(string d, out int a, out int b) { a = 0; b = 0; return false; }
+        public bool PunishDigimon(string d, out int a, out int b) { a = 0; b = 0; return false; }
+        public void LoseSpirit(string d) { }
+        public void SetDigimonUnlocked(string d, bool v) { }
+        public void CloseLoadedApp(Screen s) { }
+        public bool IsDDockEmpty(int ddock) { return false; }
+        public void SetDigicodeUnlocked(string d, bool v) { }
         public int GetDigimonExtraLevel(string digimon) { return AppFixture.DigimonExtraLevel; }
         public bool GetDigimonUnlocked(string digimon) { return true; }
         public bool GetDigicodeUnlocked(string digimon) { return true; }
@@ -333,6 +355,15 @@ namespace Kaisa.Digivice {
             PlayerCharSprites = db.GetCharacterSprites(GameChar.takuya);
         }
         public void UnlockInput() { Trace.Log.E("unlockInput"); }
+        public GameChar PlayerChar { get { return GameChar.takuya; } }
+        public bool IsCharacterDefeated { get; set; }
+        public int GetRandomSavedSeed() { return 12345; }
+        public bool HasAllSpiritsForFusion(string fusion) { return false; }
+        public bool HasBothFormsOfSpirit(Element element) { return false; }
+        public void UpdateLeaverBuster(uint exp, string digimon) { }
+        public void DisableLeaverBuster() { }
+        public void CompleteWorld(int world) { }
+        public AppLoader appLoader = new AppLoader();
         public void LockInput() { Trace.Log.E("lockInput"); }
         public void EnqueueAnimation(IEnumerator a) { Trace.Log.E("enqueueAnimation"); }
 

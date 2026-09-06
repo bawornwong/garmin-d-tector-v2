@@ -103,7 +103,7 @@ Every check reads a frame back off the device or diffs two real implementations.
 | Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
 | Packed world layout vs `worlds.json` | 225 / 225 fields | `tools/verify_worlds.py` |
 | Converted animations vs a golden trace of the original | 53 / 53 | `tools/verify_anim.py` (~20 minutes: it rebuilds and runs the app once per animation) |
-| App screens vs the original's | 13 / 13 screens, 193 events | `tools/verify_screens.py` -- Status's seven, the Database's three data pages, the Map's three |
+| App screens vs the original's | 21 / 21 screens, 211 events | `tools/verify_screens.py` -- Status's seven, the Database's three data pages, the Map's three, and eight of Battle's |
 | Rendered sprite vs atlas (normal) | 576 / 576 | set `_probeIndex`, capture, `tools/verify_render.py <png> 8` |
 | Rendered sprite vs atlas (inverted) | 576 / 576 | also set `_probeInvert`, then `... --inverted` |
 | Text canvas vs font metrics | 102,400 / 102,400 device px | set `_probeText`, capture, `tools/verify_text.py <png>` |
@@ -169,11 +169,13 @@ translation.
    harness -- along with the original `Digimon.cs`, the real rows out of
    digimonDB.json and the real worlds out of worlds.json -- and diffs their
    screens against the port drawing the same ones with the same numbers.
-   13/13: Status's seven, the three Database data pages, which carry the
+   21/21: Status's seven, the three Database data pages, which carry the
    densest numbers in the game (a Digimon's level and HP, its energy, crush
-   and ability, and its code), and the Map's three, which draw a world's
-   four-quadrant sheet and its area markers. The remaining apps can follow the
-   same way when they are worth the stubs.
+   and ability, and its code), the Map's three, which draw a world's
+   four-quadrant sheet and its area markers, and eight of Battle's -- its main
+   menu, the D-Dock chooser, the combat and attack menus, and the call-point
+   bar. The remaining apps can follow the same way when they are worth the
+   stubs.
 
    What is left for a person is the feel: the input mapping, the pacing, and a
    watch to judge them on.

@@ -37,7 +37,7 @@ def golden():
 
     out, current = {}, None
     for line in r.stdout.splitlines():
-        m = re.match(r"=== (Status\d|DatabasePage\d|Map\w+) ===$", line)
+        m = re.match(r"=== (Status\d|DatabasePage\d|Map\w+|Battle\w+) ===$", line)
         if m:
             current = m.group(1)
             out[current] = []
@@ -72,7 +72,7 @@ def port(attempts=3):
             reap()
             out, current = {}, None
             for line in lines:
-                m = re.match(r"=== (Status\d|DatabasePage\d|Map\w+) ===$", line)
+                m = re.match(r"=== (Status\d|DatabasePage\d|Map\w+|Battle\w+) ===$", line)
                 if m:
                     current = m.group(1)
                     out[current] = []

@@ -69,6 +69,7 @@ namespace UnityEngine {
         public static int CeilToInt(float f) { return (int)Math.Ceiling(f); }
         public static int RoundToInt(float f) { return (int)Math.Round(f, MidpointRounding.AwayFromZero); }
         public static float Abs(float f) { return Math.Abs(f); }
+        public static int Abs(int i) { return Math.Abs(i); }
         public static float Pow(float a, float b) { return (float)Math.Pow(a, b); }
         public static int Min(int a, int b) { return Math.Min(a, b); }
         public static int Max(int a, int b) { return Math.Max(a, b); }
@@ -159,6 +160,10 @@ namespace Kaisa.Digivice {
         public SpriteSet rewards;
         public SpriteSet spirit_absorber;
         public SpriteSet spirit_explosion;
+        public SpriteSet battle_mainMenu;
+        public SpriteSet battle_combatMenu;
+        public SpriteSet battle_attackMenu;
+        public SpriteSet battle_callPoints_chooser;
         public SpriteSet arrowsSmall;
         public SpriteSet invertedArrowsSmall;
         public SpriteSet database_sections;
@@ -213,6 +218,10 @@ namespace Kaisa.Digivice {
             rewards = new SpriteSet("rewards");
             spirit_absorber = new SpriteSet("spirit_absorber");
             spirit_explosion = new SpriteSet("spirit_explosion");
+            battle_mainMenu = new SpriteSet("battle_mainMenu");
+            battle_combatMenu = new SpriteSet("battle_combatMenu");
+            battle_attackMenu = new SpriteSet("battle_attackMenu");
+            battle_callPoints_chooser = new SpriteSet("battle_callPoints_chooser");
             arrowsSmall = new SpriteSet("arrowsSmall");
             invertedArrowsSmall = new SpriteSet("invertedArrowsSmall");
             database_sections = new SpriteSet("database_sections");

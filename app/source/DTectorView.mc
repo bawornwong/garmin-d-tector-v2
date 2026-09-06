@@ -277,6 +277,38 @@ class DTectorView extends WatchUi.View {
             System.println("--- " + mapNames[screen] + " end=0.0000ms");
         }
 
+        // The Battle app's screens: its main menu, the D-Dock chooser, the
+        // combat menu, the attack menu, and the call-point bar the regular
+        // evolution draws. The state each screen reads is set directly, as
+        // the harness does: reaching them by input would mean playing a whole
+        // battle.
+        var battle = new Battle(_gm, _gm.logicMgr, _gm.screenMgr.screenDisplay);
+        battle.enemyDigimon = _gm.db.getDigimon(_demoIndex);
+        battle.friendlyDigimon = _gm.db.getDigimon(_demoIndex);
+        battle.availableMenuOptions = [0, 1, 2, 3, 4];
+        var battleNames = ["BattleMainMenu0", "BattleMainMenu1", "BattleDDocks",
+                           "BattleCombat0", "BattleCombat1", "BattleAttack0",
+                           "BattleAttack1", "BattleEvolve"];
+        var battleScreens = [battle.SCREEN_MAIN_MENU, battle.SCREEN_MAIN_MENU,
+                             battle.SCREEN_DDOCKS, battle.SCREEN_COMBAT_MENU,
+                             battle.SCREEN_COMBAT_MENU, battle.SCREEN_ATTACK_MENU,
+                             battle.SCREEN_ATTACK_MENU, battle.SCREEN_REGULAR_EVOLVE];
+        var battleValues = [0, 1, 0, 0, 1, 0, 1, 2];
+        for (var i = 0; i < battleNames.size(); i += 1) {
+            battle.currentScreen = battleScreens[i];
+            if (i < 2) { battle.menuIndex = battleValues[i]; }
+            else if (i == 2) { battle.ddockIndex = battleValues[i]; }
+            else if (i < 5) { battle.combatMenuIndex = battleValues[i]; }
+            else if (i < 7) { battle.attackIndex = battleValues[i]; }
+            else { battle.callPointsForEvolution = battleValues[i]; }
+
+            System.println("=== " + battleNames[i] + " ===");
+            Kaisa.Trace.enable();
+            battle.drawScreen();
+            Kaisa.Trace.disable();
+            System.println("--- " + battleNames[i] + " end=0.0000ms");
+        }
+
         System.println("SCREENEND");
     }
 

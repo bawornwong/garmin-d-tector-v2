@@ -8,10 +8,24 @@
 using System;
 using UnityEngine;
 
+// Battle.cs carries a `using UnityEditor;` it never uses -- an editor-only
+// namespace that does not exist outside the Unity editor.
+namespace UnityEditor { }
+
 namespace UnityEngine.UI {
     // Status.cs uses it only in a `using`; the screen it draws into is
     // AppScreen here.
     public class Image { }
+}
+
+namespace Kaisa.Digivice.Apps {
+    // Battle opens the code-input app inside itself to read a spirit's code.
+    // Only its type is named here; nothing a battle SCREEN draws touches it.
+    public class CodeInput : DigiviceApp {
+        public string ReturnedDigimon { get { return null; } }
+        public override void StartApp() { }
+        public CodeInput Initialize(params object[] args) { return this; }
+    }
 }
 
 namespace Kaisa.Digivice {
@@ -97,6 +111,11 @@ namespace Kaisa.Digivice {
                 | System.Reflection.BindingFlags.Instance);
             if (f == null) { throw new Exception("no field " + field); }
             if (f.FieldType.IsEnum) { value = Enum.ToObject(f.FieldType, value); }
+            // A few of these fields are bytes or floats rather than ints.
+            else if (value != null && f.FieldType != value.GetType()
+                     && f.FieldType.IsPrimitive) {
+                value = Convert.ChangeType(value, f.FieldType);
+            }
             f.SetValue(this, value);
         }
 
