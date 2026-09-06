@@ -70,7 +70,7 @@ class DTectorView extends WatchUi.View {
     // Which converted animation to play, traced, for tools/verify_anim.py:
     // -1 plays none. The arguments match the ones the C# harness synthesises
     // (every int is 1), so the two traces are of the same run.
-    var _probeAnim as Number = 3;
+    var _probeAnim as Number = 6;
     var _probeAnimDone as Boolean = false;
 
     function initialize() {
@@ -200,6 +200,12 @@ class DTectorView extends WatchUi.View {
         } else if (_probeAnim == 7) {
             name = "CloseCamp";
             routine = new CloseCamp(_gm, _gm.characterSprites(Kaisa.CHAR_TAKUYA));
+        } else if (_probeAnim == 9) {
+            name = "LaunchAttack";
+            // The harness synthesises attack 1, isEnemy false, disobeyed
+            // false, and a battle sprite set at energy rank 1.
+            routine = new LaunchAttack(_gm,
+                _gm.getAllDigimonBattleSprites(_demoIndex, 1), 1, false, false);
         } else if (_probeAnim == 8) {
             name = "SwapDDock";
             // The animation reads the dock it is about to overwrite, so the
@@ -315,16 +321,20 @@ class DTectorView extends WatchUi.View {
             _probeInputAt += 1;
         }
         if (_gm != null && _probeAnim >= 0) {
-            _gm.runner.advance(TICK_MS.toFloat());
+            _gm.runner.advance(TICK_MS.toDouble());
             _gm.screenMgr.updateQueue();
             if (!_probeAnimDone && !_gm.screenMgr.playingAnimations) {
                 _probeAnimDone = true;
                 System.println("ANIMEND");
+                // The probe is done; leaving the app running costs the
+                // verifier its whole two-minute monkeydo timeout per
+                // animation, which is most of what a run takes.
+                System.exit();
             }
             return;
         }
         if (_gm != null) {
-            _gm.runner.advance(TICK_MS.toFloat());
+            _gm.runner.advance(TICK_MS.toDouble());
             _gm.screenMgr.updateQueue();
             // PlayerCharacter.UpdateSprite runs on a 0.5 s InvokeRepeating,
             // which is ten frames.

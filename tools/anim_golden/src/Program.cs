@@ -31,7 +31,10 @@ public static class Program {
             // two runs are not of the same animation.
             var pn = p.Name.ToLower();
             if (pn.Contains("char")) { return db.GetCharacterSprites(GameChar.takuya); }
-            return db.GetAllDigimonSprites("agumon");
+            // Every other Sprite[] in Animations.cs is a battle sprite set:
+            // {default, attack, crush, energy, ability}. Energy rank 1 is what
+            // the port's probe passes too.
+            return db.GetAllDigimonBattleSprites("agumon", 1);
         }
         if (t == typeof(List<string>)) { return new List<string> { "agunimon", "lobomon" }; }
         if (t == typeof(Action<bool>)) { return (Action<bool>)(b => { }); }
@@ -57,6 +60,13 @@ public static class Program {
             var ps = m.GetParameters().Select(Arg).ToArray();
             try {
                 var it = (IEnumerator)m.Invoke(null, ps);
+                // Every coroutine is traced against an EMPTY display, because
+                // that is what the port's probe gives it: one animation into a
+                // freshly built Anim Parent. Without this the elements every
+                // earlier coroutine left behind are still registered, and the
+                // next one's ClearAnimParent disposes them too -- which showed
+                // up as AttackCollision disposing a Spiral it never built.
+                ScreenElement.AnimParent.Clear();
                 Driver.Run(it);
                 Console.WriteLine("=== " + m.Name + " ===");
                 foreach (var e in Trace.Log.Events) { Console.WriteLine(e); }

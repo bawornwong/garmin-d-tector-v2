@@ -13,15 +13,59 @@ namespace Kaisa.Digivice {
         // It decides where Center() puts an element that was never sized, so a
         // made-up default silently moves the first frame of OpenCamp.
         public int Width = 32, Height = 32;
-        protected ScreenElement(string n) { name = n; Trace.Log.E("build " + Kind() + " " + n); }
+        // Every element an animation builds goes under the parent it was
+        // built into -- usually AnimParent, the container ScreenManager makes
+        // for the animation being played, but a composite builds its parts
+        // inside its own container. It matters because ClearAnimParent
+        // destroys AnimParent's DIRECT children only: a stat sign is one
+        // disposal, not three, which is also what the port's display list
+        // does.
+        public static Transform AnimParent { get { return ScreenManager.Shared.animParent; } }
+        public Transform transform = new Transform();
+        protected ScreenElement(string n, Transform p) {
+            name = n;
+            Trace.Log.E("build " + Kind() + " " + n);
+            transform.gameObject.name = n;
+            if (p != null) { p.children.Add(transform); }
+        }
         protected virtual string Kind() { return "element"; }
+        // The children a composite builder made, so GetChildBuilder hands back
+        // the element that is really on the display rather than a new one.
+        public List<ScreenElement> Children = new List<ScreenElement>();
 
-        public static SpriteBuilder BuildSprite(string n, Transform p) { return new SpriteBuilder(n); }
-        public static TextBoxBuilder BuildTextBox(string n, Transform p, object f = null, object g = null, object h = null) { return new TextBoxBuilder(n); }
-        public static TextBoxBuilder BuildTextBox(string n, Transform p) { return new TextBoxBuilder(n); }
-        public static RectangleBuilder BuildRectangle(string n, Transform p) { return new RectangleBuilder(n); }
-        public static ContainerBuilder BuildContainer(string n, Transform p) { return new ContainerBuilder(n); }
-        public static ContainerBuilder BuildStatSign(string n, Transform p, object a = null, object b = null) { return new ContainerBuilder(n); }
+        public static SpriteBuilder BuildSprite(string n, Transform p) { return new SpriteBuilder(n, p); }
+        public static TextBoxBuilder BuildTextBox(string n, Transform p, object f = null, object g = null, object h = null) { return new TextBoxBuilder(n, p); }
+        public static TextBoxBuilder BuildTextBox(string n, Transform p) { return new TextBoxBuilder(n, p); }
+        public static RectangleBuilder BuildRectangle(string n, Transform p) { return new RectangleBuilder(n, p); }
+        // The container prefab starts transparent and BuildContainer sets that
+        // property whichever way the caller asked -- an event, and one the
+        // port emits, so the reference has to as well.
+        public static ContainerBuilder BuildContainer(string n, Transform p, bool transparent = true) {
+            var cb = new ContainerBuilder(n, p);
+            cb.SetTransparent(transparent);
+            return cb;
+        }
+        // ScreenElement.cs:193 BuildStatSign, which is not a one-liner: it is a
+        // black band with a label textbox and an empty value textbox, and the
+        // animations fill the value through GetChildBuilder(1). Stubbing it as
+        // a bare container hid six display events and invented a "LIFE.child1"
+        // element the game never builds.
+        public static ContainerBuilder BuildStatSign(string message, Transform p, object a = null, object b = null) {
+            ContainerBuilder cbSign = BuildContainer("Sign", p, false).SetBackgroundBlack(true).SetSize(32, 17).SetPosition(0, 15);
+            TextBoxBuilder sbMessage = BuildTextBox("Sign", cbSign.transform, DFont.Small)
+                .SetText(message)
+                .SetSize(28, 5)
+                .SetPosition(2, 2)
+                .InvertColors(true);
+            TextBoxBuilder sbValue = BuildTextBox("Sign", cbSign.transform, DFont.Small)
+                .SetSize(28, 5)
+                .SetPosition(2, 10)
+                .SetAlignment(TextAnchor.UpperRight)
+                .InvertColors(true);
+            cbSign.Children.Add(sbMessage);
+            cbSign.Children.Add(sbValue);
+            return cbSign;
+        }
 
         // One vocabulary for both sides of the diff. Monkey C has no enum
         // names and prints booleans lower case, so the reference is normalised
@@ -57,16 +101,15 @@ namespace Kaisa.Digivice {
         public int X = 0, Y = 0;
         public string Text = "";
         public Sprite Sprite = null;
-        public Transform transform = new Transform();
         public UnityEngine.Vector2Int Position { get { return new UnityEngine.Vector2Int(X, Y); } }
         public SpriteBuilder InvertColors(bool v = true) { L("invertColors", v); return this; }
         public SpriteBuilder SetMaskActive(bool v) { L("setMaskActive", v); return this; }
-        public SpriteBuilder SetComponentPosition(int x, int y) { L("setComponentPosition", x, y); return this; }
+        public SpriteBuilder SetComponentPosition(int x, int y) { ComponentX = x; ComponentY = y; L("setComponentPosition", x, y); return this; }
         public SpriteBuilder SetFlickPeriod(float f) { L("setFlickPeriod", f); return this; }
         public ScreenElement GetChildBuilder(int i) { return new TextBoxBuilder(name + ".child" + i); }
         public SpriteBuilder SetColor(object c) { L("setColor"); return this; }
 
-        public SpriteBuilder(string n) : base(n) { }
+        public SpriteBuilder(string n, Transform p = null) : base(n, p) { }
         protected override string Kind() { return "sprite"; }
         public SpriteBuilder SetSprite(Sprite s) { L("setSprite", s == null ? "null" : s.name); return this; }
         // SpriteBuilder.BaseSetSize is overridden in the original to resize the
@@ -101,9 +144,12 @@ namespace Kaisa.Digivice {
             return this;
         }
         public int ComponentWidth = 24, ComponentHeight = 24;
+        public int ComponentX = 0, ComponentY = 0;
         public SpriteBuilder SetComponentSize(int w, int h) { ComponentWidth = w; ComponentHeight = h; L("setComponentSize", w, h); return this; }
-        public SpriteBuilder SetComponentX(int x) { L("setComponentPosition", x, 0); return this; }
-        public SpriteBuilder SetComponentY(int y) { L("setComponentPosition", 0, y); return this; }
+        // SetComponentX/Y go through SetComponentPosition in the original, so
+        // they keep the other axis rather than zeroing it.
+        public SpriteBuilder SetComponentX(int x) { return SetComponentPosition(x, ComponentY); }
+        public SpriteBuilder SetComponentY(int y) { return SetComponentPosition(ComponentX, y); }
     }
 
     public class TextBoxBuilder : ScreenElement {
@@ -118,7 +164,6 @@ namespace Kaisa.Digivice {
             set { _text = value; L("setText", value); }
         }
         public Sprite Sprite = null;
-        public Transform transform = new Transform();
         public UnityEngine.Vector2Int Position { get { return new UnityEngine.Vector2Int(X, Y); } }
         public TextBoxBuilder InvertColors(bool v = true) { L("invertColors", v); return this; }
         public TextBoxBuilder SetMaskActive(bool v) { L("setMaskActive", v); return this; }
@@ -127,7 +172,7 @@ namespace Kaisa.Digivice {
         public ScreenElement GetChildBuilder(int i) { return new TextBoxBuilder(name + ".child" + i); }
         public TextBoxBuilder SetColor(object c) { L("setColor"); return this; }
 
-        public TextBoxBuilder(string n) : base(n) { Width = 32; Height = 5; }
+        public TextBoxBuilder(string n, Transform p = null) : base(n, p) { Width = 32; Height = 5; }
         protected override string Kind() { return "textBox"; }
         public TextBoxBuilder SetText(string s) { Text = s; return this; }
         // TextBoxBuilder.BaseSetSize resizes the component too.
@@ -160,7 +205,6 @@ namespace Kaisa.Digivice {
         public int X = 0, Y = 0;
         public string Text = "";
         public Sprite Sprite = null;
-        public Transform transform = new Transform();
         public UnityEngine.Vector2Int Position { get { return new UnityEngine.Vector2Int(X, Y); } }
         public RectangleBuilder InvertColors(bool v = true) { L("invertColors", v); return this; }
         public RectangleBuilder SetMaskActive(bool v) { L("setMaskActive", v); return this; }
@@ -169,7 +213,7 @@ namespace Kaisa.Digivice {
         public ScreenElement GetChildBuilder(int i) { return new TextBoxBuilder(name + ".child" + i); }
         public RectangleBuilder SetColor(object c) { L("setColor"); return this; }
 
-        public RectangleBuilder(string n) : base(n) { Width = 1; Height = 1; }
+        public RectangleBuilder(string n, Transform p = null) : base(n, p) { Width = 1; Height = 1; }
         protected override string Kind() { return "rectangle"; }
         public RectangleBuilder SetSize(int w, int h) { Width = w; Height = h; L("setSize", w, h); return this; }
         public RectangleBuilder SetPosition(UnityEngine.Vector2Int v) { L("setPosition", v.x, v.y); return this; }
@@ -196,16 +240,19 @@ namespace Kaisa.Digivice {
         public int X = 0, Y = 0;
         public string Text = "";
         public Sprite Sprite = null;
-        public Transform transform = new Transform();
         public UnityEngine.Vector2Int Position { get { return new UnityEngine.Vector2Int(X, Y); } }
         public ContainerBuilder InvertColors(bool v = true) { L("invertColors", v); return this; }
         public ContainerBuilder SetMaskActive(bool v) { L("setMaskActive", v); return this; }
         public ContainerBuilder SetComponentPosition(int x, int y) { L("setComponentPosition", x, y); return this; }
         public ContainerBuilder SetFlickPeriod(float f) { L("setFlickPeriod", f); return this; }
-        public ScreenElement GetChildBuilder(int i) { return new TextBoxBuilder(name + ".child" + i); }
+        public ScreenElement GetChildBuilder(int i) { return Children[i]; }
         public ContainerBuilder SetColor(object c) { L("setColor"); return this; }
+        public ContainerBuilder SetTransparent(bool v) { L("setTransparent", v); return this; }
+        // Silent on both sides: the flag decides how the container paints, and
+        // nothing reads it back.
+        public ContainerBuilder SetBackgroundBlack(bool v) { return this; }
 
-        public ContainerBuilder(string n) : base(n) { Width = 1; Height = 1; }
+        public ContainerBuilder(string n, Transform p = null) : base(n, p) { Width = 1; Height = 1; }
         protected override string Kind() { return "container"; }
         public ContainerBuilder SetSize(int w, int h) { Width = w; Height = h; L("setSize", w, h); return this; }
         public ContainerBuilder SetPosition(UnityEngine.Vector2Int v) { L("setPosition", v.x, v.y); return this; }
@@ -226,7 +273,10 @@ namespace Kaisa.Digivice {
         }
     }
 
-    public class ScreenManager { public Transform animParent = new Transform(); }
+    public class ScreenManager {
+        public static ScreenManager Shared = new ScreenManager();
+        public Transform animParent = new Transform();
+    }
     public class InputManager { public void ConsumeLastKey(params object[] a) { } }
     public class WorldManager {
         public int CurrentDistance = 100;
@@ -238,7 +288,7 @@ namespace Kaisa.Digivice {
     }
 
     public class GameManager {
-        public ScreenManager screenMgr = new ScreenManager();
+        public ScreenManager screenMgr = ScreenManager.Shared;
         public InputManager inputMgr = new InputManager();
         public WorldManager WorldMgr = new WorldManager();
         public SpriteDatabase spriteDB;

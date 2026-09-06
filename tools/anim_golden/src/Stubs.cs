@@ -26,7 +26,10 @@ namespace UnityEngine {
         public override string ToString() { return name; }
     }
     public class GameObject : Object {
-        public static void Destroy(GameObject g) { Trace.Log.E("destroy " + g.name); }
+        // An element leaving the display is one event, whether it went through
+        // Dispose or through Destroy on its GameObject; the port has only the
+        // one word for it.
+        public static void Destroy(GameObject g) { Trace.Log.E("dispose " + g.name); }
         public GameObject gameObject { get { return this; } }
     }
     public class Transform : Object, IEnumerable {
@@ -34,6 +37,11 @@ namespace UnityEngine {
         public List<Transform> children = new List<Transform>();
         public GameObject gameObject = new GameObject();
         public IEnumerator GetEnumerator() { return children.GetEnumerator(); }
+        // Destroying a child of AnimParent is a real display event -- it is
+        // how an animation cleans up after itself (Animations.ClearAnimParent)
+        // -- so the children have to actually be here for the trace to show
+        // it. Elements register themselves as they are built.
+        public void Clear() { children.Clear(); }
     }
     public struct Color {
         public float r, g, b, a;
@@ -169,12 +177,66 @@ namespace Kaisa.Digivice {
             for (int i = 0; i < a.Length; i++) { a[i] = new Sprite(n + "_" + i); }
             return a;
         }
-        public Sprite GetDigimonSprite(string name) { return new Sprite(name); }
-        public Sprite GetDigimonSprite(string name, object state) { return new Sprite(name + ":" + state); }
+        // The sprite index the packers produce, so the stub can resolve the
+        // same art the port does -- including the fallback chain and each
+        // sprite's real size, which LaunchAttack branches on.
+        static Dictionary<string, int[]> index;
+        static void LoadIndex() {
+            if (index != null) { return; }
+            index = new Dictionary<string, int[]>();
+            var path = System.Environment.GetEnvironmentVariable("SPRITE_INDEX");
+            if (path == null) { path = "build/sprite_index.json"; }
+            if (!System.IO.File.Exists(path)) { return; }
+            var text = System.IO.File.ReadAllText(path);
+            var re = new System.Text.RegularExpressions.Regex(
+                "\"([^\"]+)\": \\{[^}]*?\"w\": (\\d+),\\s*\"h\": (\\d+)");
+            foreach (System.Text.RegularExpressions.Match m in re.Matches(text)) {
+                index[m.Groups[1].Value] = new int[] {
+                    int.Parse(m.Groups[2].Value), int.Parse(m.Groups[3].Value) };
+            }
+        }
+        static Sprite Resolve(string key) {
+            LoadIndex();
+            if (!index.ContainsKey(key)) { return null; }
+            var s = new Sprite(key);
+            s.texture.width = index[key][0];
+            s.texture.height = index[key][1];
+            return s;
+        }
+
+        public Sprite GetDigimonSprite(string name) { return Resolve("Digimon/" + name); }
+        public Sprite GetDigimonSprite(string name, object state) {
+            var st = state == null ? "Default" : state.ToString();
+            if (st == "Attack") {
+                return Resolve("Digimon/" + name + "_at") ?? GetDigimonSprite(name);
+            }
+            if (st == "Crush") {
+                return Resolve("Digimon/" + name + "_cr") ?? GetDigimonSprite(name, "Attack");
+            }
+            if (st == "Spirit") {
+                return Resolve("Digimon/" + name + "_sp") ?? GetDigimonSprite(name);
+            }
+            if (st == "SpiritSmall") {
+                return Resolve("Digimon/" + name + "_sm") ?? GetDigimonSprite(name);
+            }
+            if (st == "Black") {
+                return Resolve("Digimon/" + name + "_bl") ?? GetDigimonSprite(name);
+            }
+            return GetDigimonSprite(name);
+        }
         public Sprite[] GetAllDigimonSprites(string name) { return MakeArr(name); }
-        public Sprite[] GetAllDigimonBattleSprites(string name, int rank = 0) { return MakeArr(name + "_battle"); }
+        public Sprite[] GetAllDigimonBattleSprites(string name, int rank = 0) {
+            return new Sprite[] {
+                GetDigimonSprite(name),
+                GetDigimonSprite(name, "Attack"),
+                GetDigimonSprite(name, "Crush"),
+                GetEnergySprite(rank),
+                GetAbilitySprite(Database.GetDigimon(name).abilityName)
+            };
+        }
         public Sprite[] GetCharacterSprites(GameChar c) { return MakeArr(c.ToString()); }
-        public Sprite GetEnergySprite(int rank) { return new Sprite("energy_" + rank); }
+        public Sprite GetEnergySprite(int rank) { return Resolve("Energies/energy_" + rank); }
+        public Sprite GetAbilitySprite(string abilityName) { return Resolve("Abilities/" + abilityName); }
         public Sprite GetInvertedSprite(Sprite s) { return new Sprite("inv:" + s.name); }
     }
 

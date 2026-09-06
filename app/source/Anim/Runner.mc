@@ -43,12 +43,20 @@ class Routine {
 // resumes when the child returns -- Unity's `yield return SubCoroutine()`.
 class Fiber {
     var stack as Array<Routine> = [];
-    var nextMs as Float = 0.0;
+    // The schedule is kept in SECONDS, in Double.
+    //
+    // Seconds because that is the unit the waits arrive in, and summing them
+    // before scaling is what the original does: accumulating milliseconds
+    // instead rounds each wait separately and drifts. Double because a wait
+    // like 0.9 / 7 accrues a visible error after a few dozen steps in single
+    // precision -- the golden diff caught both, as 585.7142 ms against the
+    // reference's 585.7143 and as an end time of 2599.9999 instead of 2600.
+    var nextSec as Double = 0.0d;
     var runner as Runner;
 
-    function initialize(r as Routine, runnerIn as Runner, startMs as Float) {
+    function initialize(r as Routine, runnerIn as Runner, startSec as Double) {
         runner = runnerIn;
-        nextMs = startMs;
+        nextSec = startSec;
         stack.add(r);
     }
 
@@ -87,8 +95,8 @@ class Runner {
     const RUNAWAY_STEPS = 20000;
 
     var fibers as Array<Fiber> = [];
-    var nowMs as Float = 0.0;       // scheduled time of the step being run
-    var budgetMs as Float = 0.0;    // time the display has actually reached
+    var nowSec as Double = 0.0d;    // scheduled time of the step being run
+    var budgetSec as Double = 0.0d; // time the display has actually reached
     var tick as Number = 0;
     var steps as Number = 0;
     var _inStep as Boolean = false;   // true while a routine's step is running
@@ -109,7 +117,7 @@ class Runner {
         // doing something observable -- so the port records them where the
         // fiber is actually created and dropped.
         Kaisa.Trace.event("startCoroutine");
-        var f = new Fiber(r, self, _inStep ? nowMs : budgetMs);
+        var f = new Fiber(r, self, _inStep ? nowSec : budgetSec);
         fibers.add(f);
         return f;
     }
@@ -142,18 +150,18 @@ class Runner {
     // that is the clock the C# reference prints, and the whole point of ADR
     // 5's scheduler is that the two agree.
     (:debug)
-    function setTraceClock(t as Float) as Void {
-        Kaisa.Trace.nowMs = t;
+    function setTraceClock(seconds as Double) as Void {
+        Kaisa.Trace.nowMs = seconds * 1000.0d;
     }
 
     (:release)
-    function setTraceClock(t as Float) as Void {
+    function setTraceClock(seconds as Double) as Void {
     }
 
     // Advances the whole runtime by one display frame.
-    function advance(dtMs as Float) as Void {
+    function advance(dtMs as Double) as Void {
         tick += 1;
-        budgetMs += dtMs;
+        budgetSec += dtMs / 1000.0d;
 
         while (true) {
             // The due fiber with the earliest scheduled step, so concurrent
@@ -162,15 +170,15 @@ class Runner {
             var due = null;
             for (var i = 0; i < fibers.size(); i += 1) {
                 var f = fibers[i];
-                if (f.isRunning() && f.nextMs <= budgetMs
-                        && (due == null || f.nextMs < due.nextMs)) {
+                if (f.isRunning() && f.nextSec <= budgetSec
+                        && (due == null || f.nextSec < due.nextSec)) {
                     due = f;
                 }
             }
             if (due == null) { return; }
 
-            nowMs = due.nextMs;
-            setTraceClock(nowMs);
+            nowSec = due.nextSec;
+            setTraceClock(nowSec);
             var top = due.stack[due.stack.size() - 1];
             _inStep = true;
             var w = top.step(due);
@@ -184,9 +192,9 @@ class Runner {
                 // `yield return null` waits for the next frame, not for a
                 // duration: the four sites that use it are synchronising with
                 // the display, not timing anything.
-                due.nextMs = budgetMs + dtMs;
+                due.nextSec = budgetSec + (dtMs / 1000.0d);
             } else {
-                due.nextMs += w * 1000.0;
+                due.nextSec += w.toDouble();
             }
 
             if (steps > RUNAWAY_STEPS) {

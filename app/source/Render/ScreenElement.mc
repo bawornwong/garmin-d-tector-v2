@@ -215,14 +215,15 @@ class SpriteBuilder extends ScreenElement {
         return self;
     }
 
+    // The original's SetComponentX/Y route through SetComponentPosition, so
+    // they record the same event it does -- with the axis they leave alone
+    // kept, which is what the C# passes.
     function setComponentX(px as Number) as SpriteBuilder {
-        componentX = px;
-        return self;
+        return setComponentPosition(px, componentY);
     }
 
     function setComponentY(py as Number) as SpriteBuilder {
-        componentY = py;
-        return self;
+        return setComponentPosition(componentX, py);
     }
 
     function centerComponent() as SpriteBuilder {

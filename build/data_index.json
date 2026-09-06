@@ -34,14 +34,14 @@
   },
   "worlds": {
    "offset": 52385,
-   "length": 740
+   "length": 1019
   },
   "initials": {
-   "offset": 53125,
+   "offset": 53404,
    "length": 38
   },
   "orderIndex": {
-   "offset": 53163,
+   "offset": 53442,
    "length": 1188
   }
  },

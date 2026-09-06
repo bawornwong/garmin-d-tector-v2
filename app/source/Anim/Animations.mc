@@ -531,3 +531,159 @@ class SwapDDock extends Routine {
         return Routine.DONE;
     }
 }
+
+// port of Animations.cs:1916  LaunchAttack
+//
+// One side's attack leaving its Digimon and crossing the screen. Four shapes
+// in one coroutine: energy and ability travel (0 and 2), crush is a trail of
+// seven copies (1), and 3 is the Digimon refusing to attack at all -- it just
+// turns around twice.
+//
+// `digimonSprites` is a battle sprite set: 0 default, 1 attack, 2 crush,
+// 3 energy, 4 ability (GameManager.getAllDigimonBattleSprites).
+class LaunchAttack extends Routine {
+    var gm as GameManager;
+    var digimonSprites as Array;
+    var attack as Number;
+    var isEnemy as Boolean;
+    var disobeyed as Boolean;
+
+    var launchDir as Number = Kaisa.DIR_LEFT;
+    var sbAttack as SpriteBuilder?;
+    var sbDigimon as SpriteBuilder?;
+    var sbDisobey as SpriteBuilder?;
+    var extraPixels as Number = 0;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonSpritesIn as Array,
+                        attackIn as Number, isEnemyIn as Boolean, disobeyedIn as Boolean) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonSprites = digimonSpritesIn;
+        attack = attackIn;
+        isEnemy = isEnemyIn;
+        disobeyed = disobeyedIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                launchDir = isEnemy ? Kaisa.DIR_RIGHT : Kaisa.DIR_LEFT;
+                sbAttack = Kaisa.ScreenBuilder.buildSprite("Attack", parent)
+                    .setSize(24, 24).center();
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("Attacker", parent)
+                    .setSize(24, 24).center().setSprite(digimonSprites[0]);
+                sbAttack.setComponentSize(24, 24);
+
+                sbAttack.snapComponentToSide(launchDir, true);
+                sbDigimon.flipHorizontal(isEnemy);
+                sbAttack.flipHorizontal(isEnemy);
+
+                extraPixels = 0;
+
+                if (attack != 3) {
+                    if (disobeyed) { pc = 1; return 0.1; }
+                    pc = 3;
+                    return 0.2;
+                }
+                pc = 4;
+                return 0.0;
+            case 1:                                 // show the exclamation mark
+                sbDisobey = Kaisa.ScreenBuilder.buildSprite("Disobey", parent)
+                    .setSize(3, 9).setPosition(1, 1).setSprite(Kaisa.Sprites.BATTLE_DISOBEY);
+                pc = 2;
+                return 0.3;
+            case 2:
+                sbDisobey.dispose();
+                pc = 3;
+                return 0.2;
+            case 3:
+                sbDigimon.move(Kaisa.Enums.opposite(launchDir), 3);
+                sbAttack.move(Kaisa.Enums.opposite(launchDir), 3);
+                pc = 4;
+                return 0.0;
+            case 4:
+                if (attack == 0 || attack == 2) {
+                    sbDigimon.setSprite(digimonSprites[1]);
+                    sbAttack.setSprite((attack == 0) ? digimonSprites[3] : digimonSprites[4]);
+
+                    // A wide ability sprite is launched from further back and
+                    // takes extra steps to clear the screen.
+                    if (attack == 2 && digimonSprites[4] != null && digimonSprites[4][3] > 32) {
+                        sbAttack.setSize(digimonSprites[4][3], 24)
+                                .move(Kaisa.Enums.opposite(launchDir), sbAttack.width - 24)
+                                .centerComponent();
+                        sbDigimon.move(Kaisa.Enums.opposite(launchDir), 1);
+                        extraPixels = sbAttack.width - 24;
+                        gm.audioMgr.playSound("launchAttackLong");
+                    } else {
+                        gm.audioMgr.playSound("launchAttack");
+                    }
+                    i = 0;
+                    pc = 5;
+                    return 0.0;
+                } else if (attack == 1) {
+                    sbDigimon.setSprite(digimonSprites[2]);
+                    gm.audioMgr.playSound("launchAttack");
+                    i = 0;
+                    pc = 9;
+                    return 0.0;
+                } else {
+                    i = 0;
+                    pc = 11;
+                    return 0.0;
+                }
+            case 5:                                 // for (i = 0; i < 38; i++)
+                if (i >= 38) { i = 0; pc = 7; return 0.0; }
+                pc = 6;
+                return 1.7 / 32;
+            case 6:
+                sbAttack.move(launchDir, 1);
+                i += 1;
+                pc = 5;
+                return 0.0;
+            case 7:                                 // for (i = 0; i < extraPixels; i++)
+                if (i >= extraPixels) { pc = 15; return 0.3; }
+                pc = 8;
+                return 1.7 / 32;
+            case 8:
+                sbAttack.move(launchDir, 1);
+                i += 1;
+                pc = 7;
+                return 0.0;
+            case 9:                                 // crush: seven trailing copies
+                if (i >= 7) { pc = 15; return 1.5; }
+                Kaisa.ScreenBuilder.buildSprite("Crush" + i, parent)
+                    .setSize(24, 24).center().setSprite(digimonSprites[2])
+                    .flipHorizontal(isEnemy).move(launchDir, 4 * i);
+                pc = 10;
+                return 0.9 / 7;
+            case 10:
+                i += 1;
+                pc = 9;
+                return 0.0;
+            case 11:                                // attack == 3: it turns away
+                if (i >= 2) { pc = 15; return 0.0; }
+                pc = 12;
+                return 0.65;
+            case 12:
+                sbDigimon.flipHorizontal(true);
+                pc = 13;
+                return 0.65;
+            case 13:
+                sbDigimon.flipHorizontal(false);
+                i += 1;
+                pc = 11;
+                return 0.0;
+            case 15:
+                // ClearAnimParent: the animation's own children go, the
+                // container stays for whatever plays next.
+                while (parent.children.size() > 0) {
+                    parent.children[0].dispose();
+                }
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}

@@ -34,6 +34,7 @@ import json
 import os
 import re
 import subprocess
+import time
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,6 +58,7 @@ CONVERTED = {
     "OpenCamp": 6,
     "CloseCamp": 7,
     "SwapDDock": 8,
+    "LaunchAttack": 9,
 }
 
 HOST_ELEMENTS = ("Anim Parent",)
@@ -84,14 +86,16 @@ def sprite_cells():
 
     index = json.load(open(os.path.join(ROOT, "build/sprite_index.json")))["sprites"]
     for key, e in index.items():
-        if not key.startswith("Digimon/"):
-            continue
         cell = f"cell({ATLAS_CLASS[e['atlas']]},{e['x']},{e['y']})"
-        base = key[len("Digimon/"):]
-        out[base] = cell
-        for action, suffix in ACTION_SUFFIX.items():
-            if suffix and base.endswith(suffix):
-                out[base[: -len(suffix)] + ":" + action] = cell
+        # The reference prints the index key itself now that its stub resolves
+        # sprites the way Resources.Load does ("Digimon/agumon_at").
+        out[key] = cell
+        if key.startswith("Digimon/"):
+            base = key[len("Digimon/"):]
+            out[base] = cell
+            for action, suffix in ACTION_SUFFIX.items():
+                if suffix and base.endswith(suffix):
+                    out[base[: -len(suffix)] + ":" + action] = cell
     return out
 
 
@@ -143,7 +147,7 @@ def golden(names):
     return out
 
 
-def run_probe(index):
+def run_probe(index, attempts=3):
     """Build the app with _probeAnim = index, run it, return its trace lines."""
     text = open(VIEW).read()
     patched = re.sub(r"var _probeAnim as Number = -?\d+;",
@@ -153,15 +157,31 @@ def run_probe(index):
         b = subprocess.run(["tools/build.sh"], cwd=ROOT, capture_output=True, text=True)
         if b.returncode != 0:
             raise SystemExit("build failed:\n" + b.stdout + b.stderr)
-        r = subprocess.run([os.path.join(SDK, "bin/monkeydo"),
-                            "build/dtector.prg", DEVICE],
-                           cwd=ROOT, capture_output=True, text=True, timeout=120)
-        lines = (r.stdout + r.stderr).splitlines()
-    except subprocess.TimeoutExpired as e:
-        lines = ((e.stdout or b"").decode() + (e.stderr or b"").decode()).splitlines()
+        # The simulator drops a launch now and then -- it is not ready for the
+        # next app the instant the last one exited -- and a dropped launch
+        # looks exactly like an animation that emitted nothing. Retrying is
+        # the difference between a real diff and a flake.
+        for attempt in range(attempts):
+            try:
+                r = subprocess.run([os.path.join(SDK, "bin/monkeydo"),
+                                    "build/dtector.prg", DEVICE],
+                                   cwd=ROOT, capture_output=True, text=True,
+                                   timeout=120)
+                lines = (r.stdout + r.stderr).splitlines()
+            except subprocess.TimeoutExpired as e:
+                lines = ((e.stdout or b"").decode()
+                         + (e.stderr or b"").decode()).splitlines()
+            out = trace_of(lines)
+            if out:
+                return out
+            time.sleep(3)
+        return []
     finally:
         open(VIEW, "w").write(text)
 
+
+def trace_of(lines):
+    """The probe's own events: what it printed between its banner and ANIMEND."""
     started, out = False, []
     for line in lines:
         if line.startswith("==="):

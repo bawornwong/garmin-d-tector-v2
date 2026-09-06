@@ -203,6 +203,35 @@ class GameManager {
         return Kaisa.ScreenBuilder.buildDDockScreenElement(ddock, sprite, parent);
     }
 
+    // SpriteDatabase.GetDigimonSprite's fallback chain: an attack sprite
+    // falls back to the default, a crush sprite to the attack sprite (and so
+    // on to the default), a spirit sprite to the default.
+    function digimonSprite(digimonIndex as Number, action as Number) as Array<Number>? {
+        var ref = data.spriteRef(digimonIndex, action);
+        if (ref != null) { return ref; }
+        if (action == data.ACTION_CR) { return digimonSprite(digimonIndex, data.ACTION_AT); }
+        if (action == data.ACTION_AT || action == data.ACTION_SP
+                || action == data.ACTION_SM || action == data.ACTION_BL) {
+            return data.spriteRef(digimonIndex, data.ACTION_BASE);
+        }
+        return null;
+    }
+
+    // SpriteDatabase.GetAllDigimonBattleSprites -- "all the sprites used in
+    // combat, in order: 0: default, 1: attack, 2: crush, 3: energy, 4:
+    // ability."
+    function getAllDigimonBattleSprites(digimonIndex as Number,
+                                        energyRank as Number) as Array {
+        var ability = data.abilityIndex(digimonIndex);
+        return [
+            digimonSprite(digimonIndex, data.ACTION_BASE),
+            digimonSprite(digimonIndex, data.ACTION_AT),
+            digimonSprite(digimonIndex, data.ACTION_CR),
+            data.energySpriteRef(energyRank),
+            (ability == 0xFF) ? null : data.abilitySpriteRef(ability)
+        ];
+    }
+
     // GameManager.cs:281 BuildMapScreen -- a world's map art: one 32x32
     // sprite, or a 64x64 sheet of four for a multi-map world.
     function buildMapScreen(world as Number, parent as ScreenElement) as ContainerBuilder {

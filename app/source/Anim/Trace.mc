@@ -17,7 +17,7 @@ module Kaisa {
         // Set by Runner before each step, so an event's timestamp is the
         // step's SCHEDULED time rather than whenever the frame got round to
         // it -- the same clock the C# harness prints.
-        (:debug) var nowMs as Float = 0.0;
+        (:debug) var nowMs as Double = 0.0d;
         (:debug) var enabled as Boolean = false;
 
         (:debug)
