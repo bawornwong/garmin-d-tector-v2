@@ -123,6 +123,12 @@ def main():
             lines.append(f"            [{idx}],   // {', '.join(names)}")
         lines += ["        ];"]
 
+    # The number of rows at stage Spirit. The save's lost-spirit list is
+    # capped, and this is the ceiling that cannot truncate one: a spirit is
+    # locked when it is lost, so each can be in the list at most once.
+    spirits = sum(1 for row in db if row.get("stage") == 6)
+    lines.append(f"        // Rows at stage Spirit, which caps the saved lost-spirit list.")
+    lines.append(f"        const SPIRIT_ROWS = {spirits};")
     lines += [""]
 
     # SusanoomonEvolution names the two fusions it shows, the Digimon it forms,

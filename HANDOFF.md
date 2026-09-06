@@ -146,13 +146,15 @@ translation.
    and re-measure before anything else is decided on those numbers.
 2. **Play the whole loop by hand.** The animation diffs prove each coroutine
    matches event for event; they say nothing about whether the game *plays*.
-   Two scripted tours have run unattended in the simulator without an error --
-   the menu into Status, the Database and the Map and back out, and a full
+   Three scripted tours have run unattended in the simulator without an
+   error: the menu into Status, the Database and the Map and back out; a full
    random battle from the encounter through several turns with its animations
-   playing -- which is evidence that the paths hold together, not that the
-   game is right. What still wants a person: a new game from the character
-   selection, a battle won and lost, an event triggered from the character
-   screen, a jackpot, a spirit lost and recovered.
+   playing; and a new game, where the character-selection screen's intro
+   plays, a press picks the character, and the 53-second opening animation
+   runs to the end. That is evidence the paths hold together, not that the
+   game is right. What still wants a person: a battle won and lost, an event
+   triggered from the character screen, a jackpot, a spirit lost and
+   recovered.
 
    The tool for the unattended half is `_probeInputs` in `DTectorView`: a list
    of `Kaisa.Input.EVT_*`, one dispatched per second, each printing the screen
@@ -170,13 +172,13 @@ translation.
 ## 6. Traps and loose ends
 
 - **`DTectorView` still carries scaffolding**, though it now boots the real host: `seedSkeletonStats` writes demo stats and a spread of unlocked Digimon into the save record in RAM (never committed) so the screens have something to show; `_sliceApp` can open one app directly instead of starting on the character screen; `_probeInputs` replays a scripted press sequence so a capture can reach a screen several presses deep.
-- **The eyes overlay never shows.** `GameManager.showEyes()` still returns a hard-coded false: it belongs to the world rules SPEC section 8 lists as unsurveyed. The event overlay does work now -- steps arm a saved event, the character screen offers it, and A or B triggers a battle or a data storm.
+- **Both character-screen overlays work.** Steps arm a saved event, the character screen offers it, and a press triggers a battle or a data storm; the eyes layer reads `showEyes` out of the packed world data, so it shows in the worlds whose data says so.
 - **The two numbers that look like one.** `maxPrgFilespace` is 64 MB and the `.prg` is 815 KB, so file size is not the constraint. `memoryLimit` for a watchApp is 786,432 bytes, and that is the one to watch: a debug run measured 257 KB used of a 782 KB heap. Neither is close, but the debug build carries the trace and the probes and the release build does not.
 - **`GameManager.enqueueAnimation` never takes null any more.** Every call site plays its animation.
 - **The reference harness under-reports more often than the port is wrong.** Every animation mismatch found so far but one came from a stub that did less than the real `ScreenElement.cs` — `BuildStatSign` building nothing, `ReorderedAs` returning its input, `BuildMapScreen` as a bare container, elements registering under `AnimParent` instead of their real parent, `Destroy` not unparenting. Check the stub before the port.
 - **Two `Kaisa.Sprites` fields can be the same cell** (`animDistance` and `games_distance` are one sprite), so the debug name lookup is ambiguous by nature; `verify_anim.py` canonicalises names to cells rather than trusting them.
 - **Every render timing in SPEC is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
 - **The save format is version 2.** Version 1 slots are refused (and logged) rather than decoded: the world arrays are sized from the packed data, so an old slot would run off the end of the blob. There is no migration; the port has no released saves to migrate.
-- The 20-entry cap on `lostSpirits` is inferred, not verified.
+- The lost-spirit cap is no longer a guess: a spirit is lost whatever kind it is and locking it means each can be in the list once, so the ceiling is the number of rows at stage Spirit -- 45, counted by `gen_wellknown.py` rather than typed. The old cap of 20 (the human and animal spirits) could have truncated a save.
 - Whether Unity draws *nothing* for a missing glyph or a blank box that consumes advance still wants confirming against a running original (ADR 10 chose "nothing").
 - `.scratch/d-tector-venu4/` is the wayfinder map that produced SPEC and the ADRs. It is **history**, not the current plan; read SPEC first.

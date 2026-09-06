@@ -54,7 +54,12 @@ import Toybox.System;
 // group that can fill it) and `semibossGroup` is one entry per world, matching
 // what WorldManager.SetupWorlds actually writes.
 const VERSION = 2;
-const MAX_LOST_SPIRITS = 20;
+// The cap on the saved lost-spirit list, which bounds the record's size. It
+// used to be 20 -- the ten human and ten animal spirits -- but a spirit is
+// lost whenever the player was fighting with one, whatever kind it is, and
+// each can be in the list at most once because losing it locks it. The real
+// ceiling is therefore the number of rows at stage Spirit, which the data
+// says is 45 and which gen_wellknown.py counts rather than anyone typing.
 const MAX_NAME = 16;
 
 class SaveRecord {
@@ -145,7 +150,7 @@ class SaveFormat {
         addU32(b, r.totalWins);
         for (var i = 0; i < 4; i += 1) { addS16(b, r.ddockDigimon[i]); }
         var lost = r.lostSpirits.size();
-        if (lost > MAX_LOST_SPIRITS) { lost = MAX_LOST_SPIRITS; }
+        if (lost > Kaisa.WellKnown.SPIRIT_ROWS) { lost = Kaisa.WellKnown.SPIRIT_ROWS; }
         addU8(b, lost);
         for (var i = 0; i < lost; i += 1) { addS16(b, r.lostSpirits[i]); }
 

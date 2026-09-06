@@ -48,6 +48,8 @@ module Kaisa {
             [397, 403, 405, 409, 411],   // burninggreymon, zephyrmon, korikakumon, gigasmon, petaldramon
             [399, 401, 427, 413, 415],   // kendogarurumon, metalkabuterimon, kaiserleomon, sephirothmon, calmaramon
         ];
+        // Rows at stage Spirit, which caps the saved lost-spirit list.
+        const SPIRIT_ROWS = 45;
 
         // Animations.SusanoomonEvolution's Digimon, by name.
         const SUSANOOMON = 425;   // susanoomon
