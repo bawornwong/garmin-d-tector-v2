@@ -24,7 +24,7 @@ openssl pkcs8 -topk8 -inform PEM -outform DER -in /tmp/dev.pem \
   -out .scratch/keys/developer_key.der -nocrypt
 ```
 
-Then: `tools/build.sh` builds (debug, `venu445mm`, currently an 815 KB `.prg`; the device's limit is 64 MB of filespace and 786,432 bytes of app memory, of which a debug run measured 257 KB used). The simulator has to be running for anything that executes: `"$CIQ_SDK/bin/connectiq" &`, then `"$CIQ_SDK/bin/monkeydo" build/dtector.prg venu445mm`.
+Then: `tools/build.sh` builds (debug, `venu445mm`, currently an 817 KB `.prg`; the device's limit is 64 MB of filespace and 786,432 bytes of app memory, of which a debug run measured 257 KB used). `tools/build.sh -r` builds the release, which is 510 KB and is what goes on the watch — build it before sideloading, and build it now and then anyway: the trace and the probes are `(:debug)`, so a call site that names one compiles in debug and only fails in release. The simulator has to be running for anything that executes: `"$CIQ_SDK/bin/connectiq" &`, then `"$CIQ_SDK/bin/monkeydo" build/dtector.prg venu445mm`.
 
 `~/.dotnet/dotnet` is needed only by the numeric parity check.
 
@@ -142,8 +142,10 @@ translation.
 
 1. **Run it on the watch.** Nothing has. Every render timing in SPEC is the
    simulator's, the frame budget included, and the 50 ms timer floor that ADR 5
-   is built on has only ever been measured there. Sideload it, play a battle,
-   and re-measure before anything else is decided on those numbers.
+   is built on has only ever been measured there. To sideload: `tools/build.sh
+   -r`, then copy `build/dtector.prg` to `GARMIN/APPS/` on the watch over USB
+   and eject. Play a battle and re-measure before anything else is decided on
+   those numbers.
 2. **Play the whole loop by hand.** The animation diffs prove each coroutine
    matches event for event; they say nothing about whether the game *plays*.
    Four scripted tours have run unattended in the simulator without an error:

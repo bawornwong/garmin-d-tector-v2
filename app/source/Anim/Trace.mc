@@ -20,6 +20,17 @@ module Kaisa {
         (:debug) var nowMs as Double = 0.0d;
         (:debug) var enabled as Boolean = false;
 
+        // Turning the trace on is itself a debug-only operation: `enabled` does
+        // not exist in a release build, so the call site cannot name it.
+        (:debug)
+        function enable() as Void {
+            enabled = true;
+        }
+
+        (:release)
+        function enable() as Void {
+        }
+
         (:debug)
         function event(text as String) as Void {
             if (!enabled) { return; }

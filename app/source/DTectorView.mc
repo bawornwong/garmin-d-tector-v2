@@ -191,6 +191,18 @@ class DTectorView extends WatchUi.View {
         }
     }
 
+    // Kaisa.Rand.forced only exists in a debug build, so the assignment has to
+    // be annotated too -- a plain call site made the RELEASE build fail to
+    // compile, which is the build that gets sideloaded.
+    (:debug)
+    function pinRand(v as Number) as Void {
+        if (v >= 0) { Kaisa.Rand.forced = v; }
+    }
+
+    (:release)
+    function pinRand(v as Number) as Void {
+    }
+
     // Plays one converted animation through the real queue -- so it draws
     // into the same animParent the game gives it -- with the trace on.
     function startAnimProbe() as Void {
@@ -385,13 +397,13 @@ class DTectorView extends WatchUi.View {
             _gm.logicMgr.setDDockDigimon(1, _demoIndex);
             routine = new SwapDDock(_gm, 1, _demoIndex);
         }
-        if (_probeRand >= 0) { Kaisa.Rand.forced = _probeRand; }
+        pinRand(_probeRand);
         System.println("=== " + name + " ===");
         // Enqueueing builds the Anim Parent container the animation draws
         // into; the trace goes on after that, so what it records is the
         // animation and nothing of the host around it.
         _gm.enqueueAnimation(routine);
-        Kaisa.Trace.enabled = true;
+        Kaisa.Trace.enable();
     }
 
     // SKELETON SCAFFOLDING, in RAM only and never committed: a fresh save is
