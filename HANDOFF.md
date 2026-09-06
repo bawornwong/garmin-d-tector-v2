@@ -148,9 +148,12 @@ translation.
    matches event for event; they say nothing about whether the game *plays*.
    A new game, a battle won and lost, an event triggered from the character
    screen, a jackpot, a spirit lost and recovered.
-3. **Input.** The physical button mapping was deferred on purpose (ticket 13):
-   the adapter's twelve abstract events are driven by the simulator keyboard,
-   and the watch's real buttons and touch have never been decided.
+3. **Try the input mapping on the watch.** It is decided and implemented --
+   swipe left/right for Left/Right, a tap in the middle of the screen or the
+   upper button for A, the lower button for B, a still hold on either half for
+   the auto-repeat scroll -- but it has only ever been compiled, never
+   fingered. The two numbers to feel out are the 120 px centre box and the
+   40 px a finger must travel before a press becomes a swipe.
 4. **The things the source itself leaves open**, listed in SPEC section 8 --
    the semiboss checks that are commented out in the original, `showEyes`,
    and the chance to be moved to world 9 that its own TODO describes.
