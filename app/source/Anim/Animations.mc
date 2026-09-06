@@ -1346,3 +1346,964 @@ class DisplayTurn extends Routine {
         return Routine.DONE;
     }
 }
+
+// port of Animations.cs:291  SummonDigimon
+//
+// The screen flashes black, then the give-power sprite pulses through it, and
+// the Digimon is standing there when it clears. The element is named after the
+// Digimon, as in the original -- the only place a name reaches the display
+// list, and debug-visible only.
+class SummonDigimon extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbBlackScreen as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                gm.audioMgr.playSound("summonDigimon");
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite(gm.data.name(digimonIndex), parent)
+                    .setSize(24, 24).center().setActive(false);
+                sbBlackScreen = Kaisa.ScreenBuilder.buildSprite("BlackScreen", parent)
+                    .setSprite(Kaisa.Sprites.BLACK_SCREEN);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 4; i++)
+                if (i >= 4) { i = 0; pc = 4; return 0.0; }
+                sbBlackScreen.setActive(false);
+                pc = 2;
+                return 0.15;
+            case 2:
+                sbBlackScreen.setActive(true);
+                pc = 3;
+                return 0.15;
+            case 3:
+                i += 1; pc = 1; return 0.0;
+            case 4:                                 // for (i = 0; i < 4; i++)
+                if (i >= 4) { i = 0; pc = 7; return 0.0; }
+                sbBlackScreen.setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED);
+                pc = 5;
+                return 0.15;
+            case 5:
+                sbBlackScreen.setSprite(Kaisa.Sprites.BLACK_SCREEN);
+                pc = 6;
+                return 0.15;
+            case 6:
+                i += 1; pc = 4; return 0.0;
+            case 7:
+                sbBlackScreen.setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED);
+                pc = 8;
+                return 0.15;
+            case 8:
+                sbBlackScreen.setSprite(Kaisa.Sprites.GIVE_POWER);
+                pc = 9;
+                return 0.15;
+            case 9:
+                sbBlackScreen.setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED);
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE))
+                         .setActive(true);
+                i = 0;
+                pc = 10;
+                return 0.15;
+            case 10:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 13; return 0.0; }
+                sbBlackScreen.setTransparent(true);
+                sbBlackScreen.setSprite(Kaisa.Sprites.GIVE_POWER);
+                pc = 11;
+                return 0.15;
+            case 11:
+                sbBlackScreen.setTransparent(false);
+                sbBlackScreen.setSprite(Kaisa.Sprites.GIVE_POWER_INVERTED);
+                pc = 12;
+                return 0.15;
+            case 12:
+                i += 1; pc = 10; return 0.0;
+            case 13:
+                sbBlackScreen.setTransparent(true);
+                sbBlackScreen.setSprite(Kaisa.Sprites.GIVE_POWER);
+                pc = 14;
+                return 0.20;
+            case 14:
+                sbBlackScreen.setActive(false);
+                pc = 15;
+                return 0.20;
+            case 15:
+                sbBlackScreen.setActive(true);
+                pc = 16;
+                return 0.15;
+            case 16:
+                sbBlackScreen.setActive(false);
+                pc = 17;
+                return 0.90;
+            case 17:
+                sbBlackScreen.setActive(true);
+                pc = 18;
+                return 0.15;
+            case 18:
+                sbBlackScreen.setActive(false);
+                pc = 19;
+                return 1.25;
+            case 19:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_CR));
+                pc = 20;
+                return 0.75;
+            case 20:
+                sbDigimon.setSprite(gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE));
+                pc = 21;
+                return 0.15;
+            case 21:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:354  UnlockDigimon -- a curtain wipes the Digimon off
+// the screen and the D-Tector flashes in its place.
+class UnlockDigimon extends Routine {
+    var gm as GameManager;
+    var digimonIndex as Number;
+    var useSpiritForm as Boolean;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbCurtain as SpriteBuilder?;
+    var sbPower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonIndexIn as Number,
+                        useSpiritFormIn as Boolean) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonIndex = digimonIndexIn;
+        useSpiritForm = useSpiritFormIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                gm.audioMgr.playSound("unlockDigimon");
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite(gm.data.name(digimonIndex), parent)
+                    .setSize(24, 24).center()
+                    .setSprite(gm.digimonSprite(digimonIndex,
+                        useSpiritForm ? gm.data.ACTION_SP : gm.data.ACTION_BASE));
+                sbCurtain = Kaisa.ScreenBuilder.buildSprite("BlackScreen", parent)
+                    .setSprite(Kaisa.Sprites.CURTAIN).setTransparent(true);
+                sbCurtain.placeOutside(Kaisa.DIR_DOWN);
+                i = 0;
+                pc = 1;
+                return 0.15;
+            case 1:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { i = 0; pc = 3; return 0.0; }
+                sbCurtain.move(Kaisa.DIR_UP, 1);
+                pc = 2;
+                return 1.5 / 32;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:                                 // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 5; return 0.75; }
+                sbCurtain.move(Kaisa.DIR_UP, 1);
+                sbDigimon.move(Kaisa.DIR_UP, 1);
+                pc = 4;
+                return 1.5 / 32;
+            case 4:
+                i += 1; pc = 3; return 0.0;
+            case 5:
+                sbDigimon.dispose();
+                sbCurtain.dispose();
+                Kaisa.ScreenBuilder.buildSprite("DTector", parent)
+                    .setSprite(Kaisa.Sprites.D_TECTOR);
+                sbPower = Kaisa.ScreenBuilder.buildSprite("Power", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED)
+                    .setTransparent(true);
+                sbPower.setActive(false);
+                i = 0;
+                pc = 6;
+                return 0.30;
+            case 6:                                 // for (i = 0; i < 5; i++)
+                if (i >= 5) { pc = 9; return 0.45; }
+                sbPower.setActive(true);
+                pc = 7;
+                return 0.15;
+            case 7:
+                sbPower.setActive(false);
+                pc = 8;
+                return 0.15;
+            case 8:
+                i += 1; pc = 6; return 0.0;
+            case 9:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1229  RegularEvolution -- the Digimon blinks and comes
+// back as its evolved form.
+class RegularEvolution extends Routine {
+    var gm as GameManager;
+    var digimonBefore as Number;
+    var digimonAfter as Number;
+
+    var sbDigimon as SpriteBuilder?;
+    var sbGivePower as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, digimonBeforeIn as Number,
+                        digimonAfterIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        digimonBefore = digimonBeforeIn;
+        digimonAfter = digimonAfterIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("Digimon", parent)
+                    .setSize(24, 24).center()
+                    .setSprite(gm.digimonSprite(digimonBefore, gm.data.ACTION_BASE));
+                // SOURCE ODDITY, reproduced: the flash element is named
+                // "Digimon" too.
+                sbGivePower = Kaisa.ScreenBuilder.buildSprite("Digimon", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_POWER).setTransparent(true)
+                    .setActive(false);
+                gm.audioMgr.playSound("evolutionRegular");
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 2; i++)
+                if (i >= 2) { i = 0; pc = 4; return 0.5; }
+                pc = 2;
+                return 0.5;
+            case 2:
+                sbGivePower.setActive(true);
+                pc = 3;
+                return 0.1;
+            case 3:
+                sbGivePower.setActive(false);
+                i += 1;
+                pc = 1;
+                return 0.0;
+            case 4:                                 // for (i = 0; i < 5; i++)
+                if (i >= 5) { pc = 7; return 0.25; }
+                if (i == 2) {
+                    sbDigimon.setSprite(gm.digimonSprite(digimonAfter, gm.data.ACTION_BASE));
+                }
+                sbDigimon.setActive(false);
+                pc = 5;
+                return 0.25;
+            case 5:
+                sbDigimon.setActive(true);
+                pc = 6;
+                return 0.25;
+            case 6:
+                i += 1; pc = 4; return 0.0;
+            case 7:
+                sbGivePower.setActive(true);
+                pc = 8;
+                return 0.1;
+            case 8:
+                sbGivePower.setActive(false);
+                pc = 9;
+                return 0.25;
+            case 9:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1260  SpiritEvolution
+//
+// The long one: the character flashes, turns into the spirit, four copies of
+// the spirit fly apart, the screen goes black and the new Digimon steps out
+// from behind a curtain. TOTAL DURATION: 25.6s.
+class SpiritEvolution extends Routine {
+    var gm as GameManager;
+    var character as Number;
+    var digimonIndex as Number;
+
+    var sCharacter as Array = [];
+    var sDigimon as Array = [];
+    var sbBackground as SpriteBuilder?;
+    var sbCharacter as SpriteBuilder?;
+    var sbGiveMassivePower as SpriteBuilder?;
+    var sbDigimon as Array<SpriteBuilder?> = [null, null, null, null];
+    var sbBlackSprite as SpriteBuilder?;
+    var i as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Number,
+                        digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sCharacter = gm.characterSprites(character);
+                sDigimon = gm.getAllDigimonSprites(digimonIndex);
+
+                sbBackground = Kaisa.ScreenBuilder.buildSprite("BlackBackground", parent)
+                    .setSprite(Kaisa.Sprites.BLACK_SCREEN).setActive(false);
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Char", parent)
+                    .setSprite(sCharacter[0]);
+                gm.audioMgr.playSound("evolutionSpirit");
+                pc = 1;
+                return 0.5;
+            case 1:
+                sbGiveMassivePower = Kaisa.ScreenBuilder.buildSprite("GivePower", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setTransparent(true);
+                i = 0;
+                pc = 2;
+                return 0.0;
+            case 2:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 5; return 0.0; }
+                pc = 3;
+                return 0.2;
+            case 3:
+                sbGiveMassivePower.setActive(false);
+                pc = 4;
+                return 0.4;
+            case 4:
+                sbGiveMassivePower.setActive(true);
+                i += 1;
+                pc = 2;
+                return 0.0;
+            case 5:
+                sbCharacter.setSprite(sCharacter[9]);
+                pc = 6;
+                return 0.2;
+            case 6:
+                sbGiveMassivePower.setActive(false);
+                pc = 7;
+                return 0.3;
+            case 7:
+                sbGiveMassivePower.setActive(true);
+                pc = 8;
+                return 0.2;
+            case 8:
+                sbGiveMassivePower.setActive(false);
+                pc = 9;
+                return 0.2;
+            case 9:
+                sbCharacter.placeOutside(Kaisa.DIR_DOWN);
+                sbCharacter.setSprite(sCharacter[0]);
+                sbDigimon[0] = Kaisa.ScreenBuilder.buildSprite("Spirit", parent)
+                    .setSize(24, 24).setSprite(sDigimon[3]).center();
+                i = 0;
+                pc = 10;
+                return 0.0;
+            case 10:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 13; return 0.7; }
+                pc = 11;
+                return 0.15;
+            case 11:
+                sbDigimon[0].setActive(false);
+                pc = 12;
+                return 0.25;
+            case 12:
+                sbDigimon[0].setActive(true);
+                i += 1;
+                pc = 10;
+                return 0.0;
+            case 13:
+                for (var n = 1; n < 4; n += 1) {
+                    sbDigimon[n] = Kaisa.ScreenBuilder.buildSprite("Spirit", parent)
+                        .setSize(24, 24).setSprite(sDigimon[3]).center();
+                    sbDigimon[n].setTransparent(true);
+                }
+                i = 0;
+                pc = 14;
+                return 0.0;
+            case 14:                                // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 16; return 0.0; }
+                sbDigimon[0].move(Kaisa.DIR_LEFT, 1);
+                sbDigimon[1].move(Kaisa.DIR_RIGHT, 1);
+                sbDigimon[2].move(Kaisa.DIR_UP, 1);
+                sbDigimon[3].move(Kaisa.DIR_DOWN, 1);
+                pc = 15;
+                return 3.0 / 32;
+            case 15:
+                i += 1; pc = 14; return 0.0;
+            case 16:
+                for (var n = 1; n < 4; n += 1) { sbDigimon[n].dispose(); }
+                i = 0;
+                pc = 17;
+                return 0.3;
+            case 17:                                // for (i = 0; i < 64; i++)
+                if (i >= 64) { pc = 19; return 0.7; }
+                sbCharacter.move(Kaisa.DIR_UP, 1);
+                pc = 18;
+                return 1.0 / 64;
+            case 18:
+                i += 1; pc = 17; return 0.0;
+            case 19:
+                sbBackground.setActive(true);
+                i = 0;
+                pc = 20;
+                return 0.5;
+            case 20:                                // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 23; return 0.0; }
+                sbBackground.setSprite(Kaisa.Sprites.GIVE_POWER);
+                pc = 21;
+                return 0.1;
+            case 21:
+                sbBackground.setSprite(Kaisa.Sprites.BLACK_SCREEN);
+                pc = 22;
+                return 0.5;
+            case 22:
+                i += 1; pc = 20; return 0.0;
+            case 23:
+                sbBlackSprite = Kaisa.ScreenBuilder.buildSprite("BlackSprite", parent)
+                    .setSprite(sDigimon[4]);
+                pc = 24;
+                return 0.1;
+            case 24:
+                sbBlackSprite.setActive(false);
+                pc = 25;
+                return 0.5;
+            case 25:
+                sbBlackSprite.setActive(true);
+                i = 0;
+                pc = 26;
+                return 0.1;
+            case 26:                                // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 29; return 0.0; }
+                sbBlackSprite.setActive(false);
+                pc = 27;
+                return 0.3;
+            case 27:
+                sbBlackSprite.setActive(true);
+                pc = 28;
+                return 0.2;
+            case 28:
+                i += 1; pc = 26; return 0.0;
+            case 29:
+                sbBlackSprite.setActive(false);
+                pc = 30;
+                return 0.3;
+            case 30:
+                sbBlackSprite.setActive(true);
+                pc = 31;
+                return 0.1;
+            case 31:
+                sbBackground.setActive(false);
+                sbBlackSprite.setActive(false);
+                pc = 32;
+                return 0.5;
+            case 32:
+                sbDigimon[0].setSprite(sDigimon[0]).center();
+                pc = 33;
+                return 0.2;
+            case 33:
+                sbBlackSprite.placeOutside(Kaisa.DIR_DOWN);
+                sbBlackSprite.setSprite(Kaisa.Sprites.CURTAIN).setTransparent(true);
+                sbBlackSprite.setActive(true);
+                i = 0;
+                pc = 34;
+                return 0.0;
+            case 34:                                // for (i = 0; i < 64; i++)
+                if (i >= 64) { pc = 36; return 0.6; }
+                sbBlackSprite.move(Kaisa.DIR_UP, 1);
+                pc = 35;
+                return 3.0 / 64;
+            case 35:
+                i += 1; pc = 34; return 0.0;
+            case 36:
+                sbDigimon[0].setSprite(sDigimon[1]);
+                pc = 37;
+                return 0.8;
+            case 37:
+                sbDigimon[0].setSprite(sDigimon[0]);
+                pc = 38;
+                return 0.6;
+            case 38:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1380  FusionSpiritEvolution
+//
+// The fusion evolution: the same opening flashes as SpiritEvolution, then the
+// ten small spirits fly in one pair at a time, a cover wipes down over the
+// transcendent spirit, and the Digimon runs in twice before the final curtain.
+//
+// Which ten spirits depends on which fusion this is; the source picks them by
+// name, and Kaisa.WellKnown carries the two lists resolved to indices at build
+// time (ADR 7, tools/gen_wellknown.py).
+class FusionSpiritEvolution extends Routine {
+    var gm as GameManager;
+    var character as Number;
+    var digimonIndex as Number;
+
+    var sCharacter as Array = [];
+    var sDigimon as Array = [];
+    var sHumans as Array = [];
+    var sAnimals as Array = [];
+
+    var sbBackground as SpriteBuilder?;
+    var sbCharacter as SpriteBuilder?;
+    var sbGiveMassivePower as SpriteBuilder?;
+    var sbSmallHuman as SpriteBuilder?;
+    var sbSmallAnimal as SpriteBuilder?;
+    var sbTranscendent as SpriteBuilder?;
+    var sbCover as RectangleBuilder?;
+    var sbCurtain as SpriteBuilder?;
+    var sbGivePower as SpriteBuilder?;
+    var i as Number = 0;
+    var j as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Number,
+                        digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sCharacter = gm.characterSprites(character);
+                sDigimon = gm.getAllDigimonSprites(digimonIndex);
+
+                var set = (digimonIndex == Kaisa.WellKnown.FUSION_TRIGGER) ? 0 : 1;
+                sHumans = [];
+                sAnimals = [];
+                for (var n = 0; n < 5; n += 1) {
+                    sHumans.add(gm.digimonSprite(Kaisa.WellKnown.FUSION_HUMANS[set][n],
+                                                 gm.data.ACTION_SM));
+                    sAnimals.add(gm.digimonSprite(Kaisa.WellKnown.FUSION_ANIMALS[set][n],
+                                                  gm.data.ACTION_SM));
+                }
+
+                // Common animation.
+                sbBackground = Kaisa.ScreenBuilder.buildSprite("BlackBackground", parent)
+                    .setSprite(Kaisa.Sprites.BLACK_SCREEN).setActive(false);
+                sbCharacter = Kaisa.ScreenBuilder.buildSprite("Char", parent)
+                    .setSprite(sCharacter[0]);
+                gm.audioMgr.playSound("evolutionSpirit");
+                pc = 1;
+                return 0.5;
+            case 1:
+                // SOURCE ODDITY, reproduced: the power flash is named "Char"
+                // as well.
+                sbGiveMassivePower = Kaisa.ScreenBuilder.buildSprite("Char", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setTransparent(true);
+                i = 0;
+                pc = 2;
+                return 0.0;
+            case 2:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { pc = 5; return 0.0; }
+                pc = 3;
+                return 0.2;
+            case 3:
+                sbGiveMassivePower.setActive(false);
+                pc = 4;
+                return 0.4;
+            case 4:
+                sbGiveMassivePower.setActive(true);
+                i += 1; pc = 2; return 0.0;
+            case 5:
+                sbCharacter.setSprite(sCharacter[9]);
+                pc = 6;
+                return 0.2;
+            case 6:
+                sbGiveMassivePower.setActive(false);
+                pc = 7;
+                return 0.3;
+            case 7:
+                sbGiveMassivePower.setActive(true);
+                pc = 8;
+                return 0.2;
+            case 8:
+                sbGiveMassivePower.setActive(false);
+                pc = 9;
+                return 0.2;
+            case 9:
+                // Small spirits display -- total animation duration: 3.0 s.
+                sbCharacter.dispose();
+                sbSmallHuman = Kaisa.ScreenBuilder.buildSprite("Human", parent).setSize(14, 16);
+                sbSmallAnimal = Kaisa.ScreenBuilder.buildSprite("Animal", parent).setSize(14, 16);
+                i = 0;
+                pc = 10;
+                return 0.0;
+            case 10:                                // for (i = 0; i < 5; i++)
+                if (i >= 5) { pc = 15; return 0.0; }
+                sbSmallHuman.setY(16).placeOutside(Kaisa.DIR_LEFT).move(Kaisa.DIR_LEFT, 1);
+                sbSmallAnimal.setY(16).placeOutside(Kaisa.DIR_RIGHT).move(Kaisa.DIR_RIGHT, 1);
+                sbSmallHuman.setSprite(sHumans[i]);
+                sbSmallAnimal.setSprite(sAnimals[i]);
+                j = 0;
+                pc = 11;
+                return 0.0;
+            case 11:                                // for (j = 0; j < 4; j++)
+                if (j >= 4) { j = 0; pc = 13; return 0.0; }
+                sbSmallHuman.move(Kaisa.DIR_RIGHT, 4);
+                sbSmallAnimal.move(Kaisa.DIR_LEFT, 4);
+                pc = 12;
+                return 0.6 / 10;
+            case 12:
+                j += 1; pc = 11; return 0.0;
+            case 13:                                // for (j = 0; j < 6; j++)
+                if (j >= 6) { i += 1; pc = 10; return 0.0; }
+                sbSmallHuman.move(Kaisa.DIR_UP, 4);
+                sbSmallAnimal.move(Kaisa.DIR_UP, 4);
+                pc = 14;
+                return 0.6 / 10;
+            case 14:
+                j += 1; pc = 13; return 0.0;
+            case 15:
+                sbSmallHuman.dispose();
+                sbSmallAnimal.dispose();
+                // Create Transcendent spirit -- total animation duration: 3.2 s.
+                sbTranscendent = Kaisa.ScreenBuilder.buildSprite("Transcendent", parent)
+                    .setSize(24, 24).setSprite(sDigimon[3]).center();
+                sbCover = Kaisa.ScreenBuilder.buildRectangle("Cover", parent)
+                    .setSize(32, 32).setColor(false);
+                sbCurtain = Kaisa.ScreenBuilder.buildSprite("Curtain", parent)
+                    .setSprite(Kaisa.Sprites.CURTAIN_SPECIAL[0]).placeOutside(Kaisa.DIR_UP);
+                sbCurtain.setTransparent(true);
+                sbGivePower = Kaisa.ScreenBuilder.buildSprite("MassivePower", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED);
+                sbGivePower.setTransparent(true);
+                sbGivePower.setActive(false);
+                i = 0;
+                pc = 16;
+                return 0.0;
+            case 16:                                // for (i = 0; i < 32; i++)
+                if (i >= 32) { pc = 18; return 0.0; }
+                if (i == 14 || i == 28) { sbGivePower.setActive(true); }
+                if (i == 15 || i == 29) { sbGivePower.setActive(false); }
+                sbCover.move(Kaisa.DIR_DOWN, 1);
+                sbCurtain.move(Kaisa.DIR_DOWN, 1);
+                pc = 17;
+                return 3.2 / 32;
+            case 17:
+                i += 1; pc = 16; return 0.0;
+            case 18:
+                sbCurtain.placeOutside(Kaisa.DIR_DOWN);
+                sbGivePower.dispose();
+                i = 0;
+                pc = 19;
+                return 0.0;
+            case 19:                                // flash spirit
+                if (i >= 3) { i = 0; pc = 22; return 0.0; }
+                sbTranscendent.setActive(false);
+                pc = 20;
+                return 0.35;
+            case 20:
+                sbTranscendent.setActive(true);
+                pc = 21;
+                return 0.35;
+            case 21:
+                i += 1; pc = 19; return 0.0;
+            case 22:                                // for (i = 0; i < 32; i++)
+                if (i >= 32) { i = 0; pc = 24; return 0.0; }
+                sbTranscendent.move(Kaisa.DIR_UP, 1);
+                pc = 23;
+                return 1.4 / 32;
+            case 23:
+                i += 1; pc = 22; return 0.0;
+            case 24:                                // the Digimon runs twice
+                sbTranscendent.setSprite(sDigimon[2]);
+                sbTranscendent.setY(4).placeOutside(Kaisa.DIR_RIGHT);
+                i = 0;
+                pc = 25;
+                return 0.0;
+            case 25:                                // for (i = 0; i < 12; i++)
+                if (i >= 12) { pc = 27; return 0.7; }
+                sbTranscendent.move(Kaisa.DIR_LEFT, 6);
+                pc = 26;
+                return 1.0 / 12;
+            case 26:
+                i += 1; pc = 25; return 0.0;
+            case 27:
+                sbTranscendent.setSprite(sDigimon[2]);
+                sbTranscendent.placeOutside(Kaisa.DIR_RIGHT);
+                i = 0;
+                pc = 28;
+                return 0.0;
+            case 28:                                // for (i = 0; i < 14; i++)
+                if (i >= 14) { pc = 30; return 0.0; }
+                sbTranscendent.move(Kaisa.DIR_LEFT, 2);
+                pc = 29;
+                return 0.7 / 14;
+            case 29:
+                i += 1; pc = 28; return 0.0;
+            case 30:
+                sbTranscendent.setSprite(sDigimon[0]);
+                // Final curtain.
+                sbCurtain.setSprite(Kaisa.Sprites.CURTAIN).setTransparent(true);
+                sbCurtain.setActive(true);
+                i = 0;
+                pc = 31;
+                return 0.0;
+            case 31:                                // for (i = 0; i < 64; i++)
+                if (i >= 64) { pc = 33; return 0.6; }
+                sbCurtain.move(Kaisa.DIR_UP, 1);
+                pc = 32;
+                return 3.0 / 64;
+            case 32:
+                i += 1; pc = 31; return 0.0;
+            case 33:
+                sbTranscendent.setSprite(sDigimon[1]);
+                pc = 34;
+                return 0.8;
+            case 34:
+                sbTranscendent.setSprite(sDigimon[0]);
+                pc = 35;
+                return 0.6;
+            case 35:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}
+
+// port of Animations.cs:1667  AncientEvolution
+//
+// The two spirits the ancient is made of rise past the screen in turn, then
+// the spiral and circle turn, and the ancient Digimon is left standing. Which
+// two spirits those are comes from WellKnown.ANCIENT_SPIRITS, the switch the
+// original writes over the Digimon's name.
+class AncientEvolution extends Routine {
+    var gm as GameManager;
+    var character as Number;
+    var digimonIndex as Number;
+
+    var sAncient as Array<Number>?;
+    var sAncientAt as Array<Number>?;
+    var sHumanSpirit as Array<Number>?;
+    var sAnimalSpirit as Array<Number>?;
+    var sCharacter as Array = [];
+
+    var sbSpiral as SpriteBuilder?;
+    var sbCircle as SpriteBuilder?;
+    var sbDigimon as SpriteBuilder?;
+    var sbGiveMassivePower as SpriteBuilder?;
+    var i as Number = 0;
+    var j as Number = 0;
+
+    function initialize(gmIn as GameManager, characterIn as Number,
+                        digimonIndexIn as Number) {
+        Routine.initialize();
+        gm = gmIn;
+        character = characterIn;
+        digimonIndex = digimonIndexIn;
+    }
+
+    function step(rt as Fiber) as Float {
+        var parent = gm.screenMgr.animParent;
+        switch (pc) {
+            case 0:
+                sAncient = gm.digimonSprite(digimonIndex, gm.data.ACTION_BASE);
+                sAncientAt = gm.digimonSprite(digimonIndex, gm.data.ACTION_AT);
+                // The switch has no default: a Digimon that is not one of the
+                // ten leaves both spirits null, and the animation shows
+                // nothing where they would be.
+                sHumanSpirit = null;
+                sAnimalSpirit = null;
+                for (var n = 0; n < Kaisa.WellKnown.ANCIENT_SPIRITS.size(); n += 1) {
+                    var row = Kaisa.WellKnown.ANCIENT_SPIRITS[n];
+                    if (row[0] == digimonIndex) {
+                        sHumanSpirit = gm.digimonSprite(row[1], gm.data.ACTION_SP);
+                        sAnimalSpirit = gm.digimonSprite(row[2], gm.data.ACTION_SP);
+                        break;
+                    }
+                }
+                sCharacter = gm.characterSprites(character);
+
+                sbSpiral = Kaisa.ScreenBuilder.buildSprite("Spiral", parent);
+                sbCircle = Kaisa.ScreenBuilder.buildSprite("Circle", parent).setTransparent(true);
+                sbDigimon = Kaisa.ScreenBuilder.buildSprite("Digimon", parent)
+                    .setSize(24, 24).center().placeOutside(Kaisa.DIR_DOWN);
+                sbGiveMassivePower = Kaisa.ScreenBuilder.buildSprite("GivePower", parent)
+                    .setSprite(Kaisa.Sprites.GIVE_MASSIVE_POWER_INVERTED).setTransparent(true);
+                sbGiveMassivePower.setActive(false);
+
+                gm.audioMgr.playSound("evolutionAncient");
+
+                // Show human spirit.
+                sbDigimon.setSprite(sHumanSpirit);
+                i = 0;
+                pc = 1;
+                return 0.0;
+            case 1:                                 // for (i = 0; i < 28; i++)
+                if (i >= 28) { i = 0; pc = 3; return 0.2; }
+                sbDigimon.move(Kaisa.DIR_UP, 1);
+                pc = 2;
+                return 0.95 / 28;
+            case 2:
+                i += 1; pc = 1; return 0.0;
+            case 3:                                 // for (i = 0; i < 3; i++)
+                if (i >= 3) { i = 0; pc = 6; return 0.0; }
+                sbGiveMassivePower.setActive(true);
+                pc = 4;
+                return 0.1;
+            case 4:
+                sbGiveMassivePower.setActive(false);
+                pc = 5;
+                return 0.3;
+            case 5:
+                i += 1; pc = 3; return 0.0;
+            case 6:                                 // for (i = 0; i < 28; i++)
+                if (i >= 28) { pc = 8; return 0.0; }
+                sbDigimon.move(Kaisa.DIR_UP, 1);
+                pc = 7;
+                return 0.95 / 28;
+            case 7:
+                i += 1; pc = 6; return 0.0;
+            case 8:                                 // show animal spirit
+                sbDigimon.setSprite(sAnimalSpirit);
+                sbDigimon.placeOutside(Kaisa.DIR_DOWN);
+                i = 0;
+                pc = 9;
+                return 0.0;
+            case 9:                                 // for (i = 0; i < 28; i++)
+                if (i >= 28) { i = 0; pc = 11; return 0.2; }
+                sbDigimon.move(Kaisa.DIR_UP, 1);
+                pc = 10;
+                return 0.95 / 28;
+            case 10:
+                i += 1; pc = 9; return 0.0;
+            case 11:                                // for (i = 0; i < 3; i++)
+                if (i >= 3) { i = 0; pc = 14; return 0.0; }
+                sbGiveMassivePower.setActive(true);
+                pc = 12;
+                return 0.1;
+            case 12:
+                sbGiveMassivePower.setActive(false);
+                pc = 13;
+                return 0.3;
+            case 13:
+                i += 1; pc = 11; return 0.0;
+            case 14:                                // for (i = 0; i < 28; i++)
+                if (i >= 28) { pc = 16; return 0.0; }
+                sbDigimon.move(Kaisa.DIR_UP, 1);
+                pc = 15;
+                return 0.95 / 28;
+            case 15:
+                i += 1; pc = 14; return 0.0;
+            case 16:                                // spiral and circle
+                sbGiveMassivePower.setSprite(sCharacter[0]).setTransparent(false);
+                i = 0;
+                pc = 17;
+                return 0.0;
+            case 17:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 22; return 0.15; }
+                sbGiveMassivePower.setActive(false);
+                sbCircle.setSprite(Kaisa.Sprites.ANCIENT_CIRCLE[0]);
+                j = 0;
+                pc = 18;
+                return 0.0;
+            case 18:                                // for (j = 0; j < 3; j++)
+                if (j >= 3) { pc = 21; return 0.0; }
+                sbSpiral.setSprite(Kaisa.Sprites.ANCIENT_SPIRAL[0]);
+                pc = 19;
+                return 0.3;
+            case 19:
+                sbSpiral.setSprite(Kaisa.Sprites.ANCIENT_SPIRAL[1]);
+                pc = 20;
+                return 0.3;
+            case 20:
+                j += 1; pc = 18; return 0.0;
+            case 21:
+                sbGiveMassivePower.setActive(true);
+                i += 1;
+                pc = 17;
+                return 0.3;
+            case 22:
+                sbGiveMassivePower.setSprite(sCharacter[9]);
+                pc = 23;
+                return 0.4;
+            case 23:
+                sbGiveMassivePower.dispose();
+                j = 0;
+                pc = 24;
+                return 0.0;
+            case 24:                                // for (j = 0; j < 3; j++)
+                if (j >= 3) { i = 0; pc = 27; return 0.0; }
+                if (j == 1) { sbCircle.setSprite(Kaisa.Sprites.ANCIENT_CIRCLE[1]); }
+                if (j == 2) { sbCircle.setSprite(Kaisa.Sprites.ANCIENT_CIRCLE[2]); }
+                sbSpiral.setSprite(Kaisa.Sprites.ANCIENT_SPIRAL[0]);
+                pc = 25;
+                return 0.3;
+            case 25:
+                sbSpiral.setSprite(Kaisa.Sprites.ANCIENT_SPIRAL[1]);
+                pc = 26;
+                return 0.3;
+            case 26:
+                j += 1; pc = 24; return 0.0;
+            case 27:
+                sbSpiral.dispose();
+                sbCircle.setSprite(Kaisa.Sprites.BLACK_SCREEN);
+                i = 0;
+                pc = 28;
+                return 0.0;
+            case 28:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 31; return 0.2; }
+                pc = 29;
+                return 0.2;
+            case 29:
+                sbCircle.setActive(false);
+                pc = 30;
+                return 0.2;
+            case 30:
+                sbCircle.setActive(true);
+                i += 1; pc = 28; return 0.0;
+            case 31:
+                sbCircle.setActive(false);
+                sbDigimon.setSprite(sAncient).center();
+                i = 0;
+                pc = 32;
+                return 0.0;
+            case 32:                                // for (i = 0; i < 2; i++)
+                if (i >= 2) { pc = 35; return 0.0; }
+                sbDigimon.setActive(true);
+                pc = 33;
+                return 0.15;
+            case 33:
+                sbDigimon.setActive(false);
+                pc = 34;
+                return 0.3;
+            case 34:
+                i += 1; pc = 32; return 0.0;
+            case 35:
+                sbDigimon.setActive(true);
+                pc = 36;
+                return 0.4;
+            case 36:
+                sbDigimon.setSprite(sAncientAt);
+                pc = 37;
+                return 0.55;
+            case 37:
+                sbDigimon.setSprite(sAncient);
+                pc = 38;
+                return 0.7;
+            case 38:
+                return Routine.DONE;
+        }
+        return Routine.DONE;
+    }
+}

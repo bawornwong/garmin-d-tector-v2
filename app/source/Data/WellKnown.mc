@@ -22,5 +22,37 @@ module Kaisa {
             404,   // Tommy: kumamon
             426,   // Koichi: loweemon
         ];
+
+        // Animations.AncientEvolution's switch over the ancient's name.
+        const ANCIENT_SPIRITS = [
+            [430, 396, 397],   // ancientgreymon: agunimon + burninggreymon
+            [431, 398, 399],   // ancientgarurumon: lobomon + kendogarurumon
+            [432, 400, 401],   // ancientbeetlemon: beetlemon + metalkabuterimon
+            [433, 402, 403],   // ancientirismon: kazemon + zephyrmon
+            [434, 404, 405],   // ancientmegatheriummon: kumamon + korikakumon
+            [439, 426, 427],   // ancientsphinxmon: loweemon + kaiserleomon
+            [435, 408, 409],   // ancientvolcamon: grumblemon + gigasmon
+            [436, 410, 411],   // ancienttrojamon: arbormon + petaldramon
+            [438, 412, 413],   // ancientwisemon: mercurymon + sephirothmon
+            [437, 414, 415],   // ancientmermaimon: lanamon + calmaramon
+        ];
+
+        // Animations.FusionSpiritEvolution: the branch is chosen by
+        // `digimon == "kaisergreymon"`.
+        const FUSION_TRIGGER = 421;
+        const FUSION_HUMANS = [
+            [396, 402, 404, 408, 410],   // agunimon, kazemon, kumamon, grumblemon, arbormon
+            [398, 400, 426, 412, 414],   // lobomon, beetlemon, loweemon, mercurymon, lanamon
+        ];
+        const FUSION_ANIMALS = [
+            [397, 403, 405, 409, 411],   // burninggreymon, zephyrmon, korikakumon, gigasmon, petaldramon
+            [399, 401, 427, 413, 415],   // kendogarurumon, metalkabuterimon, kaiserleomon, sephirothmon, calmaramon
+        ];
+
+        // GameManager.HasAllSpiritsForFusion's element sets.
+        const FUSION_ELEMENTS = [
+            [421, [0, 3, 4, 6, 7]],   // kaisergreymon: Fire, Wind, Ice, Earth, Wood
+            [422, [1, 2, 5, 8, 9]],   // magnagarurumon: Light, Thunder, Dark, Metal, Water
+        ];
     }
 }

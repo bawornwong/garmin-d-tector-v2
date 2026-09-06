@@ -25,6 +25,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import src, app as app_path
 
+ANIMATIONS_CS = "Assets/Scripts/Logic/Data/Animations.cs"
+DIGIMON_CS = "Assets/Scripts/Logic/Models/Digimon.cs"
+GAME_MANAGER_CS = "Assets/Scripts/GameManager.cs"
 CONSTANTS_CS = "Assets/Scripts/Constants.cs"
 DATABASE_CS = "Assets/Scripts/Logic/Data/Database.cs"
 PLAYER_CHARACTER_CS = "Assets/Scripts/Logic/PlayerCharacter.cs"
@@ -67,6 +70,11 @@ def main():
             raise SystemExit(f"{name!r} is not a row of digimonDB.json")
         return index_of[name]
 
+    anims = read(ANIMATIONS_CS)
+    ancient, fusion = ancient_pairs(anims), fusion_sets(anims)
+    elements, element_sets = element_values(read(DIGIMON_CS)), \
+        fusion_elements(read(GAME_MANAGER_CS))
+
     lines = [
         "import Toybox.Lang;",
         "",
@@ -89,15 +97,119 @@ def main():
     for c in order:
         name = spirits[c].lower()
         lines.append(f"            {resolve(name)},   // {c}: {name}")
+    lines += ["        ];", ""]
+
+    # AncientEvolution's switch: which two spirits an ancient Digimon is made
+    # of. Rows are {ancient, human spirit, animal spirit}, in source order.
+    lines.append("        // Animations.AncientEvolution's switch over the ancient's name.")
+    lines.append("        const ANCIENT_SPIRITS = [")
+    for anc, human, animal in ancient:
+        lines.append(f"            [{resolve(anc)}, {resolve(human)}, {resolve(animal)}],"
+                     f"   // {anc}: {human} + {animal}")
+    lines += ["        ];", ""]
+
+    # FusionSpiritEvolution's two branches: ten small spirits each, five human
+    # then five animal, and the Digimon whose name picks the first branch.
+    trigger, branches = fusion
+    lines.append("        // Animations.FusionSpiritEvolution: the branch is chosen by")
+    lines.append(f"        // `digimon == \"{trigger}\"`.")
+    lines.append(f"        const FUSION_TRIGGER = {resolve(trigger)};")
+    for label, key in (("HUMANS", "humans"), ("ANIMALS", "animals")):
+        lines.append(f"        const FUSION_{label} = [")
+        for branch in branches:
+            names = branch[key]
+            idx = ", ".join(str(resolve(n)) for n in names)
+            lines.append(f"            [{idx}],   // {', '.join(names)}")
+        lines += ["        ];"]
+
+    lines += [""]
+
+    # GameManager.HasAllSpiritsForFusion: each of the two named fusions counts
+    # the spirits of five elements; every other fusion counts all twenty.
+    lines.append("        // GameManager.HasAllSpiritsForFusion's element sets.")
+    lines.append("        const FUSION_ELEMENTS = [")
+    for name, els in element_sets:
+        vals = ", ".join(str(elements[e]) for e in els)
+        lines.append(f"            [{resolve(name)}, [{vals}]],   // {name}: "
+                     f"{', '.join(els)}")
+    lines += ["        ];"]
+
     lines += [
-        "        ];",
         "    }",
         "}",
         "",
     ]
     open(app_path("source/Data/WellKnown.mc"), "w").write("\n".join(lines))
     print(f"wrote app/source/Data/WellKnown.mc "
-          f"(2 defaults, {len(order)} player spirits)")
+          f"(2 defaults, {len(order)} player spirits, {len(ancient)} ancients, "
+          f"{sum(len(b['humans']) + len(b['animals']) for b in branches)} fusion spirits)")
+
+
+def element_values(consts):
+    """Element's declaration order, which is the value the packed data holds."""
+    body = re.search(r"enum Element \{(.*?)\}", consts, re.S)
+    if not body:
+        raise SystemExit("enum Element not found in Digimon.cs")
+    names = [e.strip().split("=")[0].strip() for e in body.group(1).split(",")]
+    return {n: i for i, n in enumerate(n for n in names if n)}
+
+
+def fusion_elements(gm_cs):
+    """The (fusion, elements) pairs HasAllSpiritsForFusion branches on."""
+    start = gm_cs.index("bool HasAllSpiritsForFusion(")
+    body = gm_cs[start:gm_cs.index("public bool IsInDock", start)]
+    out = []
+    for name, block in re.findall(
+            r'if \(fusionName == "(\w+)"\) \{(.*?)\n            \}', body, re.S):
+        els = re.findall(r"d\.element == Element\.(\w+)", block)
+        if len(els) != 5:
+            raise SystemExit(f"{name}'s element list did not parse")
+        out.append((name, els))
+    if len(out) != 2:
+        raise SystemExit("HasAllSpiritsForFusion should name two fusions")
+    return out
+
+
+def method_body(text, name):
+    """The source of one coroutine, from its signature to the next one."""
+    start = text.index(f"IEnumerator {name}(")
+    end = text.find("public static IEnumerator", start + 1)
+    return text[start:end if end != -1 else len(text)]
+
+
+def ancient_pairs(anims):
+    """AncientEvolution's switch, as (ancient, human, animal) in source order."""
+    body = method_body(anims, "AncientEvolution")
+    cases = re.findall(
+        r'case "(\w+)":\s*'
+        r'sHumanSpirit = spriteDB\.GetDigimonSprite\("(\w+)", SpriteAction\.Spirit\);\s*'
+        r'sAnimalSpirit = spriteDB\.GetDigimonSprite\("(\w+)", SpriteAction\.Spirit\);',
+        body)
+    if not cases:
+        raise SystemExit("AncientEvolution's switch did not parse")
+    return cases
+
+
+def fusion_sets(anims):
+    """FusionSpiritEvolution's two branches, and the name that picks the first."""
+    body = method_body(anims, "FusionSpiritEvolution")
+    trigger = re.search(r'if \(digimon == "(\w+)"\)', body)
+    if not trigger:
+        raise SystemExit("FusionSpiritEvolution's branch condition did not parse")
+    branches = []
+    for part in re.split(r"\belse\b", body[trigger.end():], maxsplit=1):
+        humans = re.findall(
+            r'sHumans\[\d\] = spriteDB\.GetDigimonSprite\("(\w+)", SpriteAction\.SpiritSmall\);',
+            part)
+        animals = re.findall(
+            r'sAnimals\[\d\] = spriteDB\.GetDigimonSprite\("(\w+)", SpriteAction\.SpiritSmall\);',
+            part)
+        if len(humans) != 5 or len(animals) != 5:
+            raise SystemExit("FusionSpiritEvolution's spirit lists did not parse")
+        branches.append({"humans": humans, "animals": animals})
+    if len(branches) != 2:
+        raise SystemExit("FusionSpiritEvolution should have two branches")
+    return trigger.group(1), branches
 
 
 if __name__ == "__main__":

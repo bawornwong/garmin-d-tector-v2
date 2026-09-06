@@ -232,6 +232,18 @@ class GameManager {
         ];
     }
 
+    // SpriteDatabase.GetAllDigimonSprites -- 0: default, 1: attack, 2: crush,
+    // 3: spirit, 4: black.
+    function getAllDigimonSprites(digimonIndex as Number) as Array {
+        return [
+            digimonSprite(digimonIndex, data.ACTION_BASE),
+            digimonSprite(digimonIndex, data.ACTION_AT),
+            digimonSprite(digimonIndex, data.ACTION_CR),
+            digimonSprite(digimonIndex, data.ACTION_SP),
+            digimonSprite(digimonIndex, data.ACTION_BL)
+        ];
+    }
+
     // GameManager.cs:281 BuildMapScreen -- a world's map art: one 32x32
     // sprite, or a 64x64 sheet of four for a multi-map world.
     function buildMapScreen(world as Number, parent as ScreenElement) as ContainerBuilder {
@@ -327,16 +339,30 @@ class GameManager {
     }
 
     // GameManager.cs:376 -- whether the player holds every spirit a fusion
-    // needs. The original branches on the fusion's NAME; here the same three
-    // fusions are matched by index through WellKnown, and the element sets
-    // they require are the source's.
+    // needs. The original branches on the fusion's NAME; the same two fusions
+    // are matched by index here, and the five elements each one counts come
+    // from WellKnown (tools/gen_wellknown.py parses them out of the source).
     //
-    // NOT TRANSLATED YET: the per-fusion element lists are 90 lines of
-    // conditions in the original and belong with the evolution animations.
-    // Until then this reports false, which makes the fusion refuse rather
-    // than let an unearned evolution through.
+    // A fusion that is neither of those two counts all twenty spirits, which
+    // is what the original's `else` does.
     function hasAllSpiritsForFusion(fusionIndex as Number) as Boolean {
-        return false;
+        var elements = null;
+        for (var i = 0; i < Kaisa.WellKnown.FUSION_ELEMENTS.size(); i += 1) {
+            var row = Kaisa.WellKnown.FUSION_ELEMENTS[i];
+            if (row[0] == fusionIndex) { elements = row[1]; break; }
+        }
+
+        var count = 0;
+        var n = db.count();
+        for (var i = 0; i < n; i += 1) {
+            if (data.stage(i) != Kaisa.STAGE_SPIRIT) { continue; }
+            var type = data.spiritType(i);
+            if (type != Kaisa.SPIRIT_HUMAN && type != Kaisa.SPIRIT_ANIMAL) { continue; }
+            if (elements != null && elements.indexOf(data.element(i)) < 0) { continue; }
+            if (logicMgr.getDigimonUnlocked(i)) { count += 1; }
+        }
+
+        return (elements != null) ? (count == 10) : (count == 20);
     }
 
     // GameManager.cs:348

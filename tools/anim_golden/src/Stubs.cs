@@ -240,7 +240,19 @@ namespace Kaisa.Digivice {
             }
             return GetDigimonSprite(name);
         }
-        public Sprite[] GetAllDigimonSprites(string name) { return MakeArr(name); }
+        // SpriteDatabase.cs:176 -- 0: default, 1: attack, 2: crush, 3: spirit,
+        // 4: black. The placeholder array it used to return named sprites
+        // "agumon_3", which resolve to no art at all, so a trace could not say
+        // whether the port had drawn the right one.
+        public Sprite[] GetAllDigimonSprites(string name) {
+            return new Sprite[] {
+                GetDigimonSprite(name),
+                GetDigimonSprite(name, "Attack"),
+                GetDigimonSprite(name, "Crush"),
+                GetDigimonSprite(name, "Spirit"),
+                GetDigimonSprite(name, "Black")
+            };
+        }
         public Sprite[] GetAllDigimonBattleSprites(string name, int rank = 0) {
             return new Sprite[] {
                 GetDigimonSprite(name),

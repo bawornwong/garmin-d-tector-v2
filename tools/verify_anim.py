@@ -62,6 +62,12 @@ CONVERTED = {
     "AttackCollision": 10,
     "DestroyLoser": 11,
     "DisplayTurn": 12,
+    "SummonDigimon": 13,
+    "UnlockDigimon": 14,
+    "RegularEvolution": 15,
+    "SpiritEvolution": 16,
+    "FusionSpiritEvolution": 17,
+    "AncientEvolution": 18,
 }
 
 HOST_ELEMENTS = ("Anim Parent",)

@@ -70,7 +70,7 @@ class DTectorView extends WatchUi.View {
     // Which converted animation to play, traced, for tools/verify_anim.py:
     // -1 plays none. The arguments match the ones the C# harness synthesises
     // (every int is 1), so the two traces are of the same run.
-    var _probeAnim as Number = 12;
+    var _probeAnim as Number = 1;
     var _probeAnimDone as Boolean = false;
 
     function initialize() {
@@ -222,6 +222,24 @@ class DTectorView extends WatchUi.View {
             name = "DisplayTurn";
             routine = new DisplayTurn(_gm, _demoIndex, 1, 1, _demoIndex, 1, 1,
                                       1, false, 1, 1);
+        } else if (_probeAnim == 13) {
+            name = "SummonDigimon";
+            routine = new SummonDigimon(_gm, _demoIndex);
+        } else if (_probeAnim == 14) {
+            name = "UnlockDigimon";
+            routine = new UnlockDigimon(_gm, _demoIndex, false);
+        } else if (_probeAnim == 15) {
+            name = "RegularEvolution";
+            routine = new RegularEvolution(_gm, _demoIndex, _demoIndex);
+        } else if (_probeAnim == 16) {
+            name = "SpiritEvolution";
+            routine = new SpiritEvolution(_gm, Kaisa.CHAR_TAKUYA, _demoIndex);
+        } else if (_probeAnim == 17) {
+            name = "FusionSpiritEvolution";
+            routine = new FusionSpiritEvolution(_gm, Kaisa.CHAR_TAKUYA, _demoIndex);
+        } else if (_probeAnim == 18) {
+            name = "AncientEvolution";
+            routine = new AncientEvolution(_gm, Kaisa.CHAR_TAKUYA, _demoIndex);
         } else if (_probeAnim == 8) {
             name = "SwapDDock";
             // The animation reads the dock it is about to overwrite, so the
