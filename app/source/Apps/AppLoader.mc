@@ -51,7 +51,9 @@ class AppLoader {
             return new CodeInput(gm, controller, parent).setSubmitError(false);
         }
 
-        // Map, Connect, Finder, Battle, JackpotBox, EnergyWars,
+        if (app == Kaisa.APP_FINDER) { return new Finder(gm, controller, parent); }
+
+        // Map, Connect, Battle, JackpotBox, EnergyWars,
         // DigiCatch, SpeedRunner, Asteroids, DigiHunter, Maze -- steps 8 and 9
         // of SPEC's order of work.
         System.println("AppLoader: app " + app + " is not translated yet");

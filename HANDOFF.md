@@ -60,6 +60,7 @@ app/source/
               Status.mc           the first real app, all seven of its screens
               DatabaseApp.mc      six screens, three converted coroutines
               CodeInput.mc        the five-character code entry
+              Finder.mc           the battle-search minigame
               Camp.mc             the smallest app; clears the defeated flag
 ```
 
@@ -124,7 +125,7 @@ All measured, all already encoded in the code that depends on them — listed he
 **Then, in order:**
 
 - **`Map` and the world rules.** `WorldManager` carries two counters; the areas, bosses, distance events and `showEyes` are all still unsurveyed (SPEC section 8), and the Map app, `TakeAStep`, `CreateNewGame` and the pending-event machinery all wait on them. `GameManager.showEyes()` returns a hard-coded false until then.
-- **`Finder`** (114 lines), the smallest minigame, and the `Connect` app.
+- **`Connect`**, and the four remaining minigames (`JackpotBox`, `SpeedRunner`, `DigiHunter`, `Maze`), none of which depend on the unsurveyed world rules.
 - **Step 8: Battle** (1,068 lines plus its animations), the heaviest surface.
 - Steps 9 and 10: the remaining apps and minigames, then `StartGameAnimation` last.
 
