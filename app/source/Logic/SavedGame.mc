@@ -114,6 +114,24 @@ class SavedGame {
         touch();
     }
 
+    // The spirits the player has lost, as Digimon indices. SaveFormat caps
+    // the list at 20; the cap is inferred rather than verified against the
+    // game's own maximum (SPEC section 8).
+    function lostSpirits() as Array<Number> {
+        return record.lostSpirits;
+    }
+
+    function addLostSpirit(digimonIndex as Number) as Void {
+        record.lostSpirits.add(digimonIndex);
+        touch();
+    }
+
+    function removeLostSpiritAt(index as Number) as Void {
+        var head = record.lostSpirits.slice(0, index);
+        record.lostSpirits = head.addAll(record.lostSpirits.slice(index + 1, null));
+        touch();
+    }
+
     function currentWorld() as Number { return record.currentMap; }
     function setCurrentWorld(v as Number) as Void {
         record.currentMap = v;

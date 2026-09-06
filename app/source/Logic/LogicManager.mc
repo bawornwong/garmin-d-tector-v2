@@ -416,6 +416,205 @@ class LogicManager {
         return notEmpty;
     }
 
+    // LogicManager.cs:572 -- every Digimon the player owns, as indices.
+    function getAllUnlockedDigimon() as Array<Number> {
+        var out = [] as Array<Number>;
+        var n = _db.count();
+        for (var i = 0; i < n; i += 1) {
+            if (_db.isDisabled(i)) { continue; }
+            if (getDigimonUnlocked(i)) { out.add(i); }
+        }
+        return out;
+    }
+
+    // LogicManager.cs:597 -- "Unlocks or levels up a Digimon. Returns true if
+    // it levels up a Digimon, false if it unlocks it." Returns
+    // [leveledUp, levelBefore, levelAfter], the out parameters as an array
+    // (ticket 11 decision 5).
+    function rewardDigimon(digimonIndex as Number) as Array<Number> {
+        var levelBefore = getDigimonExtraLevel(digimonIndex);
+        if (getDigimonUnlocked(digimonIndex)) {
+            setDigimonExtraLevel(digimonIndex, levelBefore + 1);
+            return [1, levelBefore, getDigimonExtraLevel(digimonIndex)];
+        }
+        setDigimonUnlocked(digimonIndex, true);
+        return [0, levelBefore, 0];
+    }
+
+    // LogicManager.cs:618 -- "Erases or levels down a Digimon."
+    function punishDigimon(digimonIndex as Number) as Array<Number> {
+        var levelBefore = getDigimonExtraLevel(digimonIndex);
+        if (levelBefore > 0) {
+            setDigimonExtraLevel(digimonIndex, levelBefore - 1);
+            return [1, levelBefore, getDigimonExtraLevel(digimonIndex)];
+        }
+        setDigimonUnlocked(digimonIndex, false);
+        return [0, levelBefore, -1];
+    }
+
+    // LogicManager.cs:637 -- "Locks a Spirit and adds it to the list of
+    // spirits lost by the player."
+    function loseSpirit(spiritIndex as Number) as Void {
+        setDigimonUnlocked(spiritIndex, false);
+        _saved.addLostSpirit(spiritIndex);
+    }
+
+    // LogicManager.cs:645 -- unlocks a random lost spirit and returns it.
+    function recoverSpirit() as Number {
+        var lost = _saved.lostSpirits();
+        if (lost.size() == 0) { return -1; }
+        var index = Kaisa.Rand.rangeInt(0, lost.size());
+        var recovered = lost[index];
+        _saved.removeLostSpiritAt(index);
+        setDigimonUnlocked(recovered, true);
+        return recovered;
+    }
+
+    function isAnySpiritLost() as Boolean {
+        return _saved.lostSpirits().size() > 0;
+    }
+
+    // LogicManager.cs:682 ApplyReward. The C# has two `out object` parameters
+    // whose type depends on the reward -- levels, distances, a boolean and an
+    // area for the data storm -- so the port returns [before, after] and the
+    // animation that consumes them knows which reward it is showing.
+    //
+    // SOURCE BUG, reproduced: the LevelUp branch calls LevelDownPlayer, not
+    // LevelUpPlayer. Only ForceLevelUp levels the player up.
+    function applyReward(reward as Number, objective as Number) as Array<Number> {
+        if (reward == Kaisa.REWARD_INCREASE_DISTANCE_300) {
+            return distanceReward(300, true);
+        } else if (reward == Kaisa.REWARD_INCREASE_DISTANCE_500) {
+            return distanceReward(500, true);
+        } else if (reward == Kaisa.REWARD_INCREASE_DISTANCE_2000) {
+            return distanceReward(2000, true);
+        } else if (reward == Kaisa.REWARD_REDUCE_DISTANCE_500) {
+            return distanceReward(500, false);
+        } else if (reward == Kaisa.REWARD_REDUCE_DISTANCE_1000) {
+            return distanceReward(1000, false);
+        } else if (reward == Kaisa.REWARD_PUNISH_DIGIMON) {
+            var r = punishDigimon(objective);
+            return [r[1], r[2]];
+        } else if (reward == Kaisa.REWARD_REWARD_DIGIMON) {
+            var rarity = randomRewardRarity();
+            var rewarded;
+            // "30% chance to forcibly select a Digimon already owned."
+            if (Kaisa.Rand.rangeFloat(0.0, 1.0) < 0.3) {
+                rewarded = Kaisa.Tools.getRandomElement(unlockedOfRarity(rarity));
+            } else {
+                rewarded = Kaisa.Tools.getRandomElement(
+                    _db.getAllDigimonOfRarity(rarity, getPlayerLevel() + 20));
+            }
+            if (rewarded == null) { return [-1, -1]; }
+            var r = rewardDigimon(rewarded);
+            return [r[1], r[2]];
+        } else if (reward == Kaisa.REWARD_UNLOCK_DIGICODE_OWNED) {
+            var owned = Kaisa.Tools.getRandomElement(getAllUnlockedDigimon());
+            if (owned != null) { setDigicodeUnlocked(owned, true); }
+            return [-1, -1];
+        } else if (reward == Kaisa.REWARD_UNLOCK_DIGICODE_NOT_OWNED) {
+            var rarity = randomRewardRarity();
+            var chosen = Kaisa.Tools.getRandomElement(_db.getAllDigimonOfRarity(rarity, 100));
+            if (chosen != null) {
+                setDigimonUnlocked(chosen, true);
+                setDigicodeUnlocked(chosen, true);
+            }
+            return [-1, -1];
+        } else if (reward == Kaisa.REWARD_DATA_STORM) {
+            // resultBefore is 1 when the player was moved; resultAfter is the
+            // area they ended in.
+            return applyDataStorm();
+        } else if (reward == Kaisa.REWARD_LOSE_SPIRIT_POWER_10) {
+            return spiritPowerReward(-10);
+        } else if (reward == Kaisa.REWARD_LOSE_SPIRIT_POWER_50) {
+            return spiritPowerReward(-50);
+        } else if (reward == Kaisa.REWARD_GAIN_SPIRIT_POWER_10) {
+            return spiritPowerReward(10);
+        } else if (reward == Kaisa.REWARD_GAIN_SPIRIT_POWER_MAX) {
+            var before = spiritPower();
+            setSpiritPower(Kaisa.Constants.MAX_SPIRIT_POWER);
+            return [before, spiritPower()];
+        } else if (reward == Kaisa.REWARD_LEVEL_DOWN) {
+            if (getPlayerLevelProgression() < 0.5) { return levelChange(false); }
+        } else if (reward == Kaisa.REWARD_FORCE_LEVEL_DOWN) {
+            if (getPlayerLevelProgression() > 0.0) { return levelChange(false); }
+        } else if (reward == Kaisa.REWARD_LEVEL_UP) {
+            // The original levels the player DOWN here; see the note above.
+            if (getPlayerLevelProgression() < 0.5) { return levelChange(false); }
+        } else if (reward == Kaisa.REWARD_FORCE_LEVEL_UP) {
+            if (getPlayerLevelProgression() > 0.0) { return levelChange(true); }
+        }
+        // Reward.TriggerBattle calls CallRandomBattle, which waits on Battle.
+        return [-1, -1];
+    }
+
+    function distanceReward(amount as Number, increase as Boolean) as Array<Number> {
+        var before = _gm.worldMgr.currentDistance();
+        if (increase) { _gm.worldMgr.increaseDistance(amount); }
+        else { _gm.worldMgr.reduceDistance(amount); }
+        return [before, _gm.worldMgr.currentDistance()];
+    }
+
+    function spiritPowerReward(delta as Number) as Array<Number> {
+        var before = spiritPower();
+        setSpiritPower(before + delta);
+        return [before, spiritPower()];
+    }
+
+    function levelChange(up as Boolean) as Array<Number> {
+        var before = getPlayerLevel();
+        if (up) { levelUpPlayer(); } else { levelDownPlayer(); }
+        return [before, getPlayerLevel()];
+    }
+
+    // The rarity ladder both Digimon rewards draw on.
+    function randomRewardRarity() as Number {
+        var rng = Kaisa.Rand.rangeFloat(0.0, 1.0);
+        if (rng < 0.50) { return Kaisa.RARITY_COMMON; }
+        if (rng < 0.80) { return Kaisa.RARITY_RARE; }
+        if (rng < 0.95) { return Kaisa.RARITY_EPIC; }
+        return Kaisa.RARITY_LEGENDARY;
+    }
+
+    function unlockedOfRarity(rarity as Number) as Array<Number> {
+        var out = [] as Array<Number>;
+        var owned = getAllUnlockedDigimon();
+        for (var i = 0; i < owned.size(); i += 1) {
+            if (_db.getDigimonRarity(owned[i]) == rarity) { out.add(owned[i]); }
+        }
+        return out;
+    }
+
+    // LogicManager.cs:817 -- "Triggers a Datastorm, and returns true if the
+    // player has been moved. It outputs the new area." Returns
+    // [moved, newArea].
+    function applyDataStorm() as Array<Number> {
+        var newArea = _gm.worldMgr.currentArea();
+        var moveArea = Kaisa.Rand.rangeFloat(0.0, 1.0) < 0.33;
+        var uncompleted = _gm.worldMgr.getUncompletedAreas(_gm.worldMgr.currentWorld());
+
+        if (uncompleted.size() < 2) { moveArea = false; }
+
+        if (moveArea) {
+            newArea = Kaisa.Tools.getRandomElement(uncompleted);
+            _gm.worldMgr.moveToAreaWithDistance(_gm.worldMgr.currentWorld(), newArea,
+                _gm.worldMgr.currentDistance() + 1000);
+            // The original's TODO here: "Chance to be moved to world 9."
+        }
+        return [moveArea ? 1 : 0, newArea];
+    }
+
+    // LogicManager.cs:846 -- the experience the winner of a battle takes from
+    // the loser. tools/verify_numeric.py checks this formula.
+    function getExperienceGained(friendlyLevel as Number, enemyLevel as Number) as Number {
+        var a = (30 * enemyLevel).toFloat();
+        var b = Math.pow((2 * enemyLevel) + 10, 2.5);
+        var c = Math.pow(enemyLevel + friendlyLevel + 10, 2.5);
+        var d = 0.025 + (0.025 * friendlyLevel);
+        if (d > 0.5) { d = 0.5; }
+        return Kaisa.MathExt.ceilToInt(((a * (b / c)) + 1) * d);
+    }
+
     // LogicManager.cs:589
     function isDigimonAtMaxLevel(digimonIndex as Number) as Boolean {
         var d = _db.getDigimon(digimonIndex);
