@@ -52,9 +52,85 @@ class LogicManager {
         return loadedApp != null;
     }
 
+    // --- The title screen and the name entry ---------------------------------
+    //
+    // The original opens in a second Unity scene (Assets/Scenes/MainMenu.unity,
+    // Main Menu/GameLoader.cs): a list of saved games with the character and
+    // level of each, and buttons to load, delete, or create one -- the last
+    // asking for a name through the phone's keyboard.
+    //
+    // A watch has neither a second scene nor a keyboard, and the port keeps one
+    // save (SPEC's budget), so the scene becomes one digivice screen: the slot
+    // itself, with PLAY / NEW / DELETE. The naming is dropped -- spelling a
+    // name one letter at a time with two buttons is a worse thing to do than
+    // not naming the game, and nothing in the game reads the name except the
+    // slot it is shown on.
+
+    const DEFAULT_NAME = "PLAYER";
+
+    var titleOption as Number = Kaisa.TITLE_PLAY;
+    var titleHasSave as Boolean = false;
+
+    function titleOptionCount() as Number {
+        return titleHasSave ? 3 : 1;    // PLAY / NEW / DELETE, or just NEW
+    }
+
+    function titleOptionAt(index as Number) as Number {
+        return titleHasSave ? index : Kaisa.TITLE_NEW;
+    }
+
+    function titleLabel() as String {
+        var option = titleOptionAt(titleOption);
+        if (option == Kaisa.TITLE_PLAY) { return "PLAY"; }
+        if (option == Kaisa.TITLE_NEW) { return "NEW"; }
+        return "DELETE";
+    }
+
+    // GameLoader.LoadSelectedGame: the game that was saved carries on.
+    function startLoadedGame() as Void {
+        currentScreen = Kaisa.SCREEN_CHARACTER;
+        _gm.checkLeaverBuster();
+        _gm.checkPendingEvents();
+    }
+
+    // GameLoader.PromptDeleteSelectedGame + DeleteSelectedGame.
+    function deleteSavedGame() as Void {
+        _saved.eraseSlot();
+        _saved.replaceRecord(_gm.freshRecord(""));
+        titleHasSave = false;
+        titleOption = Kaisa.TITLE_NEW;
+    }
+
+    // GameLoader.CreateNewGame: the name is taken, the slot is seeded, and the
+    // digivice opens on its character selection.
+    function beginNamedGame(name as String) as Void {
+        _saved.replaceRecord(_gm.freshRecord(name));
+        _saved.commit();
+        titleHasSave = true;
+        currentScreen = Kaisa.SCREEN_CHAR_SELECTION;
+        charSelectionIndex = 0;
+        _gm.enqueueAnimation(new LoadCharacterSelection(_gm));
+    }
+
+    function inputTitleA() as Void {
+        var option = titleOptionAt(titleOption);
+        _gm.audioMgr.playButtonA();
+        if (option == Kaisa.TITLE_PLAY) {
+            startLoadedGame();
+        } else if (option == Kaisa.TITLE_NEW) {
+            beginNamedGame(DEFAULT_NAME);
+        } else {
+            deleteSavedGame();
+        }
+    }
+
     // --- Input management (LogicManager.cs:41) ---
 
     function inputA() as Void {
+        if (currentScreen == Kaisa.SCREEN_TITLE) {
+            inputTitleA();
+            return;
+        }
         if (currentScreen == Kaisa.SCREEN_CHARACTER) {
             if (isEventPending) {
                 _gm.audioMgr.playButtonA();
@@ -123,6 +199,9 @@ class LogicManager {
     }
 
     function inputB() as Void {
+        if (currentScreen == Kaisa.SCREEN_TITLE) {
+            return;                 // nothing to back out to: this is the top
+        }
         if (currentScreen == Kaisa.SCREEN_CHARACTER) {
             if (isEventPending) {
                 _gm.audioMgr.playButtonB();
@@ -164,6 +243,12 @@ class LogicManager {
     // circular-add sign flipped.
     function inputSide(dir as Number) as Void {
         var delta = (dir == Kaisa.DIR_LEFT) ? -1 : 1;
+        if (currentScreen == Kaisa.SCREEN_TITLE) {
+            _gm.audioMgr.playButtonA();
+            titleOption = Kaisa.MathExt.circularAdd(titleOption, delta,
+                                                    titleOptionCount() - 1, 0);
+            return;
+        }
         if (isEventPending) {
             _gm.audioMgr.playButtonA();
             triggerEvent();

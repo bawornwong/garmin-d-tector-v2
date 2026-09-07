@@ -34,6 +34,19 @@ class SavedGame {
         return _dirty;
     }
 
+    // Replacing the record wholesale: a new game starts from a default record
+    // and a deleted one leaves nothing behind, and both need the same slot
+    // and format the old record had.
+    function replaceRecord(rec as SaveRecord) as Void {
+        record = rec;
+        _dirty = true;
+    }
+
+    function eraseSlot() as Void {
+        _format.deleteSlot(_slot);
+        _dirty = false;
+    }
+
     function commit() as Void {
         if (!_dirty) { return; }
         _format.writeSlot(_slot, record);

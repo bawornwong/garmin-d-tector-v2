@@ -79,6 +79,10 @@ class DTectorView extends WatchUi.View {
     var _probeAnimDone as Boolean = false;
     // Draws the Status app's screens for tools/verify_screens.py.
     var _probeScreens as Boolean = false;
+    // How many frames to dump the display list for, every tenth frame: what a
+    // frame actually draws, in draw order, for when a rendering question needs
+    // the frame rather than a guess. 0 is off.
+    var _dumpFrames as Number = 0;
     // The walk. The original counts shakes of the phone -- one step per six --
     // through a ShakeDetector the watch has no equivalent of: it counts steps
     // itself, all day, whether the app is open or not. So the port reads
@@ -159,34 +163,38 @@ class DTectorView extends WatchUi.View {
         var db = new Database(_data);
         db.load();
         var record = _save.readSlot(0);
-        var isNewGame = (record == null);
+        // GameManager.cs:88 -- a game is new when no character has been chosen,
+        // not when the file is missing: the original writes a save before the
+        // player picks, and asks `SavedGame.PlayerChar == GameChar.none`.
+        var isNewGame = (record == null || record.gameChar == Kaisa.CHAR_NONE);
         if (record == null) { record = _save.createDefault("PLAYER"); }
         seedSkeletonStats(record);
         var saved = new SavedGame(_save, 0, record);
         _gm = new GameManager(_data, db, saved);
+        _gm.saveFormat = _save;
 
         var screenMgr = new ScreenManager(_gm, root);
         _gm.attachScreenManager(screenMgr);
 
-        // GameManager.cs:88 -- a save with no character chosen yet opens on
-        // the character-selection screen, and CreateNewGame runs when the
-        // player picks one. The animation probe wants an empty display, so it
-        // skips all of it and only makes sure the worlds are set up.
-        if (isNewGame && _probeAnim < 0) {
-            _gm.logicMgr.currentScreen = Kaisa.SCREEN_CHAR_SELECTION;
-            _gm.enqueueAnimation(new LoadCharacterSelection(_gm));
-        } else if (_gm.worldMgr.getBossOfCurrentArea() < 0) {
+        // The original opens in its MainMenu scene, which lists the saved
+        // games and makes a new one; the port opens on the title screen, which
+        // is that scene on a 32x32 display. A game already under way is on
+        // offer there rather than resumed behind the player's back.
+        //
+        // The probes want neither: they drive one animation or one app screen
+        // into an empty display.
+        if (_probeAnim < 0 && !_probeScreens) {
+            _gm.logicMgr.titleHasSave = !isNewGame;
+            _gm.logicMgr.titleOption = isNewGame ? Kaisa.TITLE_NEW : Kaisa.TITLE_PLAY;
+            _gm.logicMgr.currentScreen = Kaisa.SCREEN_TITLE;
+        }
+
+        if (!isNewGame && _gm.worldMgr.getBossOfCurrentArea() < 0) {
             _gm.worldMgr.setupWorlds(
                 Kaisa.WellKnown.PLAYER_SPIRIT[record.gameChar]);
             saved.commit();
         }
-        // GameManager.cs:94 -- an existing game opens on the character screen,
-        // pays for any battle the player walked out of, and asks whether an
-        // event was saved from last time.
-        if (!isNewGame && _probeAnim < 0) {
-            _gm.checkLeaverBuster();
-            _gm.checkPendingEvents();
-        }
+
         // The three blinking overlays run forever and would interleave their
         // events into an animation trace, so the animation probe leaves them
         // off; nothing else in the port depends on them running.
@@ -770,6 +778,11 @@ class DTectorView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 
+        if (_dumpFrames > 0 && _frame % 10 == 0) {
+            System.println("=== frame " + _frame + " ===");
+            _renderer.dump(_root, 0);
+            _dumpFrames -= 1;
+        }
         _renderer.draw(dc, _root);
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);

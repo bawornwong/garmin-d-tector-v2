@@ -25,7 +25,17 @@ module Kaisa {
         SCREEN_APP = 3,
         SCREEN_GAMES_MENU = 4,
         SCREEN_GAMES_REWARD_MENU = 5,
-        SCREEN_GAMES_TRAVEL_MENU = 6
+        SCREEN_GAMES_TRAVEL_MENU = 6,
+        // The screen the original puts in its MainMenu SCENE rather than on
+        // the digivice: the save slot. A watch has no second scene, so it is
+        // a screen here, drawn and driven like every other one.
+        SCREEN_TITLE = 7
+    }
+
+    enum TitleOption {
+        TITLE_PLAY = 0,
+        TITLE_NEW = 1,
+        TITLE_DELETE = 2
     }
 
     enum MainMenu {
@@ -139,6 +149,9 @@ module Kaisa {
     }
 
     enum GameChar {
+        // GameChar.none: the save has no character until the player picks one,
+        // which is what sends a fresh game to the selection screen.
+        CHAR_NONE = -1,
         CHAR_TAKUYA = 0,
         CHAR_KOJI = 1,
         CHAR_ZOE = 2,

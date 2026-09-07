@@ -42,6 +42,30 @@ class Renderer {
     }
 
     // Draws the whole canvas: the screen's field, then the tree.
+    // A debug dump of what a frame actually draws, in draw order, so a
+    // rendering question can be answered with the frame rather than a guess.
+    (:debug) var dumpFrame as Boolean = false;
+
+    (:debug)
+    function dump(el as ScreenElement, depth as Number) as Void {
+        var pad = "";
+        for (var i = 0; i < depth; i += 1) { pad += "  "; }
+        var what = "";
+        if (el instanceof SpriteBuilder) {
+            what = " sprite=" + Kaisa.Sprites.nameOf((el as SpriteBuilder).sprite);
+        } else if (el instanceof TextBoxBuilder) {
+            what = " text='" + (el as TextBoxBuilder).text + "'";
+        }
+        System.println("DRAW " + pad + el.name + " (" + el.x + "," + el.y + " "
+            + el.width + "x" + el.height + ")"
+            + (el.active ? "" : " INACTIVE") + (el.transparent ? " transparent" : "")
+            + (el.inverted ? " inverted" : "") + what);
+        if (!el.active) { return; }
+        for (var i = 0; i < el.children.size(); i += 1) {
+            dump(el.children[i], depth + 1);
+        }
+    }
+
     function draw(dc as Dc, root as ScreenElement) as Void {
         dc.setColor(_field, _field);
         dc.fillRectangle(_originX, _originY,

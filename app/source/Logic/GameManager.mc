@@ -12,6 +12,9 @@ class GameManager {
     var _jackpotMs as Number = 0;
     var db as Database;
     var saved as SavedGame;
+    // The save FORMAT, as opposed to the loaded game: making a new record or
+    // erasing the slot needs it, and those belong to the title screen.
+    var saveFormat as SaveFormat?;
     var logicMgr as LogicManager;
     var worldMgr as WorldManager;
     var audioMgr as AudioManager;
@@ -52,6 +55,13 @@ class GameManager {
     function setJackpotValue(v as Number) as Void {
         saved.record.jackpotValue = v;
         saved.touch();
+    }
+
+    // A record for a game that has not started: the save format's defaults
+    // plus the name the player gave it. GameLoader.CreateNewGame writes one of
+    // these before the digivice scene opens.
+    function freshRecord(name as String) as SaveRecord {
+        return saveFormat.createDefault(name);
     }
 
     // GameManager.cs:180 -- the punishment for quitting mid-battle, applied

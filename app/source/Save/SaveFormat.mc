@@ -65,7 +65,9 @@ const MAX_NAME = 16;
 class SaveRecord {
     var version as Number = VERSION;
     var name as String = "";
-    var gameChar as Number = 0;
+    // -1 (GameChar.none) until the player chooses; stored as 0xFF, which no
+    // real character uses, so a slot written before this still decodes.
+    var gameChar as Number = -1;
     var cheatsUsed as Boolean = false;
     var isPlayerInsured as Boolean = false;
     var isLeaverBusterActive as Boolean = false;
@@ -128,7 +130,7 @@ class SaveFormat {
         for (var i = 0; i < MAX_NAME; i += 1) {
             b.add((i < nameBytes.size()) ? nameBytes[i] : 0);
         }
-        addU8(b, r.gameChar);
+        addU8(b, r.gameChar & 0xFF);
         var flags = (r.cheatsUsed ? 1 : 0) | (r.isPlayerInsured ? 2 : 0)
             | (r.isLeaverBusterActive ? 4 : 0) | (r.isPlayerDefeated ? 8 : 0);
         addU8(b, flags);
@@ -171,7 +173,7 @@ class SaveFormat {
         var nameLen = bytes[o]; o += 1;
         r.name = bytesToString(bytes, o, nameLen);
         o += MAX_NAME;
-        r.gameChar = bytes[o]; o += 1;
+        r.gameChar = (bytes[o] == 0xFF) ? -1 : bytes[o]; o += 1;
         var flags = bytes[o]; o += 1;
         r.cheatsUsed = (flags & 1) != 0;
         r.isPlayerInsured = (flags & 2) != 0;
@@ -212,6 +214,12 @@ class SaveFormat {
     }
 
     // --- Storage I/O --------------------------------------------------------
+
+    // GameLoader's delete button: the slot goes, and the next launch finds no
+    // game there.
+    function deleteSlot(slot as Number) as Void {
+        Storage.deleteValue("slot" + slot);
+    }
 
     function writeSlot(slot as Number, r as SaveRecord) as Void {
         Storage.setValue("slot" + slot, encode(r));
