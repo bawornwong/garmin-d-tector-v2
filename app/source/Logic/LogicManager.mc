@@ -136,8 +136,13 @@ class LogicManager {
                 _gm.audioMgr.playButtonA();
                 triggerEvent();
             } else {
+                // DEVIATION, asked for: A pages the status where the original
+                // opens the menu. The menu is on left/right instead, which the
+                // original also has, so nothing is unreachable -- and the
+                // numbers a player checks constantly are one press away
+                // rather than three.
                 _gm.audioMgr.playButtonA();
-                openGameMenu();
+                pageStatus();
             }
         } else if (currentScreen == Kaisa.SCREEN_MAIN_MENU) {
             if (currentMainMenu == Kaisa.MAIN_MENU_CAMP) {
@@ -163,7 +168,11 @@ class LogicManager {
                 openApp(Kaisa.APP_CODE_INPUT);
             }
         } else if (currentScreen == Kaisa.SCREEN_APP) {
-            loadedApp.inputA();
+            if (_statusPaged && loadedApp instanceof Status) {
+                pageStatus();
+            } else {
+                loadedApp.inputA();
+            }
         } else if (currentScreen == Kaisa.SCREEN_GAMES_MENU) {
             _gm.audioMgr.playButtonA();
             if (gamesMenuIndex == 0) {
@@ -346,6 +355,31 @@ class LogicManager {
         return false;
     }
 
+    // The status pages the character screen shows: distance and steps, the
+    // victory count, the spirit power, then the four D-Docks -- the Status
+    // app's own screens, opened on the first press and advanced by each one
+    // after it, wrapping back to the character screen at the end.
+    function pageStatus() as Void {
+        if (loadedApp instanceof Status) {
+            var status = loadedApp as Status;
+            if (status.currentScreen >= 6) {
+                closeLoadedApp(Kaisa.SCREEN_CHARACTER);
+            } else {
+                status.currentScreen += 1;
+            }
+            return;
+        }
+        openApp(Kaisa.APP_STATUS);
+        if (loadedApp instanceof Status) {
+            (loadedApp as Status).returnScreen = Kaisa.SCREEN_CHARACTER;
+            _statusPaged = true;
+        }
+    }
+
+    // Whether the Status on screen was opened by paging from the character
+    // screen, which is what decides whether A pages it or the app keeps A.
+    var _statusPaged as Boolean = false;
+
     // LogicManager.cs:306
     function selectCharacterAndCreateGame() as Void {
         _gm.createNewGame(charSelectionIndex);
@@ -408,6 +442,7 @@ class LogicManager {
     // LogicManager.cs:381 -- IAppController.CloseLoadedApp.
     function closeLoadedApp(newScreen as Number) as Void {
         if (loadedApp == null) { return; }
+        _statusPaged = false;
 
         // LogicManager.cs:384 -- a code entered successfully unlocks the
         // Digimon it names, and plays three animations.

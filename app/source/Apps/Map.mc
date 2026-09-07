@@ -218,7 +218,7 @@ class Map extends DigiviceApp {
         // distance will not change."
         var areaDist = (selectedArea() == originalArea)
             ? gm.worldMgr.currentDistance()
-            : gm.data.worldArea(originalWorld, selectedArea())[2];
+            : gm.data.areaDistance(originalWorld, selectedArea());
 
         distanceScreen = Kaisa.ScreenBuilder.buildSprite("DistanceScreen", screen)
             .setSprite(Kaisa.Sprites.MAP_DISTANCE_SCREEN);

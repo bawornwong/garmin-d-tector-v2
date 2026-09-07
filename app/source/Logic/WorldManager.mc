@@ -89,7 +89,7 @@ class WorldManager {
     // WorldManager.cs:135 -- moves the player and sets the distance for the
     // new area; the two-argument form uses that area's default distance.
     function moveToArea(world as Number, area as Number) as Void {
-        moveToAreaWithDistance(world, area, _data.worldArea(world, area)[2]);
+        moveToAreaWithDistance(world, area, _data.areaDistance(world, area));
     }
 
     function moveToAreaWithDistance(world as Number, area as Number,

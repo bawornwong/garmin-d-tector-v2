@@ -323,6 +323,18 @@ class GameData {
     }
 
     // [number, map, distance, x, y] for one area.
+    // The journey is walked with the watch's own step count, one game step per
+    // real step, where the original took one step per six shakes of a phone.
+    // Six real steps for one is a different kind of walk -- a shake is a flick
+    // of the wrist, a step is a step -- so the distances come down by the same
+    // six instead: an area 6,000 long is 1,000 to walk.
+    const DISTANCE_SCALE = 6;
+
+    function areaDistance(world as Number, area as Number) as Number {
+        var distance = worldArea(world, area)[2] / DISTANCE_SCALE;
+        return (distance < 1) ? 1 : distance;
+    }
+
     function worldArea(world as Number, area as Number) as Array<Number> {
         var o = worldOffset(world) + WORLD_HEADER + 1 + area * 8;
         return [u8(o), u8(o + 1), u32(o + 2), u8(o + 6), u8(o + 7)];

@@ -9,6 +9,10 @@ import Toybox.Lang;
 // already runs at 20 fps and the screen is three elements deep.
 class Status extends DigiviceApp {
     var currentScreen as Number = 0;
+    // Where B goes back to. The menu opens this app the way the original does;
+    // the character screen also pages it (LogicManager.pageStatus), and then
+    // backing out belongs to the character screen rather than the menu.
+    var returnScreen as Number = Kaisa.SCREEN_MAIN_MENU;
 
     function initialize(gmIn as GameManager, controllerIn, parent as ScreenElement) {
         DigiviceApp.initialize(gmIn, controllerIn, parent);
@@ -22,7 +26,7 @@ class Status extends DigiviceApp {
 
     function inputB() as Void {
         gm.audioMgr.playButtonB();
-        closeApp(Kaisa.SCREEN_MAIN_MENU);
+        closeApp(returnScreen);
     }
 
     function inputLeft() as Void {
