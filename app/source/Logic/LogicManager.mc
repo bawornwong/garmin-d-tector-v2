@@ -251,6 +251,16 @@ class LogicManager {
             _gm.characterSprites(_saved.playerChar()), result[0] == 1));
     }
 
+    // LogicManager.cs:29 ShakeDisabled -- when a step must not count: an app
+    // other than Status is on screen, the character is defeated, or an event
+    // is already waiting to be triggered.
+    function shakeDisabled() as Boolean {
+        if (loadedApp != null && !(loadedApp instanceof Status)) { return true; }
+        if (_gm.isCharacterDefeated()) { return true; }
+        if (isEventPending) { return true; }
+        return false;
+    }
+
     // LogicManager.cs:306
     function selectCharacterAndCreateGame() as Void {
         _gm.createNewGame(charSelectionIndex);

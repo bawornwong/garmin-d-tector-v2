@@ -1,3 +1,4 @@
+import Toybox.ActivityMonitor;
 import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.System;
@@ -78,6 +79,24 @@ class DTectorView extends WatchUi.View {
     var _probeAnimDone as Boolean = false;
     // Draws the Status app's screens for tools/verify_screens.py.
     var _probeScreens as Boolean = false;
+    // The walk. The original counts shakes of the phone -- one step per six --
+    // through a ShakeDetector the watch has no equivalent of: it counts steps
+    // itself, all day, whether the app is open or not. So the port reads
+    // ActivityMonitor's step count and takes a game step for each new one,
+    // which is the same bargain the original strikes with the player (walk,
+    // and the distance falls) without asking them to shake a watch.
+    //
+    // -1 means "not sampled yet": the first tick learns the count rather than
+    // treating the day's steps as a burst.
+    var _lastSteps as Number = -1;
+    // A step at 20 fps is a step per 50 ms, which would spend a whole day's
+    // walk in a few seconds after a long spell with the app closed. The
+    // original's detector can only ever produce one step per shake, so the
+    // port caps a frame the same way.
+    const MAX_STEPS_PER_TICK = 1;
+    // ShakeDetector clears the walking flag after 150 idle frames.
+    const WALK_IDLE_FRAMES = 150;
+    var _idleFrames as Number = 0;
     // The roll the animation probe pins Kaisa.Rand to, so an animation whose
     // length depends on one can be diffed; -1 leaves the RNG alone.
     var _probeRand as Number = 17;
@@ -586,6 +605,38 @@ class DTectorView extends WatchUi.View {
         record.digicodeUnlocked[_demoIndex] = true;
     }
 
+    // ShakeDetector.Update, with the watch's own step count in place of the
+    // accelerometer: each new step is a step of the walk, and the character
+    // stops walking once none have arrived for a while.
+    function takeWalkedSteps() as Void {
+        var info = ActivityMonitor.getInfo();
+        var steps = (info != null && info.steps != null) ? info.steps : 0;
+
+        if (_lastSteps < 0 || steps < _lastSteps) {
+            _lastSteps = steps;         // first sample, or the day rolled over
+            return;
+        }
+
+        var walked = steps - _lastSteps;
+        if (walked <= 0) {
+            if (_idleFrames < WALK_IDLE_FRAMES) {
+                _idleFrames += 1;
+            } else {
+                _idleFrames = 0;
+                _gm.isCharacterWalking = false;
+            }
+            return;
+        }
+
+        if (walked > MAX_STEPS_PER_TICK) { walked = MAX_STEPS_PER_TICK; }
+        _lastSteps += walked;
+        _idleFrames = 0;
+
+        if (_gm.logicMgr.shakeDisabled()) { return; }
+        for (var i = 0; i < walked; i += 1) { _gm.takeAStep(); }
+        _gm.isCharacterWalking = true;
+    }
+
     // port of InputManager.cs: the adapter's twelve abstract events go to
     // LogicManager, which either handles them itself or passes them to the
     // loaded app. Input is dropped entirely while an animation is playing,
@@ -694,6 +745,7 @@ class DTectorView extends WatchUi.View {
             // which is ten frames.
             if (_frame % 10 == 0) { _gm.playerChar.updateSprite(); }
             _gm.tickJackpot(TICK_MS);
+            takeWalkedSteps();
             _gm.screenMgr.updateDisplay();
             var app = _gm.logicMgr.loadedApp;
             if (app != null) { app.tick(TICK_MS); }
