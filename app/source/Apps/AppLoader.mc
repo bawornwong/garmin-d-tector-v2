@@ -61,11 +61,11 @@ class AppLoader {
         // from a menu, so it is constructed there with its enemy.
         if (app == Kaisa.APP_BATTLE) { return new Battle(gm, controller, parent); }
 
-        // EnergyWars, DigiCatch, Asteroids -- two games
-        // the original never implemented. (Connect has no implementation in the original
-        // either: the App enum has an entry, the Logic/Apps folder does not.)
-        // of SPEC's order of work.
-        System.println("AppLoader: app " + app + " is not translated yet");
+        // EnergyWars, DigiCatch, Asteroids and Connect: the original never
+        // implemented any of them. Its App enum has the entries and its
+        // Logic/Apps folder has no classes, so there is nothing to port and
+        // nothing to come back for.
+        System.println("AppLoader: app " + app + " has no implementation");
         return null;
     }
 }

@@ -300,7 +300,7 @@ class LogicManager {
 
     // The Open* methods are one shape repeated fifteen times in the original;
     // here they are that shape once, since AppLoader already switches on the
-    // App enum. An app that is not translated yet returns null, and the menu
+    // App enum. An app the ORIGINAL never implemented returns null, and the menu
     // stays where it was.
     function openApp(app as Number) as Void {
         var loaded = _gm.appLoader.loadApp(app, self, _gm.screenMgr.screenDisplay);

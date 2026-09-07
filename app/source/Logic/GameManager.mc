@@ -338,10 +338,9 @@ class GameManager {
     // GameManager.EnqueueAnimation. The original queues an animation coroutine
     // and plays it over whatever screen is loaded.
     //
-    // NOT TRANSLATED YET: Animations.cs is 2,902 lines and belongs to step 7
-    // of SPEC's order of work. Call sites pass null until their animation is
-    // converted, so the game logic around them stays line-for-line and the
-    // holes are visible here rather than scattered.
+    // The null guard is what is left of the port's scaffolding: every one of
+    // Animations.cs's 53 coroutines is translated and every call site passes
+    // one, so nothing reaches here with null any more.
     function enqueueAnimation(routine as Routine?) as Void {
         if (routine == null) { return; }
         Kaisa.Trace.event("enqueueAnimation");

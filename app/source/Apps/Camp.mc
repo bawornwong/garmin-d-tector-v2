@@ -4,9 +4,8 @@ import Toybox.Lang;
 //
 // The smallest app in the game: pitch camp, wait, and the campfire flickers
 // until the player presses A. Its real work is in the three animations it
-// enqueues (OpenCamp, CloseCamp, CharHappy), which belong to Animations.cs and
-// are not translated yet -- so the app opens and closes, and clearing the
-// defeated flag still happens, which is what Camp is for.
+// enqueues -- OpenCamp, CloseCamp and CharHappy -- and in clearing the
+// defeated flag, which is what Camp is for.
 class Camp extends DigiviceApp {
     var sbCamp as SpriteBuilder?;
     var animCamp as Fiber?;

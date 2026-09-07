@@ -9,7 +9,7 @@ import Toybox.Lang;
 //
 // The reward itself is LogicManager.applyReward; the animations around it
 // (the encounter, the attack, the box resisting or breaking, and the reward's
-// own animation) are not converted yet and pass null at their call sites.
+// own animation) all play now.
 class JackpotBox extends DigiviceApp {
     const MINIMUM_LENGTH = 4;
     const MAXIMUM_LENGTH = 10;
