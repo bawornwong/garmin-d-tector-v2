@@ -1,0 +1,16 @@
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+    <iq:application entry="ProbeApp"
+                     id="b1c8d3fa2e4c6791305c8d2f7b4e9103"
+                     launcherIcon="@Drawables.LauncherIcon"
+                     minSdkVersion="6.0.0"
+                     name="@Strings.AppName"
+                     type="watch-app">
+        <iq:products>
+            <iq:product id="venu445mm"/>
+        </iq:products>
+        <iq:permissions/>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+    </iq:application>
+</iq:manifest>

@@ -19,3 +19,10 @@ tools/numeric/bin/
 tools/numeric/obj/
 tools/anim_golden/bin/
 tools/anim_golden/obj/
+
+# the ticket-01 probe's build output; the source under probe/ is tracked
+.scratch/sound-and-vibration/probe/probe.prg
+.scratch/sound-and-vibration/probe/probe.prg.debug.xml
+.scratch/sound-and-vibration/probe/gen/
+.scratch/sound-and-vibration/probe/external-mir/
+.scratch/sound-and-vibration/probe/internal-mir/

@@ -23,6 +23,21 @@ Answer all of:
 
 ## Context
 
-Sideload: `tools/build.sh -r`, copy `build/dtector.prg` to `GARMIN/APPS/` over USB, eject.
+**The instrument is built and waiting at `.scratch/sound-and-vibration/probe/`.** It compiles and runs; all this ticket needs is a watch to run it on.
 
-A throwaway probe app is likely a better instrument than the game — it can sweep and log without the game's own sound calls in the way. Build it under `.scratch/sound-and-vibration/probe/` if so.
+```sh
+cd .scratch/sound-and-vibration/probe
+"$CIQ_SDK/bin/monkeyc" -f monkey.jungle -o probe.prg \
+    -y ../../keys/developer_key.der -d venu445mm -w
+# copy probe.prg to GARMIN/APPS/ over USB, eject, run it from the watch
+```
+
+Eleven tests, one per press of the upper button (lower button repeats the current one), each printing to the console and captioning itself on screen. They map onto the questions above in order: system tone → single custom tone → an 11-point frequency sweep spanning the extracted melodies' real range → whether `playTone` blocks (timed against the 50 ms frame budget) → array-length ceiling → spam → interrupt → vibration → duty-cycle gradation → ticket 06's regular-vs-boss candidates → and finally `levelUp`'s actual extracted notes, which is the question the whole effort is really asking.
+
+The console transcript is the deliverable; paste it into this ticket's Answer. Several answers are things only a person can supply — the console cannot tell you whether a tone was audible, so say so per test.
+
+**The probe deliberately does not gate on `tonesOn`/`vibrateOn`**, so that toggling the watch's own sound setting off and re-running test 2 answers question 8 directly.
+
+Already established by running it in the simulator — necessary but not sufficient, since the simulator on this dev machine cannot play tones at all (one Core Audio error per call, which is part of why this ticket exists): on `venu445mm`, `Attention has :playTone`, `:ToneProfile`, `:vibrate` and `:VibeProfile` are **all true**, and both `tonesOn` and `vibrateOn` default on. The API is present; whether it makes a sound is exactly what the watch has to answer.
+
+The game itself sideloads separately, for step 2's "play it and listen": `tools/build.sh -r`, copy `build/dtector.prg` to `GARMIN/APPS/` over USB, eject.
