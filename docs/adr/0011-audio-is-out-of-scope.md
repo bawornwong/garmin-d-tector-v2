@@ -4,7 +4,11 @@ Date: 2026-09-06
 
 ## Status
 
-Accepted
+**Superseded for sound by [ADR 13](0013-sound-is-tones-generated-from-the-source.md)** (2026-09-08). Its central factual claim still holds and always will — a watchApp has no `Toybox.Media`, so the source's MP3s are unplayable. What it got wrong is the inference drawn from that: it assumed tone profiles could only ever approximate. The source's audio turned out to be monophonic square waves and `Attention.playTone` a square-wave generator, so reproduction is achievable, and the port now does it.
+
+Vibration remains untouched by this supersession and is still unaddressed anywhere; it is being designed in `.scratch/sound-and-vibration/`, ticket 06.
+
+Kept rather than deleted: the reasoning below is sound given what was known, and the record of *why* it was believed is worth more than a tidy repo.
 
 ## Context
 

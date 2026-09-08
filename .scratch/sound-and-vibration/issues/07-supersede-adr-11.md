@@ -17,3 +17,14 @@ Write the decision down once it is real.
 ## Context
 
 Last, deliberately: written once the shape is real rather than as the effort goes, so it describes what was built instead of what was planned.
+
+## Progress — the sound half is done
+
+Steps 1–4 are done **for sound**, which was safe to write early for one reason the ticket did not anticipate: leaving them undone meant the repo actively *stated something false*. `SPEC.md` listed audio as out of scope while verified, committed code played tones, and ADR 11 said the same. Wrong documentation is worse than missing documentation.
+
+- **[ADR 13](../../../docs/adr/0013-sound-is-tones-generated-from-the-source.md)** written: records the evidence that moved it (monophonic square waves against a square-wave generator), the extraction rule, the ADR 6 packing and *why* it was forced rather than chosen, the fiber/chunk playback model, what `stopSound` can and cannot mean, the interrupt rule, and the untouched trace.
+- **ADR 11 marked superseded for sound**, kept rather than deleted — its factual claim about `Toybox.Media` stands permanently, and the record of why the wrong inference was believed is worth keeping.
+- **SPEC.md** now has sound in scope and describes what is genuinely still out (playing the files themselves).
+- **HANDOFF.md** gained the round-trip row and `SoundData.mc`, plus the batching note for running the verifier on a memory-tight machine.
+
+**Still open, and deliberately so:** the vibration half. ADR 13 says outright that it does not cover vibration, so this ticket stays open until ticket 06 lands and either extends ADR 13 or earns its own. `CONTEXT.md` also has no audio vocabulary yet — worth doing once *note*, *chunk* and *vibration event* have all settled, rather than half now.

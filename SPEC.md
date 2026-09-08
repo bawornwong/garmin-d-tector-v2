@@ -6,9 +6,9 @@ Handoff document. The *state* of the build -- what is done, what is next, and ho
 
 Port [kaisadilla/D-Tector-v2](https://github.com/kaisadilla/D-Tector-v2) — Unity 2019.3, 55 C# files, 12,261 lines — to a Connect IQ watchApp on **Venu 4 45mm (`venu445mm`)**, reproducing its content and visuals exactly.
 
-**In scope**: all five apps (Camp, Database, Map, Status, CodeInput), all six minigames (Battle, DigiHunter, Finder, JackpotBox, Maze, SpeedRunner), all 593 Digimon, the full sprite and font set, saves.
+**In scope**: all five apps (Camp, Database, Map, Status, CodeInput), all six minigames (Battle, DigiHunter, Finder, JackpotBox, Maze, SpeedRunner), all 593 Digimon, the full sprite and font set, saves, and **sound** — reproduced as tone sequences extracted from the source's own audio ([ADR 13](docs/adr/0013-sound-is-tones-generated-from-the-source.md)), not as the MP3s themselves, which the platform cannot play. Vibration is being designed alongside it and is not settled yet.
 
-**Out of scope**: audio ([ADR 11](docs/adr/0011-audio-is-out-of-scope.md)); Venu 4 41mm; Connect IQ Store publication. Distribution is personal sideload, educational, non-commercial.
+**Out of scope**: playing the source's audio *files* — a watchApp has no `Toybox.Media`, a permanent platform ceiling ([ADR 11](docs/adr/0011-audio-is-out-of-scope.md), superseded for sound by [ADR 13](docs/adr/0013-sound-is-tones-generated-from-the-source.md)); Venu 4 41mm; Connect IQ Store publication. Distribution is personal sideload, educational, non-commercial.
 
 **Interaction may be remapped; content and visuals may not.** Where the physical toy and the source disagree, the source wins ([ADR 1](docs/adr/0001-fidelity-anchor-is-the-source.md)).
 
