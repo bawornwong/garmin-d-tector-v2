@@ -32,6 +32,7 @@ Outputs:
 import base64
 import json
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -42,6 +43,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import src, app as app_path
 
 BUILD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build")
+APP_SRC = app_path("source")
 
 SR = 22050
 HOP_S = 0.010
@@ -255,7 +257,45 @@ def round_trip_score(track, notes):
     return (100.0 * ok / total) if total else 100.0
 
 
+def check_name_coverage():
+    """Every name the port passes to playSound must exist in NAME_TO_FILE, and
+    nothing in NAME_TO_FILE should be dead.
+
+    An unresolved name is a SILENT failure: AudioManager.play() looks it up,
+    gets -1, and returns without a sound. No test in the repo would notice,
+    because sound is muted during the screen and animation probes -- so this
+    guard is the only thing standing between a renamed sound and a sound that
+    quietly stops playing.
+    """
+    src_text = ""
+    for root, _, files in os.walk(os.path.join(APP_SRC)):
+        for f in files:
+            if f.endswith(".mc"):
+                src_text += open(os.path.join(root, f), encoding="utf-8",
+                                 errors="replace").read()
+
+    used = set(re.findall(r'playSound\(\s*"([^"]+)"\s*\)', src_text))
+    # `playSound(cond ? "a" : "b")`
+    for a, b in re.findall(r'playSound\([^)]*\?\s*"([^"]+)"\s*:\s*"([^"]+)"', src_text):
+        used |= {a, b}
+    # a helper that returns the name, e.g. `function sound() { return "levelUp"; }`
+    used |= set(re.findall(r'function sound\(\)[^{]*\{\s*return\s+"([^"]+)"', src_text))
+    # the four dedicated methods, whose names are fixed in AudioManager
+    used |= {"buttonA", "buttonB", "charHappy", "charSad"}
+
+    missing = sorted(used - set(NAME_TO_FILE))
+    dead = sorted(set(NAME_TO_FILE) - used)
+    if missing:
+        raise SystemExit(
+            "sound names used by the port but absent from NAME_TO_FILE "
+            f"(they would play SILENTLY): {missing}")
+    if dead:
+        print(f"  note: in the table but never played: {dead}")
+    print(f"  name coverage: {len(used)}/{len(NAME_TO_FILE)}, no silent names")
+
+
 def main():
+    check_name_coverage()
     results = {}
     scores = []
     for name in sorted(NAME_TO_FILE):
