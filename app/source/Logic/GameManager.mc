@@ -1,4 +1,5 @@
 import Toybox.Lang;
+import Toybox.System;
 
 // port of GameManager.cs -- the object every app is handed, carrying the
 // managers and the few screen helpers that live next to them.
@@ -32,8 +33,8 @@ class GameManager {
         saved = savedIn;
         logicMgr = new LogicManager(savedIn, dbIn);
         worldMgr = new WorldManager(savedIn, dataIn);
-        audioMgr = new AudioManager();
         runner = new Runner();
+        audioMgr = new AudioManager(runner);
         appLoader = new AppLoader(self);
         playerChar = new PlayerCharacter(self, savedIn.playerChar());
         logicMgr.setGameManager(self);
@@ -560,21 +561,96 @@ class GameManager {
     }
 }
 
-// port of AudioManager.cs, which ADR 11 puts out of scope: Connect IQ has no
-// API that can play the original's clips on this device. The call sites are
-// kept -- `audioMgr.playButtonA()` sits in the middle of ported input
-// handlers -- so that the translation stays line-for-line and sound can be
-// reconsidered in one place rather than hunted for later.
+// port of AudioManager.cs. ADR 11 ruled this out of scope on the premise
+// that Connect IQ can only approximate the original's clips; superseded once
+// the source turned out to be monophonic square waves and Attention.playTone
+// a square-wave generator -- see the sound-and-vibration map. The trace
+// calls are unchanged from when this was trace-only: they are what the
+// golden animation and screen diffs compare against, and stay exactly as
+// they were so those 53/53 and 27/27 results keep meaning what they meant.
 class AudioManager {
-    function initialize() {
+    var _runner as Runner;
+    // One sound plays at a time -- the device has one tone generator, and
+    // the original's overlapping Unity channels have no equivalent here
+    // (ticket 05's decision: a new sound interrupts rather than queues,
+    // since a silent button reads as a hang and a queued one arrives behind
+    // the picture it belongs with).
+    var _fiber as Fiber?;
+    // Set by DTectorView for a screen/anim probe: the trace ("sound X") is
+    // what the golden diffs compare, at its SCHEDULED time, and that stays
+    // identical either way. What mute skips is the real Attention call --
+    // on the dev machine this project builds on, that call's own failure to
+    // preview through the simulator's audio stack cost real wall-clock time,
+    // which is exactly what a probe must never be at the mercy of (the same
+    // reason the RNG is pinned and seedSkeletonStats is probe-only).
+    var muted as Boolean = false;
+
+    function initialize(runnerIn as Runner) {
+        _runner = runnerIn;
     }
 
-    // The trace calls are what the golden animation diffs compare against;
-    // they compile away in release along with the rest of Kaisa.Trace.
-    function playButtonA() as Void { Kaisa.Trace.event("sound buttonA"); }
-    function playButtonB() as Void { Kaisa.Trace.event("sound buttonB"); }
-    function playCharHappy() as Void { Kaisa.Trace.event("sound charHappy"); }
-    function playCharSad() as Void { Kaisa.Trace.event("sound charSad"); }
-    function playSound(s as String) as Void { Kaisa.Trace.event("sound " + s); }
-    function stopSound() as Void { Kaisa.Trace.event("stopSound"); }
+    function playButtonA() as Void { Kaisa.Trace.event("sound buttonA"); play("buttonA"); }
+    function playButtonB() as Void { Kaisa.Trace.event("sound buttonB"); play("buttonB"); }
+    function playCharHappy() as Void { Kaisa.Trace.event("sound charHappy"); play("charHappy"); }
+    function playCharSad() as Void { Kaisa.Trace.event("sound charSad"); play("charSad"); }
+    function playSound(s as String) as Void { Kaisa.Trace.event("sound " + s); play(s); }
+
+    // There is no engine-level stop for a tone already sent to the generator
+    // (ticket 02: Attention has no such call) -- only for chunks not yet
+    // sent. Killing the fiber is the whole of what "stop" can mean here.
+    function stopSound() as Void {
+        Kaisa.Trace.event("stopSound");
+        if (_fiber != null) { (_fiber as Fiber).stop(); }
+    }
+
+    function play(name as String) as Void {
+        if (_fiber != null) { (_fiber as Fiber).stop(); }
+        if (muted) { return; }
+        if (!(Toybox.Attention has :playTone)) { return; }
+        if (!System.getDeviceSettings().tonesOn) { return; }
+        var idx = Kaisa.Sounds.indexOf(name);
+        if (idx < 0) { return; }
+        // startSilent, not start: this fiber has no counterpart in the
+        // original (AudioManager.PlaySound() there is a fire-and-forget
+        // AudioSource.Play(), not a coroutine), so it must not add a
+        // "startCoroutine" event the golden traces have no match for.
+        _fiber = _runner.startSilent(new SoundRoutine(idx));
+    }
+}
+
+// One playSound() call, scheduled on the same 20 fps runner every animation
+// uses. Notes are handed to Attention.playTone in chunks of roughly
+// CHUNK_MS rather than one array for the whole sound: sub-frame note detail
+// is the tone generator's job (ticket 01: a ToneProfile array plays as a
+// timed sequence in hardware, not through the runner's own 50 ms tick), and
+// chunking is what bounds how late stopSound() can land, since nothing can
+// interrupt a chunk once it's sent (ticket 02).
+class SoundRoutine extends Routine {
+    const CHUNK_MS = 220;
+
+    var _soundIndex as Number;
+    var _n as Number = 0;
+
+    function initialize(idx as Number) {
+        Routine.initialize();
+        _soundIndex = idx;
+    }
+
+    function step(rt as Fiber) as Float {
+        var count = Kaisa.Sounds.COUNTS[_soundIndex];
+        if (_n >= count) { return Routine.DONE; }
+
+        var profiles = new [0];
+        var totalMs = 0;
+        while (_n < count && totalMs < CHUNK_MS) {
+            var note = Kaisa.Sounds.noteAt(_soundIndex, _n);
+            profiles.add(new Toybox.Attention.ToneProfile(note[0], note[1]));
+            totalMs += note[1];
+            _n += 1;
+        }
+        if (Toybox.Attention has :playTone) {
+            Toybox.Attention.playTone({ :toneProfile => profiles });
+        }
+        return totalMs / 1000.0;
+    }
 }

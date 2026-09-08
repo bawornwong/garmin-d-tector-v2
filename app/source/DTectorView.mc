@@ -119,6 +119,7 @@ class DTectorView extends WatchUi.View {
         _data.load();
         _atlas = new AtlasCache();
         _atlas.load();
+        Kaisa.Sounds.load();
         _save = new SaveFormat(_data);
 
         var origin = (dc.getWidth() - CANVAS) / 2;
@@ -172,10 +173,48 @@ class DTectorView extends WatchUi.View {
         // A player's save is whatever they have played; seeding it made a
         // fresh game start at level 18 with 9 wins, and made a reset look
         // like it had done nothing.
-        if (_probeScreens || _probeAnim >= 0) { seedSkeletonStats(record); }
+        if (_probeScreens || _probeAnim >= 0) {
+            seedSkeletonStats(record);
+            // A real new game sets this to 300 (GameManager.createNewGame);
+            // a probe record skips that, and seedSkeletonStats itself skips
+            // re-seeding once playerExperience is already nonzero from an
+            // earlier probe launch persisted in the simulator's own
+            // Storage -- so this is unconditional, every launch, rather
+            // than folded into seedSkeletonStats's one-time seed. Left at
+            // SaveFormat's raw class default of 0, `WorldManager.takeSteps`
+            // sees `stepsToNextEvent <= 0` and arms a pending event on the
+            // FIRST step any probed animation happens to take; that event
+            // commits to Storage and leaks into every later probe in the
+            // same simulator session -- which is why an unrelated
+            // animation's queue-drain (ScreenManager.cs:101's
+            // checkPendingEvents, on ANY animation's completion) started
+            // firing a stray "sound triggerEvent" nowhere in the golden
+            // reference. Found chasing 0/53 down to a single trailing event
+            // that survived even with sound entirely muted.
+            record.pendingEvent = 0;
+            record.stepsToNextEvent = 300;
+            // tools/anim_golden's Builders.cs hardcodes GameChar.takuya as
+            // PlayerChar for every probe. CharSad/CharSadShort read
+            // gm.saved.playerChar() rather than taking a character argument
+            // (unlike OpenCamp/CloseCamp below, which are passed
+            // Kaisa.CHAR_TAKUYA explicitly), so their sprites only match the
+            // reference if the record agrees. Left to whatever gameChar was
+            // persisted in the simulator's Storage, it does not.
+            record.gameChar = Kaisa.CHAR_TAKUYA;
+        }
         var saved = new SavedGame(_save, 0, record);
         _gm = new GameManager(_data, db, saved);
         _gm.saveFormat = _save;
+        // A probe measures scheduled TIME, and the trace it compares carries
+        // the sound's NAME and that time -- both of which are emitted either
+        // way, so muting changes nothing a golden diff reads. What it skips
+        // is the real Attention call, which on this dev machine fails to
+        // preview through the simulator's own audio stack (a Core Audio
+        // load error, once per tone, each one a modal dialog that stalls an
+        // unattended run) and costs wall-clock time besides. Same discipline
+        // as pinning the RNG: a probe should not be at the mercy of the host
+        // machine's speaker.
+        if (_probeScreens || _probeAnim >= 0) { _gm.audioMgr.muted = true; }
 
         var screenMgr = new ScreenManager(_gm, root);
         _gm.attachScreenManager(screenMgr);

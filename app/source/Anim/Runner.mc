@@ -117,6 +117,19 @@ class Runner {
         // doing something observable -- so the port records them where the
         // fiber is actually created and dropped.
         Kaisa.Trace.event("startCoroutine");
+        return startSilent(r);
+    }
+
+    // Same scheduling, no trace event: for machinery the port has and the
+    // original does not, so it must never appear in a golden diff. Sound
+    // playback (ticket 05 of the sound-and-vibration map) is the first user
+    // -- routing it through start() broke all 53 animation diffs at once,
+    // since every playSound() call now emitted an extra "startCoroutine"
+    // the reference trace has no counterpart for. The original's
+    // AudioManager.PlaySound() is a fire-and-forget call on a single
+    // AudioSource, not a coroutine, so a sound's fiber correctly has nothing
+    // to trace here.
+    function startSilent(r as Routine) as Fiber {
         var f = new Fiber(r, self, _inStep ? nowSec : budgetSec);
         fibers.add(f);
         return f;
