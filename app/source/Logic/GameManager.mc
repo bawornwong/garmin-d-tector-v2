@@ -604,10 +604,75 @@ class AudioManager {
         _fiber = null;
     }
 
+    // Vibration rides on the sound that already marks each moment, so it
+    // needs no call sites of its own: the map's rule is "sound on every
+    // event, vibration only on a curated list", and the list is exactly
+    // these names. Sounds absent from this table do not vibrate -- notably
+    // every button, menu scroll and map step, where a buzz on each of the
+    // 160 button call sites would be miserable and drain the battery.
+    //
+    // The numbers are ticket 06's drafts and have NOT been felt on a wrist.
+    // They are sized against each sound's real duration and are meant to be
+    // tuned, not trusted. `dutyCycle` gradation in particular may not even
+    // be perceptible here: Garmin documents Forerunners as ignoring it, and
+    // whether Venu 4 honours it is ticket 01's question 7. If it does not,
+    // these have to be re-expressed in length and pattern alone.
+    //
+    // Max 8 profiles per vibrate() call (ticket 02); the longest here is 6.
+    function vibeFor(name as String) as Array? {
+        var V = Toybox.Attention;
+        if (name.equals("encounterDigimon")) {
+            return [new V.VibeProfile(50, 150)];
+        } else if (name.equals("encounterDigimonBoss")) {
+            return [new V.VibeProfile(80, 150), new V.VibeProfile(0, 80),
+                    new V.VibeProfile(80, 150), new V.VibeProfile(0, 80),
+                    new V.VibeProfile(80, 250)];
+        } else if (name.equals("evolutionRegular")) {
+            return [new V.VibeProfile(40, 100), new V.VibeProfile(0, 60),
+                    new V.VibeProfile(60, 100), new V.VibeProfile(0, 60),
+                    new V.VibeProfile(85, 300)];
+        } else if (name.equals("evolutionSpirit") || name.equals("evolutionAncient")) {
+            // The same rise as a regular evolution, plus a payoff hit: one
+            // vocabulary for all four tiers, with the long two earning a tail.
+            return [new V.VibeProfile(40, 100), new V.VibeProfile(0, 60),
+                    new V.VibeProfile(60, 100), new V.VibeProfile(0, 60),
+                    new V.VibeProfile(85, 300), new V.VibeProfile(100, 500)];
+        } else if (name.equals("levelUp")) {
+            return [new V.VibeProfile(60, 120), new V.VibeProfile(0, 80),
+                    new V.VibeProfile(60, 120)];
+        } else if (name.equals("reward") || name.equals("unlockDigimon")
+                || name.equals("unlockCode")) {
+            // The jackpot's win rides here too: the box's reward animation
+            // plays "reward" rather than a sound of its own.
+            return [new V.VibeProfile(50, 200)];
+        } else if (name.equals("loseDigimon") || name.equals("levelDownDigimon")
+                || name.equals("punishment")) {
+            return [new V.VibeProfile(100, 400)];
+        } else if (name.equals("digistorm")) {
+            // Marks the onset only. The sound runs 89 seconds; sustained
+            // buzzing for that long would be intolerable and cost battery.
+            return [new V.VibeProfile(70, 200), new V.VibeProfile(0, 150),
+                    new V.VibeProfile(70, 200)];
+        }
+        return null;
+    }
+
+    // Deliberately untraced, like the sound fiber: the original has no
+    // vibration at all, so any event emitted here would have no counterpart
+    // in the golden reference and would desync every diff that follows it.
+    function vibrate(name as String) as Void {
+        if (!(Toybox.Attention has :vibrate)) { return; }
+        if (!System.getDeviceSettings().vibrateOn) { return; }
+        var profiles = vibeFor(name);
+        if (profiles == null) { return; }
+        Toybox.Attention.vibrate(profiles as Array<Toybox.Attention.VibeProfile>);
+    }
+
     function play(name as String) as Void {
         _runner.stopSilent(_fiber);
         _fiber = null;
         if (muted) { return; }
+        vibrate(name);
         if (!(Toybox.Attention has :playTone)) { return; }
         if (!System.getDeviceSettings().tonesOn) { return; }
         var idx = Kaisa.Sounds.indexOf(name);
