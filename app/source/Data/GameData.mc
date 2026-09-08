@@ -164,6 +164,17 @@ class GameData {
     // returns [atlasClass, x, y, w, h] or null if this Digimon has no
     // sprite for the given action
     function spriteRef(idx as Number, action as Number) as Array<Number>? {
+        // The original looks a sprite up by NAME and returns null when it has
+        // none -- which is how `GetDDockScreenElement` knows to substitute
+        // its empty-dock sprite. ADR 7 makes the key an index, and an index
+        // outside the table does not miss: it reads whatever bytes sit at
+        // that offset and hands back a sprite made of them. Observed:
+        // [0, 62720, 202, 0, 40] -- an x far outside the atlas and a width of
+        // ZERO, which then divided by zero in Renderer.drawSprite and crashed
+        // the frame (found by driving the release build through the Status
+        // app). Returning null is what the original does for a name it does
+        // not have, and every caller here already handles null.
+        if (idx < 0 || idx >= _digimonCount) { return null; }
         var o = entryOffset(idx) + 22 + action * 7;
         var cls = u8(o);
         if (cls == 0xFF) { return null; }
