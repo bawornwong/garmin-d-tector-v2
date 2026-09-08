@@ -168,7 +168,11 @@ class DTectorView extends WatchUi.View {
         // player picks, and asks `SavedGame.PlayerChar == GameChar.none`.
         var isNewGame = (record == null || record.gameChar == Kaisa.CHAR_NONE);
         if (record == null) { record = _save.createDefault("PLAYER"); }
-        seedSkeletonStats(record);
+        // The skeleton stats are scaffolding for the verification probes only.
+        // A player's save is whatever they have played; seeding it made a
+        // fresh game start at level 18 with 9 wins, and made a reset look
+        // like it had done nothing.
+        if (_probeScreens || _probeAnim >= 0) { seedSkeletonStats(record); }
         var saved = new SavedGame(_save, 0, record);
         _gm = new GameManager(_data, db, saved);
         _gm.saveFormat = _save;
@@ -176,17 +180,19 @@ class DTectorView extends WatchUi.View {
         var screenMgr = new ScreenManager(_gm, root);
         _gm.attachScreenManager(screenMgr);
 
-        // The original opens in its MainMenu scene, which lists the saved
-        // games and makes a new one; the port opens on the title screen, which
-        // is that scene on a 32x32 display. A game already under way is on
-        // offer there rather than resumed behind the player's back.
-        //
-        // The probes want neither: they drive one animation or one app screen
-        // into an empty display.
+        // The save is the save: the game carries on where it was left, and
+        // the only way to a new one is the menu's own reset. A save with no
+        // character chosen has not started yet, so it goes to the selection
+        // with its intro -- which is what a reset leaves behind too.
         if (_probeAnim < 0 && !_probeScreens) {
-            _gm.logicMgr.titleHasSave = !isNewGame;
-            _gm.logicMgr.titleOption = isNewGame ? Kaisa.TITLE_NEW : Kaisa.TITLE_PLAY;
-            _gm.logicMgr.currentScreen = Kaisa.SCREEN_TITLE;
+            if (isNewGame) {
+                _gm.logicMgr.currentScreen = Kaisa.SCREEN_CHAR_SELECTION;
+                _gm.enqueueAnimation(new LoadCharacterSelection(_gm));
+            } else {
+                _gm.logicMgr.currentScreen = Kaisa.SCREEN_CHARACTER;
+                _gm.checkLeaverBuster();
+                _gm.checkPendingEvents();
+            }
         }
 
         if (!isNewGame && _gm.worldMgr.getBossOfCurrentArea() < 0) {
@@ -200,10 +206,7 @@ class DTectorView extends WatchUi.View {
         // off; nothing else in the port depends on them running.
         if (_probeAnim < 0) { screenMgr.startFlashRoutines(); }
 
-        if (_probeScreens) {
-            startScreenProbe();
-            return;
-        }
+        if (_probeScreens && runScreenProbe()) { return; }
 
         if (_probeAnim >= 0) {
             startAnimProbe();
@@ -235,6 +238,34 @@ class DTectorView extends WatchUi.View {
 
     (:release)
     function pinRand(v as Number) as Void {
+    }
+
+    // The probes exist only in a debug build, so the call sites are annotated
+    // too: naming a `(:debug)` member from an unannotated one compiles in
+    // debug and fails the RELEASE build, which is the build that gets
+    // sideloaded.
+    (:debug)
+    function runScreenProbe() as Boolean {
+        startScreenProbe();
+        return true;
+    }
+
+    (:release)
+    function runScreenProbe() as Boolean {
+        return false;
+    }
+
+    (:debug)
+    function dumpFrameIfAsked() as Void {
+        if (_dumpFrames > 0 && _frame % 10 == 0) {
+            System.println("=== frame " + _frame + " ===");
+            _renderer.dump(_root, 0);
+            _dumpFrames -= 1;
+        }
+    }
+
+    (:release)
+    function dumpFrameIfAsked() as Void {
     }
 
     // Draws the Status app's seven screens with the numbers the C# harness
@@ -589,7 +620,8 @@ class DTectorView extends WatchUi.View {
         Kaisa.Trace.enable();
     }
 
-    // SKELETON SCAFFOLDING, in RAM only and never committed: a fresh save is
+    // SKELETON SCAFFOLDING for the probes, in RAM only and never committed to
+    // a player's save: a fresh save is
     // all zeroes, and a Status screen full of zeroes proves less than one with
     // numbers of different widths in it. The real values arrive with the
     // Camp/Map apps that produce them.
@@ -611,6 +643,35 @@ class DTectorView extends WatchUi.View {
         }
         record.digimonLevel[_demoIndex] = 3;
         record.digicodeUnlocked[_demoIndex] = true;
+    }
+
+    // Fifty steps, for testing the journey on a simulator that cannot walk.
+    // Debug builds only: the release build has no way to take a step it did
+    // not walk.
+    (:debug)
+    function walkShortcut() as Void {
+        if (_gm.logicMgr.shakeDisabled()) { return; }
+        for (var i = 0; i < 50; i += 1) { _gm.takeAStep(); }
+        _gm.isCharacterWalking = true;
+        System.println("WALK 50 -> distance " + _gm.worldMgr.currentDistance()
+            + " steps " + _gm.worldMgr.totalSteps());
+    }
+
+    (:release)
+    function walkShortcut() as Void {
+    }
+
+    // Where an input event actually lands, or why it didn't: separate from
+    // the gesture-level logging in InputAdapter, which only knows what the
+    // touch layer saw, not whether the game acted on it.
+    (:debug)
+    function logDispatch(where as String, event as Number) as Void {
+        System.println("DISPATCH " + Kaisa.Input.eventName(event) + " " + where
+            + " anim=" + (_gm.screenMgr.playingAnimations ? "yes" : "no"));
+    }
+
+    (:release)
+    function logDispatch(where as String, event as Number) as Void {
     }
 
     // ShakeDetector.Update, with the watch's own step count in place of the
@@ -650,7 +711,16 @@ class DTectorView extends WatchUi.View {
     // loaded app. Input is dropped entirely while an animation is playing,
     // which is what gm.LockInput does in the original.
     function dispatch(event as Number) as Void {
-        if (_gm == null || _gm.isInputLocked) { return; }
+        if (_gm == null) { return; }
+        if (event == Kaisa.Input.EVT_WALK) {
+            walkShortcut();
+            return;
+        }
+        if (_gm.isInputLocked) {
+            logDispatch("DROPPED (locked)", event);
+            return;
+        }
+        logDispatch("screen=" + _gm.logicMgr.currentScreen, event);
         var lm = _gm.logicMgr;
         if (event == Kaisa.Input.EVT_A) { lm.inputA(); }
         else if (event == Kaisa.Input.EVT_A_DOWN) { lm.inputADown(); }
@@ -778,17 +848,46 @@ class DTectorView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 
-        if (_dumpFrames > 0 && _frame % 10 == 0) {
-            System.println("=== frame " + _frame + " ===");
-            _renderer.dump(_root, 0);
-            _dumpFrames -= 1;
-        }
+        dumpFrameIfAsked();
         _renderer.draw(dc, _root);
+        drawChrome(dc);
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(dc.getWidth() / 2, dc.getHeight() - 60, Graphics.FONT_XTINY,
             "input: " + _lastEvent, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(dc.getWidth() / 2, dc.getHeight() - 30, Graphics.FONT_XTINY,
             _saveStatus, Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    // Real-device chrome around the emulated 32x32 canvas, entirely outside
+    // the 320x320 rect the original's own pixels occupy: two button glyphs
+    // over the touch dead-zone either side of it -- which is already Left and
+    // Right, per InputAdapter's REGION_LEFT/RIGHT -- so a player can see
+    // where to tap instead of discovering it by feel, and the app's name
+    // above the canvas.
+    function drawChrome(dc as Dc) as Void {
+        var midY = dc.getHeight() / 2;
+        var origin = (dc.getWidth() - CANVAS) / 2;
+        drawSideButton(dc, origin / 2, midY, true);
+        drawSideButton(dc, dc.getWidth() - origin / 2, midY, false);
+
+        // Sat too high before: the display is round, and close enough to the
+        // true top of the circle the bezel itself clips the ends off a
+        // centred line of text. Lower and smaller keeps the whole word inside
+        // the part of the top margin the bezel doesn't cut into.
+        dc.setColor(LCD, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(dc.getWidth() / 2, origin - 22, Graphics.FONT_XTINY,
+            "D-TECTOR", Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    // Just the chevron, faint: a hint of where to tap rather than a button
+    // asking to be pressed -- the whole dead-zone is already the hit target
+    // (InputAdapter's REGION_LEFT/RIGHT), fired on the plain tap, no hold or
+    // swipe required, so the glyph only needs to be found, not aimed at.
+    function drawSideButton(dc as Dc, cx as Number, cy as Number, pointLeft as Boolean) as Void {
+        var tip = pointLeft ? cx - 9 : cx + 9;
+        var back = pointLeft ? cx + 9 : cx - 9;
+        dc.setColor(0x3A3A3A, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([[tip, cy], [back, cy - 15], [back, cy + 15]] as Array<Graphics.Point2D>);
     }
 }

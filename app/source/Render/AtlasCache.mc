@@ -35,13 +35,15 @@ class AtlasCache {
     const GEOM = {
         0 => [24, 24, 24],
         1 => [32, 32, 24],
-        2 => [14, 16, 24],
     };
     // The gridless atlases -- class 3 is the odd-size sprite strip, 4 to 6 the
     // three font faces (Kaisa.Font.ATLAS_CLASS). Each is one row: short enough
     // that the whole thing is the row buffer, which is the point of packing
-    // every glyph of a face into a single strip.
+    // every glyph of a face into a single strip. Class 2 (14x16) is a grid in
+    // name only -- the sheet is exactly one cellH tall, so it too has a single
+    // row, y=0 always.
     const STRIP = {
+        2 => [336, 16],
         3 => [1011, 82],
         4 => [185, 7],
         5 => [145, 5],
@@ -51,6 +53,18 @@ class AtlasCache {
     var _atlas as Array = [null, null, null, null, null, null, null];
     var _rows as Dictionary = {};
     var _order as Array<String> = [];
+    // The five single-row atlases (~91,000 px between them, against the
+    // ~829,000 px pool ceiling ticket 16 measured) never change and are cheap
+    // enough to hold for the app's whole life, so they are loaded once here
+    // rather than through the LRU below. Sharing the LRU with classes 0/1 was
+    // a stutter waiting to happen: those two hold 70 and 31 DISTINCT rows
+    // between them, and any scene that cycled through more than a handful of
+    // them evicted the fonts and the misc strip along with them -- so the very
+    // next glyph or effect sprite paid a fresh ~166,000 px blit mid-animation.
+    // A cutscene's background slide and a battle's attack pose are exactly
+    // the moments that draw a rarely-used row while several others are also
+    // in play, which is what made the stall visible there in particular.
+    var _pinned as Dictionary = {};
 
     function initialize() {
     }
@@ -63,15 +77,20 @@ class AtlasCache {
         _atlas[4] = WatchUi.loadResource(Rez.Drawables.FontBig);
         _atlas[5] = WatchUi.loadResource(Rez.Drawables.FontRegular);
         _atlas[6] = WatchUi.loadResource(Rez.Drawables.FontSmall);
+        var keys = STRIP.keys();
+        for (var i = 0; i < keys.size(); i += 1) {
+            var cls = keys[i] as Number;
+            var dim = STRIP[cls] as Array<Number>;
+            _pinned[cls] = materialise(cls, 0, dim[0], dim[1]);
+        }
     }
 
     // Returns [BufferedBitmap, localX, localY] to blit from, or null if the
     // row could not be materialised (pool overcommitted this frame).
     function locate(cls as Number, x as Number, y as Number) as Array? {
-        var strip = STRIP[cls];
-        if (strip != null) {
-            var buf = rowBuffer(cls, 0, strip[0], strip[1]);
-            return (buf == null) ? null : [buf, x, y];
+        var pinned = _pinned[cls];
+        if (pinned != null) {
+            return [pinned, x, y];
         }
         var geom = GEOM[cls];
         if (geom == null) { return null; }
@@ -81,6 +100,18 @@ class AtlasCache {
         var rowY = (y / cellH) * cellH;
         var buf = rowBuffer(cls, rowY, cellW * cols, cellH);
         return (buf == null) ? null : [buf, x, y - rowY];
+    }
+
+    // The one-shot version used at load() time: no key, no LRU bookkeeping,
+    // since a pinned row is never looked up again through this path.
+    function materialise(cls as Number, rowY as Number, width as Number,
+                         height as Number) as Graphics.BufferedBitmap? {
+        var atlas = _atlas[cls] as WatchUi.BitmapResource?;
+        if (atlas == null) { return null; }
+        var ref = Graphics.createBufferedBitmap({ :width => width, :height => height });
+        var buf = ref.get();
+        buf.getDc().drawBitmap(0, -rowY, atlas);
+        return buf;
     }
 
     function rowBuffer(cls as Number, rowY as Number, width as Number, height as Number)

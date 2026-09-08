@@ -110,7 +110,7 @@ module Kaisa {
             [1, 128, 64, 32, 32]
         ];
         const REWARDS = [
-            [3, 67, 0, 3, 9],
+            [3, 522, 0, 16, 16],
             [3, 538, 0, 16, 16],
             [3, 554, 0, 16, 16],
             [3, 570, 0, 16, 16]
@@ -160,8 +160,8 @@ module Kaisa {
             [1, 704, 704, 32, 32],
             [1, 736, 704, 32, 32]
         ];
-        const GAMES_SCORE = [3, 402, 0, 32, 5];
-        const GAMES_DISTANCE = [3, 466, 0, 8, 8];
+        const GAMES_SCORE = [3, 370, 0, 32, 5];
+        const GAMES_DISTANCE = [3, 402, 0, 32, 5];
         const DATABASE_SECTIONS = [
             [1, 736, 832, 32, 32],
             [1, 0, 864, 32, 32],
@@ -186,6 +186,7 @@ module Kaisa {
             [1, 736, 864, 32, 32]
         ];
         const ELEMENT_NAMES = [
+            [3, 70, 0, 30, 5],
             [3, 100, 0, 30, 5],
             [3, 130, 0, 30, 5],
             [3, 160, 0, 30, 5],
@@ -194,8 +195,7 @@ module Kaisa {
             [3, 250, 0, 30, 5],
             [3, 280, 0, 30, 5],
             [3, 310, 0, 30, 5],
-            [3, 340, 0, 30, 5],
-            [3, 370, 0, 32, 5]
+            [3, 340, 0, 30, 5]
         ];
         const DATABASE_PAGES = [
             [1, 512, 896, 32, 32],
@@ -229,7 +229,7 @@ module Kaisa {
             [1, 288, 96, 32, 32]
         ];
         const D_TECTOR = [1, 608, 64, 32, 32];
-        const ANIM_DISTANCE = [3, 466, 0, 8, 8];
+        const ANIM_DISTANCE = [3, 402, 0, 32, 5];
         const ANCIENT_SPIRAL = [
             [1, 160, 96, 32, 32],
             [1, 192, 96, 32, 32]
@@ -258,7 +258,7 @@ module Kaisa {
             [1, 96, 800, 32, 32],
             [1, 128, 800, 32, 32]
         ];
-        const BATTLE_DISOBEY = [3, 70, 0, 30, 5];
+        const BATTLE_DISOBEY = [3, 67, 0, 3, 9];
         const BATTLE_ATTACK_COLLISION = [3, 60, 0, 7, 24];
         const BATTLE_ATTACK_COLLISION_BIG = [3, 45, 0, 15, 32];
         const BATTLE_ATTACK_COLLISION_SMALL = [3, 618, 0, 7, 15];
@@ -288,11 +288,11 @@ module Kaisa {
             [3, 482, 0, 8, 8]
         ];
         const DIGI_HUNTER_EXPLOSION = [3, 498, 0, 8, 8];
-        const SPEED_RUNNER_ROCKET = [3, 474, 0, 8, 8];
-        const SPEED_RUNNER_ROCKET_EXPLOSION = [3, 506, 0, 7, 6];
-        const SPEED_RUNNER_ROCKET_ASTEROID = [3, 513, 0, 3, 5];
-        const SPEED_RUNNER_ROCKET_SPEED_MARK = [3, 516, 0, 6, 32];
-        const SPEED_RUNNER_ROCKET_FINISH = [3, 522, 0, 16, 16];
+        const SPEED_RUNNER_ROCKET = [3, 466, 0, 8, 8];
+        const SPEED_RUNNER_ROCKET_EXPLOSION = [3, 474, 0, 8, 8];
+        const SPEED_RUNNER_ROCKET_ASTEROID = [3, 506, 0, 7, 6];
+        const SPEED_RUNNER_ROCKET_SPEED_MARK = [3, 513, 0, 3, 5];
+        const SPEED_RUNNER_ROCKET_FINISH = [3, 516, 0, 6, 32];
         const SPIRIT_ABSORBER = [
             [3, 979, 0, 16, 32],
             [3, 995, 0, 16, 32]

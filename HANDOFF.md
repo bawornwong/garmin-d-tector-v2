@@ -2,7 +2,7 @@
 
 Companion to [SPEC.md](SPEC.md), which is the *specification* and does not change much. This file is the *state*: what is built, what is proven, what to do next, and which traps are already known. Update it at the end of a working session.
 
-Last updated: 2026-09-07, after the last coroutine landed: every animation in `Animations.cs` is translated and diffed, and every call site plays one.
+Last updated: 2026-09-08. Fixed a sprite-packer bug that had been silently mis-numbering one sheet (see section 6); replaced the title/save-slot screen with resuming the save directly and a reset menu entry; reverted the distance-scale-down deviation, keeping the original's own distances; fixed a bug where `seedSkeletonStats` wrote demo numbers into a real save on every launch; changed the A-zone touch target from a 120 px centre box to the whole 320x320 canvas; pinned the five static atlas rows outside the LRU to stop a mid-animation stutter; added on-device chrome (button hints, app name) around the emulated canvas.
 
 ## 1. Set this up first — it is not in the repo
 
@@ -44,7 +44,8 @@ app/source/
   Anim/       Runner.mc           Routine / Fiber / Runner (ADR 4 + ADR 5)
               Animations.mc       all 53 coroutines of Animations.cs
               Trace.mc            the debug-only event trace the goldens read
-  Render/     AtlasCache.mc       row buffers, LRU of 16 (ADR 3)
+  Render/     AtlasCache.mc       row buffers, LRU of 16 (ADR 3), plus the
+                                  five single-row atlases pinned outside it
               Blit.mc             the drawBitmap2 rules: transform offset, tint, flips
               Renderer.mc         walks the display list once per frame
               ScreenElement.mc    the display list: 4 builders, ~24 operations
@@ -53,7 +54,7 @@ app/source/
                                   overlays and the animation queue
               TextRenderer.mc     glyph-by-glyph bitmap text
               FontMetrics.mc      GENERATED from the .fontsettings
-              SpriteDatabase.mc   GENERATED from the Unity scene: 215 UI sprites
+              SpriteDatabase.mc   GENERATED from the Unity scene: 218 UI sprites
               TextProbe.mc        GENERATED from tools/text_probe.json
   Logic/      CInt.mc, Enums.mc, Constants.mc, MathExt.mc, Digimon.mc,
               Database.mc, SavedGame.mc, LogicManager.mc, WorldManager.mc,
@@ -98,7 +99,7 @@ Every check reads a frame back off the device or diffs two real implementations.
 |---|---|---|
 | Sprite round-trip vs source PNGs | 2,423 / 2,423 | `tools/pack_sprites.py` |
 | Glyph round-trip | 113 / 113 | `tools/pack_fonts.py` |
-| UI sprite resolution | 215 resolved, 1 unassigned in the scene | `tools/pack_ui_sprites.py` |
+| UI sprite resolution | 218 resolved, 1 unassigned in the scene | `tools/pack_ui_sprites.py` |
 | Numeric parity, original C# ↔ ported Monkey C | 16,211 values, 0 differences, floats bit-exact | `tools/verify_numeric.py` |
 | Packed gallery order vs the original's `OrderBy(order)` | 8 / 8 stages, 593 rows | `tools/verify_gallery.py` |
 | Packed world layout vs `worlds.json` | 225 / 225 fields | `tools/verify_worlds.py` |
@@ -186,27 +187,29 @@ translation.
    of `Kaisa.Input.EVT_*`, one dispatched per second, each printing the screen
    it landed on.
 3. **Try the input mapping on the watch.** It is decided and implemented --
-   swipe left/right for Left/Right, a tap in the middle of the screen or the
-   upper button for A, the lower button for B, a still hold on either half for
-   the auto-repeat scroll -- but it has only ever been compiled, never
-   fingered. The two numbers to feel out are the 120 px centre box and the
-   40 px a finger must travel before a press becomes a swipe.
+   swipe left/right for Left/Right, a tap anywhere inside the emulated
+   320x320 canvas for A (the dead-zone either side of it, where the round
+   bezel already gives up screen, is Left/Right instead), a still hold on
+   either half for the auto-repeat scroll -- but it has only ever been
+   compiled, never fingered. The number to feel out is the 40 px a finger
+   must travel before a press becomes a swipe.
 4. **The things the source itself leaves open**, listed in SPEC section 8 --
    the semiboss checks that are commented out in the original, `showEyes`,
    and the chance to be moved to world 9 that its own TODO describes.
 
 ## 6. Traps and loose ends
 
-- **`DTectorView` still carries scaffolding**, though it now boots the real host: `seedSkeletonStats` writes demo stats and a spread of unlocked Digimon into the save record in RAM (never committed) so the screens have something to show; `_sliceApp` can open one app directly instead of starting on the character screen; `_probeInputs` replays a scripted press sequence so a capture can reach a screen several presses deep.
+- **`DTectorView` still carries scaffolding**, though it now boots the real host: `seedSkeletonStats` writes demo stats and a spread of unlocked Digimon into the save record in RAM so the screens have something to show, but it now runs **only** behind the screen/anim probes -- it used to run on every launch and overwrote a real player's stats with the demo spread each time the app opened, which made a fresh start look like level 18 with 9 wins and made a reset look like it had done nothing. `_sliceApp` can open one app directly instead of starting on the character screen; `_probeInputs` replays a scripted press sequence so a capture can reach a screen several presses deep; a debug-only `EVT_WALK` (bound to any simulator key that is not Left/Right/Enter/Esc) takes 50 steps at once, since the simulator itself cannot walk; debug builds also log every key event, gesture and dispatched event to the console (`logKey`/`logGesture`/`logDispatch` in `InputAdapter.mc`/`DTectorView.mc`) to make the input mapping easier to trace by eye. None of this compiles into the release build -- each has a paired `(:debug)`/`(:release)` implementation, since naming a `(:debug)`-only member from an unannotated call site compiles fine in debug and only fails release.
 - **Both character-screen overlays work.** Steps arm a saved event, the character screen offers it, and a press triggers a battle or a data storm; the eyes layer reads `showEyes` out of the packed world data, so it shows in the worlds whose data says so.
 - **The two numbers that look like one.** `maxPrgFilespace` is 64 MB and the `.prg` is 815 KB, so file size is not the constraint. `memoryLimit` for a watchApp is 786,432 bytes, and that is the one to watch: a debug run measured 257 KB used of a 782 KB heap. Neither is close, but the debug build carries the trace and the probes and the release build does not.
 - **`GameManager.enqueueAnimation` never takes null any more.** Every call site plays its animation.
-- **Three deviations from the original, all asked for and all marked in the code.** The walk is the watch's own step count -- one game step per real step, where the original took one per six shakes of a phone -- and every area's distance is divided by six to match what those shakes used to buy, so an area 6,000 long is 1,000 to walk (`GameData.DISTANCE_SCALE`). A on the character screen pages the status (distance and steps, victories, spirit power, the four D-Docks) instead of opening the menu, which is on left/right. And the original's MainMenu SCENE -- the saved-game list, load, delete, and a name typed on the phone's keyboard -- is a title screen here with PLAY / NEW / DELETE; the naming is dropped, since spelling a name with two buttons is worse than not naming the game and nothing reads it but the slot.
-- **The screen diff cannot see the distance deviation.** `verify_screens.py` exercises the Map's distance screen for the area the player is standing in, which shows the live distance and still matches. The other branch -- an area not yet reached -- is deliberately a sixth of the original's, so it is not comparable and is not compared.
+- **Three deviations from the original, all asked for and all marked in the code.** The walk is the watch's own step count -- one game step per real step, where the original took one per six shakes of a phone -- and the original's own distances are kept as-is rather than scaled down (an earlier pass divided every area's distance by six to match what those shakes used to buy; that scaling was reverted, since a real step and a wrist-shake are not the same unit to begin with and there is no reason the port's walk should be six times faster than the original's). A on the character screen pages the status (distance and steps, victories, spirit power, the four D-Docks) instead of opening the menu, which is on left/right. And the original's MainMenu SCENE -- the saved-game list, load, delete, and a name typed on the phone's keyboard -- has no equivalent here: the port just resumes the one save it has, and a reset (dropping it for a fresh game) is a plain entry in the digivice's own menu rather than a separate screen. The naming is dropped along with the rest of that scene, since spelling a name with two buttons is worse than not naming the game and nothing reads it but the save itself.
 - **The reference harness under-reports more often than the port is wrong.** Every animation mismatch found so far but one came from a stub that did less than the real `ScreenElement.cs` — `BuildStatSign` building nothing, `ReorderedAs` returning its input, `BuildMapScreen` as a bare container, elements registering under `AnimParent` instead of their real parent, `Destroy` not unparenting. Check the stub before the port.
 - **Two `Kaisa.Sprites` fields can be the same cell** (`animDistance` and `games_distance` are one sprite), so the debug name lookup is ambiguous by nature; `verify_anim.py` canonicalises names to cells rather than trusting them.
 - **Every render timing in SPEC is the simulator.** The frame budget, the 8 ms row fill and the ~30 sprites per frame all need re-measuring on hardware before anything depends on them.
 - **The save format is version 2.** Version 1 slots are refused (and logged) rather than decoded: the world arrays are sized from the packed data, so an old slot would run off the end of the blob. There is no migration; the port has no released saves to migrate.
 - The lost-spirit cap is no longer a guess: a spirit is lost whatever kind it is and locking it means each can be in the list once, so the ceiling is the number of rows at stage Spirit -- 45, counted by `gen_wellknown.py` rather than typed. The old cap of 20 (the human and animal spirits) could have truncated a save.
 - Whether Unity draws *nothing* for a missing glyph or a blank box that consumes advance still wants confirming against a running original (ADR 10 chose "nothing").
+- **`pack_sprites.py` used to number a sheet's sub-sprites by their position in the meta file, not their name.** A sheet's entries do not always appear in name order -- `misc` lists `misc_4, misc_6, misc_7, misc_5` -- so numbering by position silently renamed part of a sheet: the scene asked for `misc_6` and got `misc_7`'s art, which is how the exclamation mark in the opening animation became a 30x5 strip drawn into a 3x9 box. Fixed by parsing each sprite's real `name:` field out of the `.meta` YAML instead of counting entries; `sprite_index.json`, `ui_sprite_names.json` and the generated `SpriteDatabase.mc` all regenerated from that fix (UI sprite count moved from 215 to 218 resolved because three sprites that used to collide under the wrong index now resolve to their own).
+- **The atlas LRU used to evict the font strips and the misc effects row.** Classes 0 and 1 (the two biggest atlases, 70 and 31 distinct rows between them) shared one 16-slot LRU with the five single-row strips (fonts, misc -- ~91,000 px total, cheap enough to hold for the app's whole life). A scene that cycled through more than a handful of class-0/1 rows -- a cutscene's background slide, a battle's attack pose -- evicted the strips along with them, so the very next glyph or effect sprite paid a fresh ~166,000 px blit mid-animation. The five strips are now pinned outside the LRU at load time instead of competing for a slot in it.
 - `.scratch/d-tector-venu4/` is the wayfinder map that produced SPEC and the ADRs. It is **history**, not the current plan; read SPEC first.

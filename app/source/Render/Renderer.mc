@@ -23,6 +23,8 @@ class Renderer {
     var _originY as Number;
     var _ink as Number;
     var _field as Number;
+    // Whether to rule the canvas into cells, the way the toy's screen is.
+    var gridVisible as Boolean = true;
 
     function initialize(atlas as AtlasCache, text as TextRenderer,
                         originX as Number, originY as Number, scale as Number,
@@ -78,6 +80,26 @@ class Renderer {
                     _originX, _originY,
                     Kaisa.Constants.SCREEN_WIDTH * _scale, Kaisa.Constants.SCREEN_HEIGHT * _scale);
         dc.clearClip();
+        drawGrid(dc);
+    }
+
+    // The toy's screen is a dot matrix: every game pixel is its own cell with
+    // a gap around it, and the gaps are what make it read as a device rather
+    // than as a drawing of one. The canvas is ten device pixels per game
+    // pixel, so a one-pixel gutter in the field colour turns each cell into a
+    // 9x9 dot -- drawn over the finished frame, which costs 64 thin lines
+    // rather than a different blit for every sprite.
+    function drawGrid(dc as Dc) as Void {
+        if (!gridVisible) { return; }
+        dc.setColor(_field, Graphics.COLOR_TRANSPARENT);
+        var w = Kaisa.Constants.SCREEN_WIDTH * _scale;
+        var h = Kaisa.Constants.SCREEN_HEIGHT * _scale;
+        for (var i = 1; i < Kaisa.Constants.SCREEN_WIDTH; i += 1) {
+            dc.fillRectangle(_originX + i * _scale - 1, _originY, 1, h);
+        }
+        for (var i = 1; i < Kaisa.Constants.SCREEN_HEIGHT; i += 1) {
+            dc.fillRectangle(_originX, _originY + i * _scale - 1, w, 1);
+        }
     }
 
     // (parentX, parentY) is where this element's parent starts, in device

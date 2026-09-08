@@ -50,8 +50,15 @@ def collect():
             m = load_mask(os.path.join(d, fn))
             entries.append((f"{group_dir}/{fn[:-4]}", m.size, m))
 
-    rect_re = re.compile(
-        r"x: (\d+)\s*\n\s*y: (\d+)\s*\n\s*width: (\d+)\s*\n\s*height: (\d+)")
+    # A sheet's sub-sprites are NAMED in the meta, and the names do not follow
+    # the order the entries appear in: misc lists misc_4, misc_6, misc_7,
+    # misc_5. Numbering them by position renamed half a sheet -- the scene asks
+    # for `misc_6` and got `misc_7`'s art, which is how the exclamation mark in
+    # the opening became a 30x5 strip drawn into a 3x9 box.
+    sprite_re = re.compile(
+        r"\n\s+- serializedVersion: \d+\s*\n\s+name: (\S+)\s*\n"
+        r"(?:.*\n)*?\s+rect:\s*\n\s+serializedVersion: \d+\s*\n"
+        r"\s+x: (\d+)\s*\n\s+y: (\d+)\s*\n\s+width: (\d+)\s*\n\s+height: (\d+)")
     sheets_dir = src("Assets/Sprites")
     for meta in sorted(os.listdir(sheets_dir)):
         if not meta.endswith(".png.meta"):
@@ -59,16 +66,17 @@ def collect():
         sheet = meta[:-9]
         text = open(os.path.join(sheets_dir, meta), encoding="utf-8-sig",
                     errors="replace").read()
-        rects = [tuple(map(int, r)) for r in rect_re.findall(text)]
-        if not rects:
+        found = sprite_re.findall(text)
+        if not found:
             continue
+        rects = [(n, int(x), int(y), int(w), int(h)) for n, x, y, w, h in found]
         png = os.path.join(sheets_dir, sheet + ".png")
         from PIL import Image
         H = Image.open(png).size[1]
-        for i, (x, y, w, h) in enumerate(rects):
+        for name, x, y, w, h in rects:
             top = H - y - h  # Unity rects are bottom-left origin
             m = load_mask(png, (x, top, x + w, top + h))
-            entries.append((f"{sheet}_{i}", (w, h), m))
+            entries.append((name, (w, h), m))
 
     return entries
 

@@ -36,10 +36,10 @@
  ],
  "animDistance": [
   3,
-  466,
+  402,
   0,
-  8,
-  8
+  32,
+  5
  ],
  "arrows": [
   1,
@@ -148,10 +148,10 @@
  ],
  "battle_disobey": [
   3,
-  70,
+  67,
   0,
-  30,
-  5
+  3,
+  9
  ],
  "battle_explosion_0": [
   0,
@@ -477,72 +477,72 @@
  ],
  "elementNames_0": [
   3,
-  100,
+  70,
   0,
   30,
   5
  ],
  "elementNames_1": [
   3,
-  130,
+  100,
   0,
   30,
   5
  ],
  "elementNames_2": [
   3,
-  160,
+  130,
   0,
   30,
   5
  ],
  "elementNames_3": [
   3,
-  190,
+  160,
   0,
   30,
   5
  ],
  "elementNames_4": [
   3,
-  220,
+  190,
   0,
   30,
   5
  ],
  "elementNames_5": [
   3,
-  250,
+  220,
   0,
   30,
   5
  ],
  "elementNames_6": [
   3,
-  280,
+  250,
   0,
   30,
   5
  ],
  "elementNames_7": [
   3,
-  310,
+  280,
   0,
   30,
   5
  ],
  "elementNames_8": [
   3,
-  340,
+  310,
   0,
   30,
   5
  ],
  "elementNames_9": [
   3,
-  370,
+  340,
   0,
-  32,
+  30,
   5
  ],
  "elements_0": [
@@ -680,10 +680,10 @@
  ],
  "games_distance": [
   3,
-  466,
+  402,
   0,
-  8,
-  8
+  32,
+  5
  ],
  "games_reward_0": [
   1,
@@ -708,7 +708,7 @@
  ],
  "games_score": [
   3,
-  402,
+  370,
   0,
   32,
   5
@@ -1163,10 +1163,10 @@
  ],
  "rewards_0": [
   3,
-  67,
+  522,
   0,
-  3,
-  9
+  16,
+  16
  ],
  "rewards_1": [
   3,
@@ -1191,38 +1191,38 @@
  ],
  "speedRunner_rocket": [
   3,
-  474,
+  466,
   0,
   8,
   8
  ],
  "speedRunner_rocketAsteroid": [
   3,
-  513,
-  0,
-  3,
-  5
- ],
- "speedRunner_rocketExplosion": [
-  3,
   506,
   0,
   7,
   6
  ],
- "speedRunner_rocketFinish": [
+ "speedRunner_rocketExplosion": [
   3,
-  522,
+  474,
   0,
-  16,
-  16
+  8,
+  8
  ],
- "speedRunner_rocketSpeedMark": [
+ "speedRunner_rocketFinish": [
   3,
   516,
   0,
   6,
   32
+ ],
+ "speedRunner_rocketSpeedMark": [
+  3,
+  513,
+  0,
+  3,
+  5
  ],
  "spirit_absorber_0": [
   3,

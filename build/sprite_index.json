@@ -16660,91 +16660,91 @@
    "w": 7,
    "h": 24
   },
-  "misc_5": {
+  "misc_6": {
    "atlas": "atlas_odd",
    "x": 67,
    "y": 0,
    "w": 3,
    "h": 9
   },
-  "misc_6": {
+  "misc_7": {
    "atlas": "atlas_odd",
    "x": 70,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_7": {
+  "misc_8": {
    "atlas": "atlas_odd",
    "x": 100,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_8": {
+  "misc_9": {
    "atlas": "atlas_odd",
    "x": 130,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_9": {
+  "misc_10": {
    "atlas": "atlas_odd",
    "x": 160,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_10": {
+  "misc_11": {
    "atlas": "atlas_odd",
    "x": 190,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_11": {
+  "misc_12": {
    "atlas": "atlas_odd",
    "x": 220,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_12": {
+  "misc_13": {
    "atlas": "atlas_odd",
    "x": 250,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_13": {
+  "misc_14": {
    "atlas": "atlas_odd",
    "x": 280,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_14": {
+  "misc_15": {
    "atlas": "atlas_odd",
    "x": 310,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_15": {
+  "misc_16": {
    "atlas": "atlas_odd",
    "x": 340,
    "y": 0,
    "w": 30,
    "h": 5
   },
-  "misc_16": {
+  "misc_17": {
    "atlas": "atlas_odd",
    "x": 370,
    "y": 0,
    "w": 32,
    "h": 5
   },
-  "misc_17": {
+  "misc_18": {
    "atlas": "atlas_odd",
    "x": 402,
    "y": 0,
@@ -16758,14 +16758,14 @@
    "w": 32,
    "h": 5
   },
-  "misc_18": {
+  "misc_19": {
    "atlas": "atlas_odd",
    "x": 466,
    "y": 0,
    "w": 8,
    "h": 8
   },
-  "misc_19": {
+  "misc_20": {
    "atlas": "atlas_odd",
    "x": 474,
    "y": 0,
@@ -16793,28 +16793,28 @@
    "w": 8,
    "h": 8
   },
-  "misc_20": {
+  "misc_21": {
    "atlas": "atlas_odd",
    "x": 506,
    "y": 0,
    "w": 7,
    "h": 6
   },
-  "misc_21": {
+  "misc_22": {
    "atlas": "atlas_odd",
    "x": 513,
    "y": 0,
    "w": 3,
    "h": 5
   },
-  "misc_22": {
+  "misc_23": {
    "atlas": "atlas_odd",
    "x": 516,
    "y": 0,
    "w": 6,
    "h": 32
   },
-  "misc_23": {
+  "misc_5": {
    "atlas": "atlas_odd",
    "x": 522,
    "y": 0,

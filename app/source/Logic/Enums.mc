@@ -26,10 +26,7 @@ module Kaisa {
         SCREEN_GAMES_MENU = 4,
         SCREEN_GAMES_REWARD_MENU = 5,
         SCREEN_GAMES_TRAVEL_MENU = 6,
-        // The screen the original puts in its MainMenu SCENE rather than on
-        // the digivice: the save slot. A watch has no second scene, so it is
-        // a screen here, drawn and driven like every other one.
-        SCREEN_TITLE = 7
+        SCREEN_TITLE = 7        // unused: the reset is a menu entry instead
     }
 
     enum TitleOption {
@@ -45,7 +42,11 @@ module Kaisa {
         MAIN_MENU_DATABASE = 3,
         MAIN_MENU_DIGITS = 4,
         MAIN_MENU_CAMP = 5,
-        MAIN_MENU_CONNECT = 6
+        MAIN_MENU_CONNECT = 6,
+        // Not in the original's menu: the original resets a game from its
+        // MainMenu scene, which a watch has no room for, so the reset lives at
+        // the end of the menu the digivice already has.
+        MAIN_MENU_RESET = 7
     }
 
     enum GameMenu {

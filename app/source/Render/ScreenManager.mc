@@ -44,33 +44,7 @@ class ScreenManager {
     // The three PAFlash* coroutines. They run for the life of the app, so
     // they are started once and never stopped -- as in the original, where
     // they are StartCoroutine'd in Start().
-    // The save slot, as the original's MainMenu scene lists it: the game's
-    // name and level if there is one, and the action the player is about to
-    // take. Text, because the original's list is text and no sprite in the
-    // sheet says "PLAY".
-    function drawTitle() as Void {
-        var lm = gm.logicMgr;
-        screenDisplay.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
-
-        if (lm.titleHasSave) {
-            disposable(Kaisa.ScreenBuilder.buildTextBox("Name", screenDisplay, Kaisa.Font.SMALL)
-                .setText(gm.saved.playerName()).setSize(32, 5).setPosition(0, 3)
-                .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
-            disposable(Kaisa.ScreenBuilder.buildTextBox("Level", screenDisplay, Kaisa.Font.SMALL)
-                .setText("LV" + gm.logicMgr.getPlayerLevel()).setSize(32, 5).setPosition(0, 11)
-                .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
-        } else {
-            disposable(Kaisa.ScreenBuilder.buildTextBox("Name", screenDisplay, Kaisa.Font.SMALL)
-                .setText("D-TECTOR").setSize(32, 5).setPosition(0, 7)
-                .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
-        }
-
-        disposable(Kaisa.ScreenBuilder.buildTextBox("Option", screenDisplay, Kaisa.Font.REGULAR)
-            .setText(lm.titleLabel()).setSize(32, 5).setPosition(0, 22)
-            .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
-    }
-
-    // Everything the title screen builds is rebuilt every frame, so it carries
+    // Everything the reset entry builds is rebuilt every frame, so it carries
     // the name the display walk clears.
     function disposable(el as ScreenElement) as ScreenElement {
         el.name = "Disposable";
@@ -141,9 +115,7 @@ class ScreenManager {
         eyesLayer.setActive(showLayer == 3);
 
         var screen = gm.logicMgr.currentScreen;
-        if (screen == Kaisa.SCREEN_TITLE) {
-            drawTitle();
-        } else if (screen == Kaisa.SCREEN_CHAR_SELECTION) {
+        if (screen == Kaisa.SCREEN_CHAR_SELECTION) {
             var sb = Kaisa.ScreenBuilder.buildSprite("Arrows", screenDisplay)
                 .setSprite(Kaisa.Sprites.ARROWS).setTransparent(true);
             sb.name = "Disposable";
@@ -152,7 +124,17 @@ class ScreenManager {
         } else if (screen == Kaisa.SCREEN_CHARACTER) {
             screenDisplay.setSprite(gm.playerCharSprite());
         } else if (screen == Kaisa.SCREEN_MAIN_MENU) {
-            screenDisplay.setSprite(Kaisa.Sprites.MAIN_MENU[gm.logicMgr.currentMainMenu]);
+            if (gm.logicMgr.currentMainMenu == Kaisa.MAIN_MENU_RESET) {
+                // The reset has no sprite in the sheet -- it is not in the
+                // original's menu -- so it says so in words.
+                screenDisplay.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
+                disposable(Kaisa.ScreenBuilder.buildTextBox("Reset", screenDisplay,
+                        Kaisa.Font.REGULAR)
+                    .setText("RESET").setSize(32, 5).setPosition(0, 13)
+                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
+            } else {
+                screenDisplay.setSprite(Kaisa.Sprites.MAIN_MENU[gm.logicMgr.currentMainMenu]);
+            }
         } else if (screen == Kaisa.SCREEN_GAMES_MENU) {
             screenDisplay.setSprite(Kaisa.Sprites.GAME_SECTIONS[gm.logicMgr.gamesMenuIndex]);
         } else if (screen == Kaisa.SCREEN_GAMES_REWARD_MENU) {

@@ -26,6 +26,9 @@ module Kaisa {
         const EVT_RIGHT = 9;
         const EVT_RIGHT_DOWN = 10;
         const EVT_RIGHT_UP = 11;
+        // Not one of the original's twelve: a debug-only shortcut that walks
+        // the journey along without a walk, for testing on the simulator.
+        const EVT_WALK = 12;
 
         function eventName(e as Number) as String {
             if (e == EVT_A) { return "A"; }
@@ -40,6 +43,7 @@ module Kaisa {
             if (e == EVT_RIGHT) { return "RIGHT"; }
             if (e == EVT_RIGHT_DOWN) { return "RIGHT_DOWN"; }
             if (e == EVT_RIGHT_UP) { return "RIGHT_UP"; }
+            if (e == EVT_WALK) { return "WALK"; }
             return "?";
         }
     }
@@ -65,19 +69,19 @@ class InputQueue {
 // ADR 9 + ticket 13, with the mapping the user chose:
 //
 //   swipe left / swipe right   Left / Right
-//   tap the middle of the screen, or the upper button   A
-//   the lower button                                    B
+//   a tap anywhere inside the emulated canvas                A
+//   the lower button                                         B
 //
 // The original's buttons deliver two streams per press -- a completed tap and
 // the raw down/up pair -- and both are used, so every gesture here delivers
 // both. A swipe is instantaneous and delivers DOWN, UP and the tap together,
 // which is exactly what a short press of a physical button delivers.
 //
-// Holding still on the left or right half of the screen keeps the held Left /
-// Right the auto-repeat scrolling needs (CodeInput, Database): a swipe is told
-// apart from a hold by how far the finger travelled, so the two do not
-// collide. Holding the middle is a held A, which is what the Finder's
-// press-and-hold search needs from a touch-only device.
+// Holding still outside the canvas, on whichever side it fell on, keeps the
+// held Left / Right the auto-repeat scrolling needs (CodeInput, Database): a
+// swipe is told apart from a hold by how far the finger travelled, so the two
+// do not collide. Holding inside the canvas is a held A, which is what the
+// Finder's press-and-hold search needs from a touch-only device.
 //
 // Per ticket 13's spike, touch-down is `onDrag START` OR `onHold`, whichever
 // arrives first (a perfectly still touch produces no drag event at all, only a
@@ -86,10 +90,15 @@ class InputQueue {
 // than during the hold.
 class InputDelegate extends WatchUi.BehaviorDelegate {
     const CENTRE_X = 227;           // canvas is 320 wide, centred in 454
-    const CENTRE_Y = 227;
-    // The middle of the canvas: a 120 px box, which is a comfortable target
-    // and still leaves most of each half for the held Left / Right.
-    const CENTRE_HALF = 60;
+    // The canvas itself is the A zone -- the whole 320x320 square the game
+    // draws into, not just a box in its middle -- and everything outside it
+    // is Left or Right by which half it falls in. Outside the canvas is
+    // exactly the touch dead-zone the round bezel already carves out on each
+    // side, so no shape beyond this rectangle needs reproducing here.
+    const CANVAS_X0 = 67;           // (454 - 320) / 2
+    const CANVAS_X1 = 387;          // CANVAS_X0 + 320
+    const CANVAS_Y0 = 67;
+    const CANVAS_Y1 = 387;
     // How far a finger has to travel horizontally before the gesture is a
     // swipe rather than a press.
     const SWIPE_MIN_DX = 40;
@@ -112,7 +121,7 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function regionOf(x as Number, y as Number) as Number {
-        if ((x - CENTRE_X).abs() <= CENTRE_HALF && (y - CENTRE_Y).abs() <= CENTRE_HALF) {
+        if (x >= CANVAS_X0 && x < CANVAS_X1 && y >= CANVAS_Y0 && y < CANVAS_Y1) {
             return REGION_CENTRE;
         }
         return (x < CENTRE_X) ? REGION_LEFT : REGION_RIGHT;
@@ -182,20 +191,94 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
 
     function onKeyPressed(e as WatchUi.KeyEvent) as Boolean {
         var k = e.getKey();
+        logKey("pressed", k);
+        // The simulator's keyboard, which the watch itself has no equivalent
+        // of: the arrow keys stand in for the swipes, and any other key walks
+        // (the fifty steps a tester does not want to take).
+        if (k == WatchUi.KEY_LEFT) {
+            _queue.push(Kaisa.Input.EVT_LEFT_DOWN);
+            return true;
+        }
+        if (k == WatchUi.KEY_RIGHT) {
+            _queue.push(Kaisa.Input.EVT_RIGHT_DOWN);
+            return true;
+        }
+        if (keyWalks(k)) {
+            _queue.push(Kaisa.Input.EVT_WALK);
+            return true;
+        }
         if (k == WatchUi.KEY_ENTER) {
             _queue.push(Kaisa.Input.EVT_A_DOWN);
             return true;
         }
         if (k == WatchUi.KEY_ESC) {
             _escDownAt = System.getTimer();
+            _escKeyDown = true;
             _queue.push(Kaisa.Input.EVT_B_DOWN);
             return true;
         }
         return false;
     }
 
+    // Whether an ESC keypress is in flight, so onBack() below -- which the
+    // simulator calls both as a companion to that key AND on its own for a
+    // plain click on the device picture's back-button hotspot -- knows
+    // whether B has already gone out for this press.
+    var _escKeyDown as Boolean = false;
+
+    // Whichever key the simulator sends for the space bar -- it is not one of
+    // the named constants, so the walk answers to any key that is not already
+    // spoken for, and prints what it was.
+    (:debug)
+    function logKey(what as String, k as Number) as Void {
+        System.println("KEYEVENT " + what + "=" + k
+            + " [enter=" + WatchUi.KEY_ENTER + " esc=" + WatchUi.KEY_ESC
+            + " left=" + WatchUi.KEY_LEFT + " right=" + WatchUi.KEY_RIGHT
+            + " up=" + WatchUi.KEY_UP + " down=" + WatchUi.KEY_DOWN
+            + " menu=" + WatchUi.KEY_MENU + "]");
+    }
+
+    (:release)
+    function logKey(what as String, k as Number) as Void {
+    }
+
+    (:debug)
+    function logGesture(what as String) as Void {
+        System.println("INPUTEVENT " + what);
+    }
+
+    (:release)
+    function logGesture(what as String) as Void {
+    }
+
+    (:debug)
+    function keyWalks(k as Number) as Boolean {
+        if (k == WatchUi.KEY_ENTER || k == WatchUi.KEY_ESC
+                || k == WatchUi.KEY_LEFT || k == WatchUi.KEY_RIGHT) {
+            return false;
+        }
+        System.println("KEY " + k + " -> walk");
+        return true;
+    }
+
+    (:release)
+    function keyWalks(k as Number) as Boolean {
+        return false;
+    }
+
     function onKeyReleased(e as WatchUi.KeyEvent) as Boolean {
         var k = e.getKey();
+        if (k == WatchUi.KEY_LEFT) {
+            _queue.push(Kaisa.Input.EVT_LEFT_UP);
+            _queue.push(Kaisa.Input.EVT_LEFT);
+            return true;
+        }
+        if (k == WatchUi.KEY_RIGHT) {
+            _queue.push(Kaisa.Input.EVT_RIGHT_UP);
+            _queue.push(Kaisa.Input.EVT_RIGHT);
+            return true;
+        }
+        if (keyWalks(k)) { return true; }
         if (k == WatchUi.KEY_ENTER) {
             _queue.push(Kaisa.Input.EVT_A_UP);
             _queue.push(Kaisa.Input.EVT_A);
@@ -203,6 +286,7 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
         }
         if (k == WatchUi.KEY_ESC) {
             var held = System.getTimer() - _escDownAt;
+            _escKeyDown = false;
             _queue.push(Kaisa.Input.EVT_B_UP);
             _queue.push(Kaisa.Input.EVT_B);
             if (held >= EXIT_HOLD_MS) {
@@ -216,6 +300,7 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
     function onDrag(e as WatchUi.DragEvent) as Boolean {
         var c = e.getCoordinates();
         var t = e.getType();
+        logGesture("drag type=" + t + " at " + c[0] + "," + c[1]);
         _lastX = c[0];
         if (t == WatchUi.DRAG_TYPE_START) {
             touchDown(c[0], c[1]);
@@ -232,6 +317,7 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onHold(e as WatchUi.ClickEvent) as Boolean {
+        logGesture("hold at " + e.getCoordinates()[0]);
         // fallback for a perfectly still touch: no onDrag ever fires for it
         var c = e.getCoordinates();
         _lastX = c[0];
@@ -240,6 +326,7 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onRelease(e as WatchUi.ClickEvent) as Boolean {
+        logGesture("release at " + e.getCoordinates()[0]);
         var c = e.getCoordinates();
         _lastX = c[0];
         touchUp();
@@ -247,6 +334,7 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onTap(e as WatchUi.ClickEvent) as Boolean {
+        logGesture("tap at " + e.getCoordinates()[0] + "," + e.getCoordinates()[1]);
         // A tap the drag stream never saw -- some taps arrive as nothing else.
         if (_region != REGION_NONE) { return true; }
         var c = e.getCoordinates();
@@ -257,6 +345,9 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onSwipe(e as WatchUi.SwipeEvent) as Boolean {
+        logGesture("swipe dir=" + e.getDirection()
+            + " [left=" + WatchUi.SWIPE_LEFT + " right=" + WatchUi.SWIPE_RIGHT
+            + " up=" + WatchUi.SWIPE_UP + " down=" + WatchUi.SWIPE_DOWN + "]");
         // Normally the drag stream has already reported this gesture. It is
         // handled here only when it did not: some swipes arrive as this alone.
         if (_region != REGION_NONE) { return true; }
@@ -269,11 +360,22 @@ class InputDelegate extends WatchUi.BehaviorDelegate {
         return true;
     }
 
+    // REVERTED: onBack/onSelect turned out to be generic companions the
+    // simulator fires alongside an ordinary touch gesture ANYWHERE on the
+    // screen -- a plain tap that already produced its own correct Left/Right/
+    // A also raised one of these with no coordinates of its own, which is
+    // what made every tap look like it was also pressing A once this pair
+    // dispatched on top of it (confirmed by log: a tap at x=16 correctly
+    // dispatched LEFT and ALSO fired a bare "select"). No coordinates means
+    // no way to tell a real bezel-button press from that noise, so both stay
+    // consumed-and-ignored, as they were originally.
     function onBack() as Boolean {
-        return true;    // consumed: prevents exit: (ticket 13, confirmed on device)
+        logGesture("back");
+        return true;    // consumed: prevents exit (ticket 13, confirmed on device)
     }
 
     function onSelect() as Boolean {
+        logGesture("select");
         return true;
     }
 }
