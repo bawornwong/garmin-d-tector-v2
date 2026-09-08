@@ -20,6 +20,7 @@ Answer all of:
 6. **Can a playing tone be stopped?** If some call stops one, the chunking decision gets simpler.
 7. **Vibration**: confirm `vibrate` works, and find what range of `VibeProfile` duty cycle and duration is actually distinguishable on the wrist. Ticket 06 designs against this.
 8. **Do `tonesOn` / `vibrateOn` gate it**, or does the app have to check them itself?
+9. **Is a note split across chunks audibly seamless?** The playback engine divides any note longer than 220 ms into consecutive `ToneProfile`s *at the same frequency*, so that `stopSound` is bounded by the chunk rather than by the note (without it, `travelMap` overran by 659 ms). That is the same waveform continuing and should be inaudible — but "should be" is an assumption about the generator. Play a 2-second tone as one profile, then the same tone as ten 200 ms profiles at one frequency, and listen for a seam, click, or gap between them. If there is one, the engine needs a different way to bound stop latency.
 
 ## Context
 

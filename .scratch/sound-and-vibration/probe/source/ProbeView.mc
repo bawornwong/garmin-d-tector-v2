@@ -72,6 +72,7 @@ class ProbeView extends WatchUi.View {
         else if (_step == 9) { testVibeDutyCycle(); }
         else if (_step == 10) { testVibePattern(); }
         else if (_step == 11) { testRealMelody(); }
+        else if (_step == 12) { testSplitSeam(); }
         else { _step = 0; report(); }
     }
 
@@ -247,6 +248,32 @@ class ProbeView extends WatchUi.View {
         setLines("11: levelUp", "the real melody", "recognisable?");
     }
 
+    // --- 12: is a split note seamless? ---------------------------------------
+    // The playback engine divides any note longer than 220 ms into consecutive
+    // profiles at ONE frequency, so stopSound is bounded by the chunk instead
+    // of by the note (travelMap otherwise overran by 659 ms). Same waveform
+    // continuing, in theory. This is the ear test for that theory: the two
+    // should be indistinguishable.
+    function testSplitSeam() as Void {
+        System.println("--- 12: 2s tone as ONE profile, then as TEN ---");
+        System.println("  they should sound identical. Listen for a click, gap");
+        System.println("  or wobble in the second one. If you hear one, the");
+        System.println("  engine's note-splitting needs rethinking.");
+        playProfiles([new Attention.ToneProfile(2643, 2000)]);
+        _timer = new Timer.Timer();
+        (_timer as Timer.Timer).start(method(:seamTick), 2600, false);
+        setLines("12: split seam", "one, then ten", "identical?");
+    }
+
+    function seamTick() as Void {
+        var arr = [];
+        for (var i = 0; i < 10; i += 1) {
+            arr.add(new Attention.ToneProfile(2643, 200));
+        }
+        System.println("  now the same 2s as 10 x 200ms at one frequency");
+        playProfiles(arr);
+    }
+
     // --- helpers -------------------------------------------------------------
     // Deliberately NOT gated on tonesOn/vibrateOn: this probe wants to know
     // whether the system enforces them by itself, which ticket 02 could not
@@ -286,7 +313,7 @@ class ProbeView extends WatchUi.View {
         dc.drawText(cx, cy - 20, Graphics.FONT_MEDIUM, _line2, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(cx, cy + 30, Graphics.FONT_SMALL, _line3, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(cx, cy + 70, Graphics.FONT_XTINY,
-            "step " + _step + " / 11", Graphics.TEXT_JUSTIFY_CENTER);
+            "step " + _step + " / 12", Graphics.TEXT_JUSTIFY_CENTER);
     }
 }
 

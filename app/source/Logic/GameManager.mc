@@ -636,6 +636,17 @@ class SoundRoutine extends Routine {
         _soundIndex = idx;
     }
 
+    // How much of the current note is still unplayed, when it is longer than
+    // one chunk. A note is not indivisible: a sustained tone split into
+    // consecutive profiles at the SAME frequency is the same waveform
+    // continuing, and splitting it is what keeps a stop bounded. Without
+    // this, a chunk is as long as its longest note -- measured at 659 ms on
+    // travelMap and 589 ms on digistorm, both of which the animations
+    // actually call stopSound on, so the bound the whole chunking design
+    // exists to provide was ~3x looser than advertised on exactly the sounds
+    // that rely on it.
+    var _remainMs as Number = 0;
+
     function step(rt as Fiber) as Float {
         var count = Kaisa.Sounds.COUNTS[_soundIndex];
         if (_n >= count) { return Routine.DONE; }
@@ -644,9 +655,21 @@ class SoundRoutine extends Routine {
         var totalMs = 0;
         while (_n < count && totalMs < CHUNK_MS) {
             var note = Kaisa.Sounds.noteAt(_soundIndex, _n);
-            profiles.add(new Toybox.Attention.ToneProfile(note[0], note[1]));
-            totalMs += note[1];
-            _n += 1;
+            var freq = note[0];
+            var left = (_remainMs > 0) ? _remainMs : note[1];
+            var room = CHUNK_MS - totalMs;
+            if (left > room) {
+                // Take what fits and keep the rest of this note for the next
+                // step; do not advance _n.
+                profiles.add(new Toybox.Attention.ToneProfile(freq, room));
+                totalMs += room;
+                _remainMs = left - room;
+            } else {
+                profiles.add(new Toybox.Attention.ToneProfile(freq, left));
+                totalMs += left;
+                _remainMs = 0;
+                _n += 1;
+            }
         }
         if (Toybox.Attention has :playTone) {
             Toybox.Attention.playTone({ :toneProfile => profiles });
