@@ -70,6 +70,14 @@ Done when: it plays on the watch; the existing trace diffs (53/53 animations, 27
 - **Whether the round-trip check earns a row** in HANDOFF's table of proven checks, now that it has a real number (90.3% average / 58.4% worst) rather than a hypothetical pass bar to design.
 - **What to do with the weak round-trip group** (`destroySpirits` 58%, `digistorm` 65%, `evolutionSpirit`/`evolutionAncient`/`attackTravelVeryLong` ~79-80%, a few others in the low-to-mid 80s) — moderately noisy source audio and fast pitch movement the current segmentation tolerances don't track cleanly. Not yet sharp enough to ticket: whether it needs tighter extraction parameters, a different technique for the noisy ones, or is simply fine once heard on hardware is a call ticket 06's design session and a real listen should drive, not something to resolve by staring at a number.
 
+  **Three fixes were tried and none earned its place — do not repeat them without new evidence:**
+
+  1. **Median-filtering the pitch track.** Looked excellent at first (avg 90.3% → 92.7% at width 5) — but that was **measuring against the filtered track it produced**, so smoothing was flattering itself. Scored honestly against the *raw* signal every time, the real gain is ~0.25pp average (90.28% → 90.53% at width 3), and width 9 makes it worse. **The methodological trap is the finding worth keeping**: a round-trip that scores extracted notes against a *derived* reference measures self-consistency, not fidelity.
+  2. **Dropping isolated chirps** (a short note far in pitch from both neighbours, folded into the previous one). Removes all 51 cleanly, and costs almost nothing on the metric (90.28% → 90.19%) — the metric cannot tell an artifact from signal, since the chirp is in the detected track either way.
+  3. **The justification for (2), tested and refuted.** If chirps were harmonic slips they should sit at integer multiples of their neighbours. Only **6 of 51 do**. The median chirp-to-neighbour ratio is **0.34** — most sit *below* their surroundings, which is the shape of the lowest-peak rule finding a true fundamental on a frame where the *neighbours* settled on a harmonic. Dropping them may delete the most accurate frames in the file, not the least.
+
+  Which leaves the honest state: the weak scores are not obviously fixable by post-processing the current estimator's output, and telling a real artifact from a real note here wants either a better fundamental estimator or an ear. The ear is cheaper and is coming with ticket 01.
+
 ## Out of scope
 
 - **Playing audio files of any kind.** `Toybox.Media` is not available to a watchApp; this is a platform ceiling, not a preference, and it does not return unless Garmin changes the API.
