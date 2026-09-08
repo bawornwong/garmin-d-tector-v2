@@ -14,9 +14,17 @@ Never vibrates: any button, menu scrolling, map walking.
 
 Build a probe that fires candidate `VibeProfile`s on demand so they can be felt back to back and compared, rather than judged one at a time from memory. Land the chosen profiles as a small table, and record *why* each is what it is — a future reader cannot re-derive taste from the code.
 
-## A starting proposal, to react to rather than start from
+## The wiring is built; only the feel is open
 
-These are **drafted, not decided** — a wrist is the only instrument that can settle them. They exist so the session with the watch in hand starts by feeling eight candidates and adjusting, instead of designing from a blank page. Durations are matched to each event's real sound length, now that the extractor has produced them.
+`AudioManager.vibeFor()` carries the table below and `AudioManager.vibrate()` fires it, gated on `vibrateOn`. It needed **no new call sites**: every event on the curated list already plays a distinctive sound, so the table is keyed by sound name and hangs off `play()`. Sounds absent from it do not vibrate, which is what keeps buttons, menu scrolling and map steps silent.
+
+Checked on the way in: untraced (the original has no vibration, so an event here would desync every golden diff after it — the same trap `startSilent` exists for), `vibrateOn` tested *before* `tonesOn` so sound-off-vibration-on works, and 6/6 on the animations whose sounds now vibrate.
+
+So this ticket is no longer "design and build a vocabulary". It is **tune numbers that already run**, which is a far smaller thing to do with a watch in hand.
+
+## The current values, to react to rather than start from
+
+These are **running but never felt** — a wrist is the only instrument that can settle them. They exist so the session with the watch in hand starts by feeling what the game already does and adjusting numbers, instead of designing from a blank page. Durations are matched to each event's real sound length, now that the extractor has produced them.
 
 `VibeProfile(dutyCycle 0-100, length ms)`, max **8 per `vibrate()` call** (ticket 02).
 
