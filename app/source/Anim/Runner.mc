@@ -135,6 +135,25 @@ class Runner {
         return f;
     }
 
+    // The counterpart to startSilent, and not optional: `Fiber.stop()` alone
+    // empties the stack but leaves the fiber in `fibers`, and advance() only
+    // ever removes a fiber it SELECTED as due -- which requires isRunning().
+    // A stopped fiber can therefore never be selected, so it is never
+    // removed. Every other caller in the port goes through stop() above,
+    // which removes it; the sound engine cannot, because that would emit a
+    // "stopCoroutine" the golden traces have no counterpart for.
+    //
+    // Measured before this existed: firing an 89-second sound every 500 ms so
+    // each interrupted the last, `fibers` grew monotonically 5 -> 24 over 170
+    // frames and never came down. advance() rescans the whole array on every
+    // pass of its inner loop, every frame, so the cost of a dead fiber is
+    // paid forever.
+    function stopSilent(f as Fiber?) as Void {
+        if (f == null) { return; }
+        f.stop();
+        fibers.remove(f);
+    }
+
     function stop(f as Fiber?) as Void {
         if (f == null) { return; }
         Kaisa.Trace.event("stopCoroutine");

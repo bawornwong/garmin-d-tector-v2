@@ -600,11 +600,13 @@ class AudioManager {
     // sent. Killing the fiber is the whole of what "stop" can mean here.
     function stopSound() as Void {
         Kaisa.Trace.event("stopSound");
-        if (_fiber != null) { (_fiber as Fiber).stop(); }
+        _runner.stopSilent(_fiber);
+        _fiber = null;
     }
 
     function play(name as String) as Void {
-        if (_fiber != null) { (_fiber as Fiber).stop(); }
+        _runner.stopSilent(_fiber);
+        _fiber = null;
         if (muted) { return; }
         if (!(Toybox.Attention has :playTone)) { return; }
         if (!System.getDeviceSettings().tonesOn) { return; }
