@@ -653,11 +653,27 @@ class SoundRoutine extends Routine {
         var count = Kaisa.Sounds.COUNTS[_soundIndex];
         if (_n >= count) { return Routine.DONE; }
 
+        // A rest (frequency 0) is the fiber WAITING, not a tone of zero
+        // frequency. Sending ToneProfile(0, ms) would lean on undocumented
+        // behaviour -- playTone documents an InvalidOptionsException for
+        // invalid values, and a throw in here lands inside Runner.advance(),
+        // taking out the frame rather than just the sound. Skipping the rest
+        // instead is also wrong: its neighbours would run together and the
+        // gap the original has would vanish. So a rest ENDS the chunk, and
+        // the next step spends it as pure wait time with no tone call.
+        if (Kaisa.Sounds.noteAt(_soundIndex, _n)[0] == 0) {
+            var restMs = (_remainMs > 0) ? _remainMs : Kaisa.Sounds.noteAt(_soundIndex, _n)[1];
+            _remainMs = 0;
+            _n += 1;
+            return restMs / 1000.0;
+        }
+
         var profiles = new [0];
         var totalMs = 0;
         while (_n < count && totalMs < CHUNK_MS) {
             var note = Kaisa.Sounds.noteAt(_soundIndex, _n);
             var freq = note[0];
+            if (freq == 0) { break; }      // rest: ends the chunk, handled above
             var left = (_remainMs > 0) ? _remainMs : note[1];
             var room = CHUNK_MS - totalMs;
             if (left > room) {
@@ -673,7 +689,10 @@ class SoundRoutine extends Routine {
                 _n += 1;
             }
         }
-        if (Toybox.Attention has :playTone) {
+        // playTone requires at least one profile; with rests ending the chunk
+        // this should not happen, but an empty array is an exception rather
+        // than a no-op, so it is not worth relying on the data staying so.
+        if (profiles.size() > 0 && (Toybox.Attention has :playTone)) {
             Toybox.Attention.playTone({ :toneProfile => profiles });
         }
         return totalMs / 1000.0;
