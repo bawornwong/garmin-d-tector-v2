@@ -132,6 +132,23 @@ class SavedGame {
     // LogicManager is where that becomes "unlocked" and "extra level" -- the
     // off-by-one lives there in the original too.
     function digimonLevel(digimonIndex as Number) as Number {
+        // The original is a DICTIONARY read with a miss guard:
+        //
+        //     if (lg.digimonLevel.TryGetValue(digimon, out int level)) return level;
+        //     return 0;
+        //
+        // ADR 7 turns the key from a name into an index, and an array index
+        // has no equivalent of a dictionary miss -- so the guard has to be
+        // written out, or it is lost in translation. It is load-bearing:
+        // an empty D-Dock holds "" in the original and -1 here, and Battle
+        // reads the level of whatever the chosen dock holds. Without this,
+        // choosing an empty D-Dock crashed with an Array Out Of Bounds
+        // (found by driving the release build through a scripted battle).
+        // 0 is exactly what the original returns for that case, and
+        // getDigimonExtraLevel's -1 follows from it as it does there.
+        if (digimonIndex < 0 || digimonIndex >= record.digimonLevel.size()) {
+            return 0;
+        }
         return record.digimonLevel[digimonIndex];
     }
     function setDigimonLevel(digimonIndex as Number, v as Number) as Void {
@@ -197,6 +214,11 @@ class SavedGame {
     }
 
     function digicodeUnlocked(digimonIndex as Number) as Boolean {
+        // Same dictionary-miss guard as digimonLevel above, and for the same
+        // reason: the original returns false for a name it does not hold.
+        if (digimonIndex < 0 || digimonIndex >= record.digicodeUnlocked.size()) {
+            return false;
+        }
         return record.digicodeUnlocked[digimonIndex];
     }
     function setDigicodeUnlocked(digimonIndex as Number, v as Boolean) as Void {
