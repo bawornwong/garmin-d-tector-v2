@@ -570,11 +570,14 @@ class GameManager {
 // they were so those 53/53 and 27/27 results keep meaning what they meant.
 class AudioManager {
     var _runner as Runner;
-    // One sound plays at a time -- the device has one tone generator, and
-    // the original's overlapping Unity channels have no equivalent here
-    // (ticket 05's decision: a new sound interrupts rather than queues,
-    // since a silent button reads as a hang and a queued one arrives behind
-    // the picture it belongs with).
+    // One sound plays at a time, and a new one interrupts -- which is what
+    // the ORIGINAL does, not a concession to the watch: AudioManager.cs has a
+    // single AudioSource and every PlaySound is `source.clip = sound;
+    // source.Play();`, replacing whatever was playing. (The overlapping
+    // alternative sits commented out at every call site there, with a note
+    // saying why it was dropped.) It suits the hardware too, which has one
+    // tone generator -- but faithfulness is the reason, and queueing would
+    // put a sound behind the picture it belongs with.
     var _fiber as Fiber?;
     // Set by DTectorView for a screen/anim probe: the trace ("sound X") is
     // what the golden diffs compare, at its SCHEDULED time, and that stays
