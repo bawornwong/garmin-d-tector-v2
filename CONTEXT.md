@@ -55,3 +55,13 @@ Shared vocabulary for the D-Tector v2 → Garmin Venu 4 port. Terms only — no 
 **Face** — one of the three bitmap fonts: Big, Regular, Small.
 
 **Glyph** — one character's bitmap in a face, with its own advance.
+
+**Note** — one step of a sound: a frequency in hertz and a duration in milliseconds, the pair a `ToneProfile` takes. A note of frequency 0 is a **rest** — silence of that duration, played by waiting rather than by asking for a tone.
+
+**Chunk** — the run of notes handed to `playTone` in one call, about 220 ms of them. The tone generator plays a chunk autonomously, so notes shorter than a tick keep their timing; the runner only schedules chunk boundaries. A note longer than a chunk is split across chunks at the same frequency, and a rest ends one.
+
+**Sound name** — the string a call site passes to `playSound`, such as `levelUp`. The identifier shared by the port's call sites, the extractor's table and the golden trace, the way a Digimon index is shared elsewhere. Never a filename.
+
+**Vibration event** — a sound name that also vibrates. Vibration has no call sites of its own: it rides on the sound already marking that moment, and a sound absent from the table is silent to the wrist.
+
+**Duty cycle** — a vibration's strength, 0–100. Distinct from its length; some Garmin devices ignore it and vibrate at one strength regardless.
