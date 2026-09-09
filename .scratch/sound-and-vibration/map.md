@@ -76,7 +76,17 @@ Done when: it plays on the watch; the existing trace diffs (53/53 animations, 27
   2. **Dropping isolated chirps** (a short note far in pitch from both neighbours, folded into the previous one). Removes all 51 cleanly, and costs almost nothing on the metric (90.28% → 90.19%) — the metric cannot tell an artifact from signal, since the chirp is in the detected track either way.
   3. **The justification for (2), tested and refuted.** If chirps were harmonic slips they should sit at integer multiples of their neighbours. Only **6 of 51 do**. The median chirp-to-neighbour ratio is **0.34** — most sit *below* their surroundings, which is the shape of the lowest-peak rule finding a true fundamental on a frame where the *neighbours* settled on a harmonic. Dropping them may delete the most accurate frames in the file, not the least.
 
-  Which leaves the honest state: the weak scores are not obviously fixable by post-processing the current estimator's output, and telling a real artifact from a real note here wants either a better fundamental estimator or an ear. The ear is cheaper and is coming with ticket 01.
+  4. **Stepping down to a subharmonic.** A square wave through a band-limited channel often has a fundamental weaker than its 3rd or 5th harmonic, so the lowest-peak rule can land on a harmonic. Notes where a subharmonic still carried real energy looked like exactly that failure, and by that criterion 6.8% of all notes (139/2032) were "wrong", concentrated in the evolutions. Stepping down to those subharmonics made the result **worse against the real audio** — 77.4% → 70.8% overall, and `evolutionAncient` 80.2% → 31.0%. So the energy at f/3 and f/5 is not a hiding fundamental; following it lands somewhere wrong. **The 6.8% figure is therefore not a defect count** — it is a count of a criterion that failed its own validation, and should not be quoted as one.
+
+  Which leaves the honest state: the weak scores are not obviously fixable by post-processing the current estimator's output, four hypotheses have now failed measurement, and telling a real artifact from a real note here wants either a genuinely different estimator or an ear. The ear is cheaper and is coming with ticket 01.
+
+### The honest accuracy number
+
+The per-sound round trip (90.3% average) scores the extracted notes against **the pitch track the same detector produced**, so it cannot see a systematic detector error — the median-filter trap above in another form.
+
+Scored the way that cannot flatter itself — **synthesise square waves from the shipped `SoundData.mc` and compare that audio to the original MP3, frame by frame, with no detector in the loop** — the agreement is **≈78%**, not 90%. Per sound it ranges from 100% (`buttonA`, `buttonB`, both single tones) through 98% (`reward`) and 92% (`levelUp`) down to 41% (`destroySpirits`) and 33% (`charHappy`).
+
+78% is the number to believe, and the one to re-check after any change to the extractor. It is also the number that says plainly: most of this is right, some of it is not, and nobody has heard any of it yet.
 
 ## Out of scope
 
