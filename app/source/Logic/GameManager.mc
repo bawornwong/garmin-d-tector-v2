@@ -663,9 +663,22 @@ class AudioManager {
     // Deliberately untraced, like the sound fiber: the original has no
     // vibration at all, so any event emitted here would have no counterpart
     // in the golden reference and would desync every diff that follows it.
+    // Switching vibration ON in the Configure menu: a buzz is the only
+    // confirmation a buzz can have. Not part of the curated event table --
+    // it belongs to the menu, not to a game moment.
+    function confirmVibration() as Void {
+        if (!(Toybox.Attention has :vibrate)) { return; }
+        if (!System.getDeviceSettings().vibrateOn) { return; }
+        if (!Kaisa.Prefs.vibrationOn()) { return; }
+        Toybox.Attention.vibrate(
+            [new Toybox.Attention.VibeProfile(50, 150)]
+                as Array<Toybox.Attention.VibeProfile>);
+    }
+
     function vibrate(name as String) as Void {
         if (!(Toybox.Attention has :vibrate)) { return; }
         if (!System.getDeviceSettings().vibrateOn) { return; }
+        if (!Kaisa.Prefs.vibrationOn()) { return; }
         var profiles = vibeFor(name);
         if (profiles == null) { return; }
         Toybox.Attention.vibrate(profiles as Array<Toybox.Attention.VibeProfile>);
@@ -677,7 +690,11 @@ class AudioManager {
         if (muted) { return; }
         vibrate(name);
         if (!(Toybox.Attention has :playTone)) { return; }
+        // Two gates, and they are not the same thing: tonesOn is the watch's
+        // own setting and Prefs is the Configure menu's. Either one off means
+        // silence.
         if (!System.getDeviceSettings().tonesOn) { return; }
+        if (!Kaisa.Prefs.soundOn()) { return; }
         var idx = Kaisa.Sounds.indexOf(name);
         if (idx < 0) { return; }
         // startSilent, not start: this fiber has no counterpart in the

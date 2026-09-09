@@ -24,6 +24,7 @@ class LogicManager {
     var currentMainMenu as Number = Kaisa.MAIN_MENU_MAP;
     var charSelectionIndex as Number = 0;
     var gamesMenuIndex as Number = 0;
+    var configureMenuIndex as Number = 0;
     var gamesRewardMenuIndex as Number = 0;
     var gamesTravelMenuIndex as Number = 0;
 
@@ -87,6 +88,16 @@ class LogicManager {
             if (currentMainMenu == Kaisa.MAIN_MENU_CAMP) {
                 _gm.audioMgr.playButtonA();
                 openApp(Kaisa.APP_CAMP);
+            } else if (currentMainMenu == Kaisa.MAIN_MENU_CONFIGURE) {
+                // Before the defeated check, with Camp. The original blocks
+                // every menu entry but Camp while the character is down --
+                // Camp being how you recover -- but Configure is settings
+                // and, at the end of it, the reset. Locking the way out
+                // behind not being stuck is the wrong way round: a defeated
+                // save is exactly when someone reaches for it.
+                _gm.audioMgr.playButtonA();
+                configureMenuIndex = 0;
+                currentScreen = Kaisa.SCREEN_CONFIGURE_MENU;
             } else if (_gm.isCharacterDefeated()) {
                 _gm.audioMgr.playButtonB();
             } else if (currentMainMenu == Kaisa.MAIN_MENU_MAP) {
@@ -102,12 +113,30 @@ class LogicManager {
             } else if (currentMainMenu == Kaisa.MAIN_MENU_DATABASE) {
                 _gm.audioMgr.playButtonA();
                 openApp(Kaisa.APP_DATABASE);
-            } else if (currentMainMenu == Kaisa.MAIN_MENU_RESET) {
-                _gm.audioMgr.playButtonA();
-                resetGame();
             } else if (currentMainMenu == Kaisa.MAIN_MENU_DIGITS) {
                 _gm.audioMgr.playButtonA();
                 openApp(Kaisa.APP_CODE_INPUT);
+            }
+        } else if (currentScreen == Kaisa.SCREEN_CONFIGURE_MENU) {
+            if (configureMenuIndex == Kaisa.CONFIGURE_SOUND) {
+                // Toggle BEFORE the beep, so switching sound back on is
+                // confirmed by the beep itself and switching it off goes
+                // quiet immediately. Every other entry keeps the usual
+                // order.
+                Kaisa.Prefs.toggle(Kaisa.Prefs.BIT_SOUND_OFF);
+                _gm.audioMgr.playButtonA();
+            } else if (configureMenuIndex == Kaisa.CONFIGURE_VIBRATION) {
+                Kaisa.Prefs.toggle(Kaisa.Prefs.BIT_VIBRATION_OFF);
+                _gm.audioMgr.playButtonA();
+                // The buzz IS the confirmation, so fire one when it goes on.
+                if (Kaisa.Prefs.vibrationOn()) { _gm.audioMgr.confirmVibration(); }
+            } else {
+                _gm.audioMgr.playButtonA();
+                if (configureMenuIndex == Kaisa.CONFIGURE_GRID) {
+                    Kaisa.Prefs.toggle(Kaisa.Prefs.BIT_GRID_OFF);
+                } else if (configureMenuIndex == Kaisa.CONFIGURE_RESET) {
+                    resetGame();
+                }
             }
         } else if (currentScreen == Kaisa.SCREEN_APP) {
             if (_statusPaged && loadedApp instanceof Status) {
@@ -165,6 +194,9 @@ class LogicManager {
             closeGameMenu();
         } else if (currentScreen == Kaisa.SCREEN_APP) {
             loadedApp.inputB();
+        } else if (currentScreen == Kaisa.SCREEN_CONFIGURE_MENU) {
+            _gm.audioMgr.playButtonB();
+            currentScreen = Kaisa.SCREEN_MAIN_MENU;
         } else if (currentScreen == Kaisa.SCREEN_GAMES_MENU) {
             _gm.audioMgr.playButtonB();
             currentScreen = Kaisa.SCREEN_MAIN_MENU;
@@ -208,6 +240,9 @@ class LogicManager {
             currentMainMenu = (dir == Kaisa.DIR_LEFT)
                 ? Kaisa.Enums.last(currentMainMenu, 8)
                 : Kaisa.Enums.next(currentMainMenu, 8);
+        } else if (currentScreen == Kaisa.SCREEN_CONFIGURE_MENU) {
+            _gm.audioMgr.playButtonA();
+            configureMenuIndex = Kaisa.MathExt.circularAdd(configureMenuIndex, delta, 3, 0);
         } else if (currentScreen == Kaisa.SCREEN_GAMES_MENU) {
             _gm.audioMgr.playButtonA();
             gamesMenuIndex = Kaisa.MathExt.circularAdd(gamesMenuIndex, delta, 2, 0);

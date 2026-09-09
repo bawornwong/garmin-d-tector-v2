@@ -26,7 +26,10 @@ module Kaisa {
         SCREEN_GAMES_MENU = 4,
         SCREEN_GAMES_REWARD_MENU = 5,
         SCREEN_GAMES_TRAVEL_MENU = 6,
-        SCREEN_TITLE = 7        // unused: the reset is a menu entry instead
+        SCREEN_TITLE = 7,       // unused: the reset moved into Configure
+        // Not in the original: the Configure submenu, reached from the main
+        // menu and shaped like the Games submenu next to it.
+        SCREEN_CONFIGURE_MENU = 8
     }
 
     enum TitleOption {
@@ -43,10 +46,21 @@ module Kaisa {
         MAIN_MENU_DIGITS = 4,
         MAIN_MENU_CAMP = 5,
         MAIN_MENU_CONNECT = 6,
-        // Not in the original's menu: the original resets a game from its
-        // MainMenu scene, which a watch has no room for, so the reset lives at
-        // the end of the menu the digivice already has.
-        MAIN_MENU_RESET = 7
+        // Not in the original's menu. The original resets a game from its
+        // MainMenu scene, which a watch has no room for; that reset lives in
+        // here now, alongside the settings a watch needs and a phone did not
+        // (its sound and vibration were the phone's to control, and it had no
+        // dot-matrix grid to draw).
+        MAIN_MENU_CONFIGURE = 7
+    }
+
+    // The Configure submenu. Reset sits last, furthest from an accidental
+    // press: the three above it are reversible and it is not.
+    enum ConfigureMenu {
+        CONFIGURE_VIBRATION = 0,
+        CONFIGURE_SOUND = 1,
+        CONFIGURE_GRID = 2,
+        CONFIGURE_RESET = 3
     }
 
     enum GameMenu {

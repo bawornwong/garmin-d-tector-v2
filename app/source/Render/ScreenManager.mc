@@ -51,6 +51,57 @@ class ScreenManager {
         return el;
     }
 
+    // One centred word on the 32x32 screen. The bitmap faces carry codes
+    // 32..90 only (FontMetrics), so every caller passes UPPERCASE.
+    function drawMenuWord(name as String, text as String, y as Number) as Void {
+        disposable(Kaisa.ScreenBuilder.buildTextBox(name, screenDisplay, Kaisa.Font.REGULAR)
+            .setText(text).setSize(32, 5).setPosition(0, y)
+            .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
+    }
+
+    // The Configure submenu, laid out like every other menu in the game:
+    // `< subject >` up top with the navigation arrows either side, and the
+    // line underneath saying what it currently is.
+    //
+    // The other menus put a 32x32 SPRITE in that upper slot. The sheet has
+    // no icon for "sound" or "grid" -- these settings do not exist in the
+    // original, so nothing was ever drawn for them -- so the subject is set
+    // in the Big face instead, which is the closest the assets get to an
+    // icon. The ARROWS overlay is the same one the character selection
+    // uses, so left/right reads as navigation exactly as it does there.
+    function drawConfigureMenu() as Void {
+        screenDisplay.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
+        var sb = Kaisa.ScreenBuilder.buildSprite("Arrows", screenDisplay)
+            .setSprite(Kaisa.Sprites.ARROWS).setTransparent(true);
+        sb.name = "Disposable";
+
+        var i = gm.logicMgr.configureMenuIndex;
+        var subject = "RESET";
+        var state = null;
+        if (i == Kaisa.CONFIGURE_VIBRATION) {
+            subject = "VIBRATE";
+            state = Kaisa.Prefs.vibrationOn() ? "ON" : "OFF";
+        } else if (i == Kaisa.CONFIGURE_SOUND) {
+            subject = "SOUND";
+            state = Kaisa.Prefs.soundOn() ? "ON" : "OFF";
+        } else if (i == Kaisa.CONFIGURE_GRID) {
+            subject = "GRID";
+            state = Kaisa.Prefs.gridOn() ? "ON" : "OFF";
+        }
+
+        // Between the arrows, which sit at the left and right edges.
+        disposable(Kaisa.ScreenBuilder.buildTextBox("CfgSubject", screenDisplay,
+                Kaisa.Font.BIG)
+            .setText(subject).setSize(24, 8).setPosition(4, 10)
+            .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
+        if (state != null) {
+            disposable(Kaisa.ScreenBuilder.buildTextBox("CfgState", screenDisplay,
+                    Kaisa.Font.REGULAR)
+                .setText(state).setSize(32, 5).setPosition(0, 22)
+                .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
+        }
+    }
+
     function startFlashRoutines() as Void {
         gm.runner.start(new PAFlashDefeatedEffect(defeatedLayer));
         gm.runner.start(new PAFlashEventEffect(eventLayer));
@@ -124,17 +175,17 @@ class ScreenManager {
         } else if (screen == Kaisa.SCREEN_CHARACTER) {
             screenDisplay.setSprite(gm.playerCharSprite());
         } else if (screen == Kaisa.SCREEN_MAIN_MENU) {
-            if (gm.logicMgr.currentMainMenu == Kaisa.MAIN_MENU_RESET) {
-                // The reset has no sprite in the sheet -- it is not in the
-                // original's menu -- so it says so in words.
+            if (gm.logicMgr.currentMainMenu == Kaisa.MAIN_MENU_CONFIGURE) {
+                // No sprite in the sheet -- this entry is not in the
+                // original's menu -- so it says so in words, the way the
+                // reset it replaced did.
                 screenDisplay.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
-                disposable(Kaisa.ScreenBuilder.buildTextBox("Reset", screenDisplay,
-                        Kaisa.Font.REGULAR)
-                    .setText("RESET").setSize(32, 5).setPosition(0, 13)
-                    .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
+                drawMenuWord("Configure", "CONFIG", 13);
             } else {
                 screenDisplay.setSprite(Kaisa.Sprites.MAIN_MENU[gm.logicMgr.currentMainMenu]);
             }
+        } else if (screen == Kaisa.SCREEN_CONFIGURE_MENU) {
+            drawConfigureMenu();
         } else if (screen == Kaisa.SCREEN_GAMES_MENU) {
             screenDisplay.setSprite(Kaisa.Sprites.GAME_SECTIONS[gm.logicMgr.gamesMenuIndex]);
         } else if (screen == Kaisa.SCREEN_GAMES_REWARD_MENU) {

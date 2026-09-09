@@ -24,7 +24,9 @@ class Renderer {
     var _ink as Number;
     var _field as Number;
     // Whether to rule the canvas into cells, the way the toy's screen is.
-    var gridVisible as Boolean = true;
+    // Read from Prefs at draw time rather than mirrored into a field here:
+    // the Configure menu writes the pref, and one source of truth cannot go
+    // out of sync with itself.
 
     function initialize(atlas as AtlasCache, text as TextRenderer,
                         originX as Number, originY as Number, scale as Number,
@@ -90,7 +92,7 @@ class Renderer {
     // 9x9 dot -- drawn over the finished frame, which costs 64 thin lines
     // rather than a different blit for every sprite.
     function drawGrid(dc as Dc) as Void {
-        if (!gridVisible) { return; }
+        if (!Kaisa.Prefs.gridOn()) { return; }
         dc.setColor(_field, Graphics.COLOR_TRANSPARENT);
         var w = Kaisa.Constants.SCREEN_WIDTH * _scale;
         var h = Kaisa.Constants.SCREEN_HEIGHT * _scale;

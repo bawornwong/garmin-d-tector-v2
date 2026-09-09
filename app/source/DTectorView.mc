@@ -120,6 +120,7 @@ class DTectorView extends WatchUi.View {
         _atlas = new AtlasCache();
         _atlas.load();
         Kaisa.Sounds.load();
+        Kaisa.Prefs.load();
         _save = new SaveFormat(_data);
 
         var origin = (dc.getWidth() - CANVAS) / 2;
