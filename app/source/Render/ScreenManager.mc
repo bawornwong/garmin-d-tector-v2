@@ -51,11 +51,21 @@ class ScreenManager {
         return el;
     }
 
-    // One centred word on the 32x32 screen. The bitmap faces carry codes
-    // 32..90 only (FontMetrics), so every caller passes UPPERCASE.
-    function drawMenuWord(name as String, text as String, y as Number) as Void {
-        disposable(Kaisa.ScreenBuilder.buildTextBox(name, screenDisplay, Kaisa.Font.REGULAR)
-            .setText(text).setSize(32, 5).setPosition(0, y)
+    // One word centred across the full 32-pixel width. The bitmap faces carry
+    // codes 32..90 only (FontMetrics), so every caller passes UPPERCASE.
+    //
+    // Centring on the full width rather than on a narrower box is what keeps
+    // a word clear of the arrows: they occupy only columns 2-4 and 27-29, so
+    // anything up to 22 pixels centred lands between them untouched.
+    // TRANSPARENT is load-bearing, not tidiness: Renderer.drawElement fills an
+    // opaque element's whole rect with the field colour before drawing it, so
+    // a 32-wide box laid over the arrow rows wipes the arrows out. The value
+    // box does exactly that, and the arrows vanished until this was set.
+    function drawMenuWord(name as String, face as Number, text as String,
+                          y as Number, h as Number) as Void {
+        disposable(Kaisa.ScreenBuilder.buildTextBox(name, screenDisplay, face)
+            .setText(text).setSize(32, h).setPosition(0, y)
+            .setTransparent(true)
             .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
     }
 
@@ -76,30 +86,30 @@ class ScreenManager {
         sb.name = "Disposable";
 
         var i = gm.logicMgr.configureMenuIndex;
-        var subject = "RESET";
-        var state = null;
+        var value = "NEW";          // the reset, read with its subject: NEW GAME
+        var subject = "GAME";
         if (i == Kaisa.CONFIGURE_VIBRATION) {
-            subject = "VIBRATE";
-            state = Kaisa.Prefs.vibrationOn() ? "ON" : "OFF";
+            // "VIBE", not "VIBRATE": the latter sets 32 pixels wide in the
+            // Regular face, exactly the width of the screen, with no margin
+            // either side. In the Big face it is 42 and ran off both edges.
+            value = Kaisa.Prefs.vibrationOn() ? "ON" : "OFF";
+            subject = "VIBE";
         } else if (i == Kaisa.CONFIGURE_SOUND) {
+            value = Kaisa.Prefs.soundOn() ? "ON" : "OFF";
             subject = "SOUND";
-            state = Kaisa.Prefs.soundOn() ? "ON" : "OFF";
         } else if (i == Kaisa.CONFIGURE_GRID) {
+            value = Kaisa.Prefs.gridOn() ? "ON" : "OFF";
             subject = "GRID";
-            state = Kaisa.Prefs.gridOn() ? "ON" : "OFF";
         }
 
-        // Between the arrows, which sit at the left and right edges.
-        disposable(Kaisa.ScreenBuilder.buildTextBox("CfgSubject", screenDisplay,
-                Kaisa.Font.BIG)
-            .setText(subject).setSize(24, 8).setPosition(4, 10)
-            .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
-        if (state != null) {
-            disposable(Kaisa.ScreenBuilder.buildTextBox("CfgState", screenDisplay,
-                    Kaisa.Font.REGULAR)
-                .setText(state).setSize(32, 5).setPosition(0, 22)
-                .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
-        }
+        // The value takes the slot the other menus fill with their icon --
+        // between the arrows, in the Big face. Widest is "OFF"/"NEW" at 18
+        // pixels, which centred spans columns 7..24 and so clears the arrows
+        // at 2-4 and 27-29.
+        drawMenuWord("CfgValue", Kaisa.Font.BIG, value, 10, 8);
+        // The subject sits on row 24, which is where MAIN_MENU's own sprites
+        // bake their labels ("MAP", "GAME"). Widest is "SOUND" at 25.
+        drawMenuWord("CfgSubject", Kaisa.Font.REGULAR, subject, 24, 5);
     }
 
     function startFlashRoutines() as Void {
@@ -176,11 +186,16 @@ class ScreenManager {
             screenDisplay.setSprite(gm.playerCharSprite());
         } else if (screen == Kaisa.SCREEN_MAIN_MENU) {
             if (gm.logicMgr.currentMainMenu == Kaisa.MAIN_MENU_CONFIGURE) {
-                // No sprite in the sheet -- this entry is not in the
-                // original's menu -- so it says so in words, the way the
-                // reset it replaced did.
+                // This entry is not in the original, so the sheet has no
+                // sprite for it -- and the neighbouring MAIN_MENU sprites
+                // bake their arrows in, so without the overlay this would be
+                // the one entry in the ring with none. The word goes on row
+                // 24, where those same sprites bake their labels.
                 screenDisplay.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
-                drawMenuWord("Configure", "CONFIG", 13);
+                var arr = Kaisa.ScreenBuilder.buildSprite("Arrows", screenDisplay)
+                    .setSprite(Kaisa.Sprites.ARROWS).setTransparent(true);
+                arr.name = "Disposable";
+                drawMenuWord("Configure", Kaisa.Font.REGULAR, "CONFIG", 24, 5);
             } else {
                 screenDisplay.setSprite(Kaisa.Sprites.MAIN_MENU[gm.logicMgr.currentMainMenu]);
             }
