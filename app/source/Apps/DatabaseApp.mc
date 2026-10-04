@@ -172,11 +172,14 @@ class DatabaseApp extends DigiviceApp {
         stopNavigation();
     }
 
-    // DigiviceApp.StartNavigation / StopNavigation, with AutoNavigateDir as a
-    // routine: hold a side to page the gallery, fast, until released.
+    // DigiviceApp.StartNavigation / StopNavigation. Move once on DOWN, before
+    // a short touch can deliver UP in the same frame; the routine handles
+    // only repeats while the side remains held.
     function startNavigation(dir as Number) as Void {
         stopNavigation();
         navigation = gm.runner.start(new AutoNavigateDir(self, dir));
+        gm.audioMgr.playButtonA();
+        navigateGallery(dir);
     }
 
     function stopNavigation() as Void {
@@ -592,8 +595,8 @@ class AnimateName extends Routine {
     }
 }
 
-// port of DatabaseApp.AutoNavigateDir -- hold a side and the gallery pages,
-// once immediately, then every 0.12 s after a 0.35 s delay.
+// port of DatabaseApp.AutoNavigateDir -- the initial move happens directly
+// in startNavigation; repeats begin after the original 0.35 + 0.12 s delay.
 class AutoNavigateDir extends Routine {
     var app as DatabaseApp;
     var dir as Number;
@@ -607,8 +610,6 @@ class AutoNavigateDir extends Routine {
     function step(rt as Fiber) as Float {
         switch (pc) {
             case 0:
-                app.gm.audioMgr.playButtonA();
-                app.navigateGallery(dir);
                 pc = 1;
                 return 0.35;
             case 1:

@@ -55,12 +55,13 @@ module Kaisa {
     }
 
     // The Configure submenu. Reset sits last, furthest from an accidental
-    // press: the three above it are reversible and it is not.
+    // press: the four above it are reversible and it is not.
     enum ConfigureMenu {
         CONFIGURE_VIBRATION = 0,
         CONFIGURE_SOUND = 1,
         CONFIGURE_GRID = 2,
-        CONFIGURE_RESET = 3
+        CONFIGURE_BG_STEPS = 3,
+        CONFIGURE_RESET = 4
     }
 
     enum GameMenu {

@@ -831,6 +831,7 @@ class Battle extends DigiviceApp {
 
         gm.logicMgr.increaseTotalWins();
         gm.logicMgr.increaseTotalBattles();
+        gm.logicMgr.finishEvent();
         closeApp(Kaisa.SCREEN_CHARACTER);
     }
 
@@ -878,6 +879,7 @@ class Battle extends DigiviceApp {
         }
 
         gm.logicMgr.increaseTotalBattles();
+        gm.logicMgr.finishEvent();
         closeApp(Kaisa.SCREEN_CHARACTER);
     }
 
@@ -898,6 +900,7 @@ class Battle extends DigiviceApp {
         gm.enqueueAnimation(new ChangeDistance(gm, before, gm.worldMgr.currentDistance()));
 
         gm.logicMgr.increaseTotalBattles();
+        gm.logicMgr.finishEvent();
         closeApp(Kaisa.SCREEN_CHARACTER);
     }
 

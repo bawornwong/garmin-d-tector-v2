@@ -70,6 +70,13 @@ class GameManager {
     // there is nothing to lose (ADR 7: Digimon are indices).
     function checkLeaverBuster() as Void {
         if (!saved.record.isLeaverBusterActive) { return; }
+        // An unfinished event battle restarts from its saved event marker.
+        // Applying the quit penalty here would change the player's progress
+        // before they get that retry, and could leave them defeated at Camp.
+        if (logicMgr.savedEventIsActiveBattle()) {
+            disableLeaverBuster();
+            return;
+        }
 
         var expLoss = saved.record.leaverBusterExpLoss;
         var digimonLoss = saved.record.leaverBusterDigimonLoss;
@@ -100,14 +107,21 @@ class GameManager {
     }
 
     // GameManager.cs:239 -- "Reduces distance by 1, if possible, and increases
-    // the step count by one." One step is one shake of the original; the port
-    // has no shake, so the character screen's B button stands in for it when
-    // the player is one kilometre out (LogicManager.inputB).
+    // the step count by one." A detected wrist shake calls this while the
+    // watch app is visible. The character screen's B button also handles
+    // the final kilometre (LogicManager.inputB).
     function takeAStep() as Void {
+        takeModelStep();
+        if (saved.savedEvent() != 0 && !saved.commit()) { return; }
+        checkPendingEvents();
+    }
+
+    // One model step without sound or event presentation. Used by catch-up
+    // walking until the first pending story event or boss stop.
+    function takeModelStep() as Void {
         worldMgr.takeSteps(1);
         worldMgr.reduceDistance(1);
         if (worldMgr.currentDistance() == 1) { saved.setSavedEvent(2); }
-        checkPendingEvents();
     }
 
     // GameManager.cs:205 -- whether a saved event should start now. An app on
@@ -116,13 +130,24 @@ class GameManager {
     function checkPendingEvents() as Void {
         if (logicMgr.isAppLoaded() && !(logicMgr.loadedApp instanceof Status)) { return; }
         if (screenMgr.playingAnimations) { return; }
+        if (logicMgr.isEventPending) { return; }
+        // An interrupted encounter stays saved. A defeated character needs
+        // to reach Camp before it can be offered again.
+        if (isCharacterDefeated()) { return; }
 
         var savedEvent = saved.savedEvent();
         if (savedEvent == 0) { return; }
-        if (savedEvent == 1) {
+        // Showing the prompt is not the same as posting a watch notification.
+        // Keep this gate eligible if the player closes the app before acting.
+        if (!saved.commit()) { return; }
+        if (savedEvent == logicMgr.SAVE_EVENT_RANDOM_WAITING
+                || savedEvent == logicMgr.SAVE_EVENT_RANDOM_ACTIVE
+                || savedEvent == logicMgr.SAVE_EVENT_STORM_STAY_ACTIVE
+                || savedEvent == logicMgr.SAVE_EVENT_STORM_MOVED_ACTIVE) {
             logicMgr.enqueueRegularEvent();
             if (logicMgr.isAppLoaded()) { logicMgr.closeLoadedApp(Kaisa.SCREEN_CHARACTER); }
-        } else if (savedEvent == 2) {
+        } else if (savedEvent == logicMgr.SAVE_EVENT_BOSS_WAITING
+                || savedEvent == logicMgr.SAVE_EVENT_BOSS_ACTIVE) {
             logicMgr.enqueueBossEvent();
             if (logicMgr.isAppLoaded()) { logicMgr.closeLoadedApp(Kaisa.SCREEN_CHARACTER); }
         }
@@ -139,6 +164,8 @@ class GameManager {
         var playerSpirit = Kaisa.WellKnown.PLAYER_SPIRIT[chosenGameChar];
 
         saved.record.gameChar = chosenGameChar;
+        (new JourneyStepSync()).beginGame(saved.record,
+            (new GarminStepReader()).read(true));
 
         for (var i = 0; i < saved.record.battleSeed.size(); i += 1) {
             saved.record.battleSeed[i] = Kaisa.Rand.rangeInt(0, 2147483647);
@@ -561,24 +588,21 @@ class GameManager {
     }
 }
 
-// port of AudioManager.cs. ADR 11 ruled this out of scope on the premise
-// that Connect IQ can only approximate the original's clips; superseded once
-// the source turned out to be monophonic square waves and Attention.playTone
-// a square-wave generator -- see the sound-and-vibration map. The trace
-// calls are unchanged from when this was trace-only: they are what the
-// golden animation and screen diffs compare against, and stay exactly as
-// they were so those 53/53 and 27/27 results keep meaning what they meant.
+// Keep source sound names in traces so screen and animation verification is
+// intact. Menu inputs use vibration only. Debug simulator builds play the
+// source's note data; release builds use one short watch-supported cue.
 class AudioManager {
+    const CUE_ACTION = 0;
+    const CUE_POSITIVE = 1;
+    const CUE_NEGATIVE = 2;
+    const CUE_ALERT = 3;
+
     var _runner as Runner;
-    // One sound plays at a time, and a new one interrupts -- which is what
-    // the ORIGINAL does, not a concession to the watch: AudioManager.cs has a
-    // single AudioSource and every PlaySound is `source.clip = sound;
-    // source.Play();`, replacing whatever was playing. (The overlapping
-    // alternative sits commented out at every call site there, with a note
-    // saying why it was dropped.) It suits the hardware too, which has one
-    // tone generator -- but faithfulness is the reason, and queueing would
-    // put a sound behind the picture it belongs with.
-    var _fiber as Fiber?;
+    var _toneFiber as Fiber?;
+    var _lastUiVibeAt as Number = -1000;
+    var _lastSceneVibeAt as Number = -1000;
+    var _eventReminderMs as Number = 0;
+    const EVENT_REMINDER_MS = 1600;
     // Set by DTectorView for a screen/anim probe: the trace ("sound X") is
     // what the golden diffs compare, at its SCHEDULED time, and that stays
     // identical either way. What mute skips is the real Attention call --
@@ -592,70 +616,104 @@ class AudioManager {
         _runner = runnerIn;
     }
 
-    function playButtonA() as Void { Kaisa.Trace.event("sound buttonA"); play("buttonA"); }
-    function playButtonB() as Void { Kaisa.Trace.event("sound buttonB"); play("buttonB"); }
+    function playButtonA() as Void { Kaisa.Trace.event("sound buttonA"); vibrateUi(0); }
+    function playButtonB() as Void { Kaisa.Trace.event("sound buttonB"); vibrateUi(3); }
+    function playMenuMove(dir as Number) as Void {
+        Kaisa.Trace.event((dir == Kaisa.DIR_LEFT) ? "sound menuLeft" : "sound menuRight");
+        vibrateUi((dir == Kaisa.DIR_LEFT) ? 2 : 1);
+    }
+    function rejectUnavailable() as Void {
+        if (muted || !(Toybox.Attention has :vibrate)) { return; }
+        if (!System.getDeviceSettings().vibrateOn || !Kaisa.Prefs.vibrationOn()) { return; }
+        // A short buzz followed by a stronger, longer stop signal. This is
+        // distinct from the single tap used for Back or normal menu input.
+        Toybox.Attention.vibrate([
+            new Toybox.Attention.VibeProfile(85, 110),
+            new Toybox.Attention.VibeProfile(0, 85),
+            new Toybox.Attention.VibeProfile(100, 240)
+        ] as Array<Toybox.Attention.VibeProfile>);
+    }
     function playCharHappy() as Void { Kaisa.Trace.event("sound charHappy"); play("charHappy"); }
     function playCharSad() as Void { Kaisa.Trace.event("sound charSad"); play("charSad"); }
     function playSound(s as String) as Void { Kaisa.Trace.event("sound " + s); play(s); }
 
-    // There is no engine-level stop for a tone already sent to the generator
-    // (ticket 02: Attention has no such call) -- only for chunks not yet
-    // sent. Killing the fiber is the whole of what "stop" can mean here.
+    // Attention cannot cancel a tone already handed to the device. In the
+    // simulator, stopping the fiber prevents further source-note chunks.
     function stopSound() as Void {
         Kaisa.Trace.event("stopSound");
-        _runner.stopSilent(_fiber);
-        _fiber = null;
+        _runner.stopSilent(_toneFiber);
+        _toneFiber = null;
+        if (!muted) { emitSimulatorAudioStop(); }
     }
 
-    // Vibration rides on the sound that already marks each moment, so it
-    // needs no call sites of its own: the map's rule is "sound on every
-    // event, vibration only on a curated list", and the list is exactly
-    // these names. Sounds absent from this table do not vibrate -- notably
-    // every button, menu scroll and map step, where a buzz on each of the
-    // 160 button call sites would be miserable and drain the battery.
-    //
-    // The numbers are ticket 06's drafts and have NOT been felt on a wrist.
-    // They are sized against each sound's real duration and are meant to be
-    // tuned, not trusted. `dutyCycle` gradation in particular may not even
-    // be perceptible here: Garmin documents Forerunners as ignoring it, and
-    // whether Venu 4 honours it is ticket 01's question 7. If it does not,
-    // these have to be re-expressed in length and pattern alone.
-    //
-    // Max 8 profiles per vibrate() call (ticket 02); the longest here is 6.
+    // Venu 4's speaker cannot synthesize the source's frequencies. The SDK's
+    // SUCCESS sample has a five-note, ~1.7 s contour close to the six-note,
+    // ~1.6 s charHappy effect; FAILURE similarly falls for charSad. Play each
+    // as one built-in sample. Stacking several Garmin alerts previously made
+    // the result sound like a ringtone. Other effects keep their short cues.
+    // Each pair remains [tone, delay] for the watch-cue coverage test.
+    function scoreFor(name as String) as Array<Array<Number>> {
+        var A = Toybox.Attention;
+        if (name.equals("charHappy")) { return [[A.TONE_SUCCESS, 0]]; }
+        if (name.equals("charSad")) { return [[A.TONE_FAILURE, 0]]; }
+        var cue = cueFor(name);
+        if (cue == CUE_POSITIVE) { return [[A.TONE_START, 0]]; }
+        if (cue == CUE_NEGATIVE) { return [[A.TONE_STOP, 0]]; }
+        if (cue == CUE_ALERT) { return [[A.TONE_MSG, 0]]; }
+        // TONE_KEY can be silenced separately by the watch's key-tone setting.
+        if (cue == CUE_ACTION) { return [[A.TONE_MSG, 0]]; }
+        return [];
+    }
+
+    // Every source effect is classified; button feedback has its own short
+    // vibration patterns and never calls Attention.playTone.
+    function cueFor(name as String) as Number {
+        if (name.equals("buttonA") || name.equals("buttonB")
+                || Kaisa.Sounds.indexOf(name) < 0) { return -1; }
+        if (name.equals("charHappy") || name.equals("digiPowerSucceed")
+                || name.equals("evolutionAncient") || name.equals("evolutionRegular")
+                || name.equals("evolutionSpirit") || name.equals("gameStart")
+                || name.equals("levelUp") || name.equals("reward")
+                || name.equals("speedRunner_Finish") || name.equals("summonDigimon")
+                || name.equals("unlockCode") || name.equals("unlockDigimon")) {
+            return CUE_POSITIVE;
+        }
+        if (name.equals("charSad") || name.equals("destroySpirits")
+                || name.equals("digiPowerFailed") || name.equals("levelDown")
+                || name.equals("levelDownDigimon") || name.equals("loseDigimon")
+                || name.equals("punishment") || name.equals("speedRunner_Crash")
+                || name.equals("unpleasantBeep")) {
+            return CUE_NEGATIVE;
+        }
+        if (name.equals("digistorm") || name.equals("encounterDigimon")
+                || name.equals("encounterDigimonBoss") || name.equals("explosion")
+                || name.equals("stealAllSpirits") || name.equals("triggerEvent")) {
+            return CUE_ALERT;
+        }
+        return CUE_ACTION;
+    }
+
     function vibeFor(name as String) as Array? {
         var V = Toybox.Attention;
-        if (name.equals("encounterDigimon")) {
-            return [new V.VibeProfile(50, 150)];
-        } else if (name.equals("encounterDigimonBoss")) {
-            return [new V.VibeProfile(80, 150), new V.VibeProfile(0, 80),
-                    new V.VibeProfile(80, 150), new V.VibeProfile(0, 80),
-                    new V.VibeProfile(80, 250)];
-        } else if (name.equals("evolutionRegular")) {
-            return [new V.VibeProfile(40, 100), new V.VibeProfile(0, 60),
-                    new V.VibeProfile(60, 100), new V.VibeProfile(0, 60),
-                    new V.VibeProfile(85, 300)];
-        } else if (name.equals("evolutionSpirit") || name.equals("evolutionAncient")) {
-            // The same rise as a regular evolution, plus a payoff hit: one
-            // vocabulary for all four tiers, with the long two earning a tail.
-            return [new V.VibeProfile(40, 100), new V.VibeProfile(0, 60),
-                    new V.VibeProfile(60, 100), new V.VibeProfile(0, 60),
-                    new V.VibeProfile(85, 300), new V.VibeProfile(100, 500)];
-        } else if (name.equals("levelUp")) {
-            return [new V.VibeProfile(60, 120), new V.VibeProfile(0, 80),
-                    new V.VibeProfile(60, 120)];
-        } else if (name.equals("reward") || name.equals("unlockDigimon")
-                || name.equals("unlockCode")) {
-            // The jackpot's win rides here too: the box's reward animation
-            // plays "reward" rather than a sound of its own.
-            return [new V.VibeProfile(50, 200)];
-        } else if (name.equals("loseDigimon") || name.equals("levelDownDigimon")
-                || name.equals("punishment")) {
-            return [new V.VibeProfile(100, 400)];
-        } else if (name.equals("digistorm")) {
-            // Marks the onset only. The sound runs 89 seconds; sustained
-            // buzzing for that long would be intolerable and cost battery.
-            return [new V.VibeProfile(70, 200), new V.VibeProfile(0, 150),
-                    new V.VibeProfile(70, 200)];
+        var cue = cueFor(name);
+        if (name.equals("triggerEvent")) {
+            // Four hard, close beats. Seven profiles stay below Garmin's
+            // eight-profile limit and leave a distinct gap before repeating.
+            return [new V.VibeProfile(100, 110), new V.VibeProfile(0, 35),
+                    new V.VibeProfile(100, 110), new V.VibeProfile(0, 35),
+                    new V.VibeProfile(100, 110), new V.VibeProfile(0, 35),
+                    new V.VibeProfile(100, 250)];
+        } else if (cue == CUE_POSITIVE) {
+            return [new V.VibeProfile(50, 120), new V.VibeProfile(0, 80),
+                    new V.VibeProfile(50, 120)];
+        } else if (cue == CUE_NEGATIVE) {
+            return [new V.VibeProfile(80, 300)];
+        } else if (cue == CUE_ALERT) {
+            return [new V.VibeProfile(70, 100), new V.VibeProfile(0, 70),
+                    new V.VibeProfile(70, 100), new V.VibeProfile(0, 70),
+                    new V.VibeProfile(70, 100)];
+        } else if (cue == CUE_ACTION) {
+            return [new V.VibeProfile(40, 100)];
         }
         return null;
     }
@@ -679,91 +737,167 @@ class AudioManager {
         if (!(Toybox.Attention has :vibrate)) { return; }
         if (!System.getDeviceSettings().vibrateOn) { return; }
         if (!Kaisa.Prefs.vibrationOn()) { return; }
+        var now = System.getTimer();
+        if (cueFor(name) == CUE_ALERT && now >= _lastSceneVibeAt
+                && now - _lastSceneVibeAt < 800) { return; }
         var profiles = vibeFor(name);
         if (profiles == null) { return; }
         Toybox.Attention.vibrate(profiles as Array<Toybox.Attention.VibeProfile>);
     }
 
+    // A scene can begin before its first source sound cue. Give monster
+    // encounters and story cut scenes a distinct, immediate four-beat cue.
+    function vibrateScene() as Void {
+        if (muted || !(Toybox.Attention has :vibrate)) { return; }
+        if (!System.getDeviceSettings().vibrateOn || !Kaisa.Prefs.vibrationOn()) { return; }
+        _lastSceneVibeAt = System.getTimer();
+        Toybox.Attention.vibrate([
+            new Toybox.Attention.VibeProfile(100, 130),
+            new Toybox.Attention.VibeProfile(0, 35),
+            new Toybox.Attention.VibeProfile(100, 130),
+            new Toybox.Attention.VibeProfile(0, 35),
+            new Toybox.Attention.VibeProfile(100, 130),
+            new Toybox.Attention.VibeProfile(0, 35),
+            new Toybox.Attention.VibeProfile(100, 300)
+        ] as Array<Toybox.Attention.VibeProfile>);
+    }
+
+    // The prompt stays visible until an action starts the encounter. Only
+    // the foreground tick calls this, so a closed app cannot keep buzzing.
+    function tickEventReminder(pending as Boolean, elapsedMs as Number) as Boolean {
+        if (!pending) { _eventReminderMs = 0; return false; }
+        _eventReminderMs += elapsedMs;
+        if (_eventReminderMs < EVENT_REMINDER_MS) { return false; }
+        _eventReminderMs = 0;
+        if (!muted) { vibrate("triggerEvent"); }
+        return true;
+    }
+
+    // A shorter, uneven double beat follows the storm across the screen.
+    // The animation spaces calls apart so profiles never form a continuous buzz.
+    function vibrateStormPulse(phase as Number) as Void {
+        if (muted || !(Toybox.Attention has :vibrate)) { return; }
+        if (!System.getDeviceSettings().vibrateOn || !Kaisa.Prefs.vibrationOn()) { return; }
+        var strong = phase % 2 == 0;
+        Toybox.Attention.vibrate([
+            new Toybox.Attention.VibeProfile(strong ? 75 : 55, 90),
+            new Toybox.Attention.VibeProfile(0, 70),
+            new Toybox.Attention.VibeProfile(strong ? 95 : 80, strong ? 190 : 140)
+        ] as Array<Toybox.Attention.VibeProfile>);
+    }
+
     function play(name as String) as Void {
-        _runner.stopSilent(_fiber);
-        _fiber = null;
+        _runner.stopSilent(_toneFiber);
+        _toneFiber = null;
+        if (!muted) { emitSimulatorAudioStop(); }
         if (muted) { return; }
+        var cue = cueFor(name);
+        if (cue < 0) { return; }
         vibrate(name);
-        if (!(Toybox.Attention has :playTone)) { return; }
-        // Two gates, and they are not the same thing: tonesOn is the watch's
-        // own setting and Prefs is the Configure menu's. Either one off means
-        // silence.
-        if (!System.getDeviceSettings().tonesOn) { return; }
         if (!Kaisa.Prefs.soundOn()) { return; }
+        emitSimulatorAudioPlay(name);
+        if (!(Toybox.Attention has :playTone)) { return; }
+        // The game setting gates both playback paths. The device setting
+        // gates Garmin's native tone; a debug Mac preview can still play with
+        // simulator Tones off so the two paths do not echo each other.
+        if (!System.getDeviceSettings().tonesOn) { return; }
+        playEffectTone(name);
+    }
+
+    // A local development runner can play the source MP3 on the Mac when the
+    // simulator's ToneProfile audio backend is silent. The release build and
+    // muted verification probes emit no bridge messages.
+    (:debug)
+    function emitSimulatorAudioPlay(name as String) as Void {
+        System.println("SIM_AUDIO " + name);
+    }
+
+    (:release)
+    function emitSimulatorAudioPlay(name as String) as Void {
+    }
+
+    (:debug)
+    function emitSimulatorAudioStop() as Void {
+        System.println("SIM_AUDIO_STOP");
+    }
+
+    (:release)
+    function emitSimulatorAudioStop() as Void {
+    }
+
+    (:debug)
+    function playEffectTone(name as String) as Void {
+        if (name.equals("charHappy")) {
+            _toneFiber = _runner.startSilent(new HappySoundRoutine());
+            return;
+        }
         var idx = Kaisa.Sounds.indexOf(name);
-        if (idx < 0) { return; }
-        // startSilent, not start: this fiber has no counterpart in the
-        // original (AudioManager.PlaySound() there is a fire-and-forget
-        // AudioSource.Play(), not a coroutine), so it must not add a
-        // "startCoroutine" event the golden traces have no match for.
-        _fiber = _runner.startSilent(new SoundRoutine(idx));
+        if (idx >= 0) {
+            _toneFiber = _runner.startSilent(new SourceSoundRoutine(idx));
+        }
+    }
+
+    (:release)
+    function playEffectTone(name as String) as Void {
+        var score = scoreFor(name);
+        if (score.size() > 0) {
+            Toybox.Attention.playTone(score[0][0] as Toybox.Attention.Tone);
+        }
+    }
+
+    // Limit bursts so a rapid run through a menu does not build a long queue
+    // of vibration. The input itself still moves on every press.
+    function vibrateUi(cue as Number) as Void {
+        var now = System.getTimer();
+        if (now >= _lastUiVibeAt && now - _lastUiVibeAt < 120) {
+            return;
+        }
+        if (muted || !(Toybox.Attention has :vibrate)) { return; }
+        if (!System.getDeviceSettings().vibrateOn || !Kaisa.Prefs.vibrationOn()) { return; }
+        _lastUiVibeAt = now;
+        var strength = cue == 3 ? 65 : (cue == 0 ? 50 : 40);
+        var duration = cue == 3 ? 140 : (cue == 0 ? 100 : 70);
+        Toybox.Attention.vibrate(
+            [new Toybox.Attention.VibeProfile(strength, duration)]
+                as Array<Toybox.Attention.VibeProfile>);
     }
 }
 
-// One playSound() call, scheduled on the same 20 fps runner every animation
-// uses. Notes are handed to Attention.playTone in chunks of roughly
-// CHUNK_MS rather than one array for the whole sound: sub-frame note detail
-// is the tone generator's job (ticket 01: a ToneProfile array plays as a
-// timed sequence in hardware, not through the runner's own 50 ms tick), and
-// chunking is what bounds how late stopSound() can land, since nothing can
-// interrupt a chunk once it's sent (ticket 02).
-class SoundRoutine extends Routine {
+// The simulator can synthesize ToneProfile notes. On Venu 4 hardware these
+// calls can be silent even though the same API reports support. Keep this
+// original-audio preview out of the release build.
+(:debug)
+class SourceSoundRoutine extends Routine {
     const CHUNK_MS = 220;
-
     var _soundIndex as Number;
     var _n as Number = 0;
+    var _remainMs as Number = 0;
 
     function initialize(idx as Number) {
         Routine.initialize();
         _soundIndex = idx;
     }
 
-    // How much of the current note is still unplayed, when it is longer than
-    // one chunk. A note is not indivisible: a sustained tone split into
-    // consecutive profiles at the SAME frequency is the same waveform
-    // continuing, and splitting it is what keeps a stop bounded. Without
-    // this, a chunk is as long as its longest note -- measured at 659 ms on
-    // travelMap and 589 ms on digistorm, both of which the animations
-    // actually call stopSound on, so the bound the whole chunking design
-    // exists to provide was ~3x looser than advertised on exactly the sounds
-    // that rely on it.
-    var _remainMs as Number = 0;
-
     function step(rt as Fiber) as Float {
         var count = Kaisa.Sounds.COUNTS[_soundIndex];
         if (_n >= count) { return Routine.DONE; }
-
-        // A rest (frequency 0) is the fiber WAITING, not a tone of zero
-        // frequency. Sending ToneProfile(0, ms) would lean on undocumented
-        // behaviour -- playTone documents an InvalidOptionsException for
-        // invalid values, and a throw in here lands inside Runner.advance(),
-        // taking out the frame rather than just the sound. Skipping the rest
-        // instead is also wrong: its neighbours would run together and the
-        // gap the original has would vanish. So a rest ENDS the chunk, and
-        // the next step spends it as pure wait time with no tone call.
-        if (Kaisa.Sounds.noteAt(_soundIndex, _n)[0] == 0) {
-            var restMs = (_remainMs > 0) ? _remainMs : Kaisa.Sounds.noteAt(_soundIndex, _n)[1];
+        var note = Kaisa.Sounds.noteAt(_soundIndex, _n);
+        if (note[0] == 0) {
+            var restMs = (_remainMs > 0) ? _remainMs : note[1];
             _remainMs = 0;
             _n += 1;
-            return restMs / 1000.0;
+            return restMs.toFloat() / 1000.0;
         }
 
         var profiles = new [0];
         var totalMs = 0;
         while (_n < count && totalMs < CHUNK_MS) {
-            var note = Kaisa.Sounds.noteAt(_soundIndex, _n);
+            note = Kaisa.Sounds.noteAt(_soundIndex, _n);
             var freq = note[0];
-            if (freq == 0) { break; }      // rest: ends the chunk, handled above
+            if (freq == 0) { break; }
             var left = (_remainMs > 0) ? _remainMs : note[1];
             var room = CHUNK_MS - totalMs;
             if (left > room) {
-                // Take what fits and keep the rest of this note for the next
-                // step; do not advance _n.
                 profiles.add(new Toybox.Attention.ToneProfile(freq, room));
                 totalMs += room;
                 _remainMs = left - room;
@@ -774,12 +908,30 @@ class SoundRoutine extends Routine {
                 _n += 1;
             }
         }
-        // playTone requires at least one profile; with rests ending the chunk
-        // this should not happen, but an empty array is an exception rather
-        // than a no-op, so it is not worth relying on the data staying so.
-        if (profiles.size() > 0 && (Toybox.Attention has :playTone)) {
+        if (profiles.size() > 0) {
             Toybox.Attention.playTone({ :toneProfile => profiles });
         }
-        return totalMs / 1000.0;
+        return totalMs.toFloat() / 1000.0;
+    }
+}
+
+// The extractor mistakes some strong odd harmonics of char_happy.mp3 for
+// fundamentals. These six frequencies and onsets were measured from the MP3;
+// one call keeps the complete melody intact in the simulator.
+(:debug)
+class HappySoundRoutine extends Routine {
+    function initialize() { Routine.initialize(); }
+
+    function step(rt as Fiber) as Float {
+        var profiles = [
+            new Toybox.Attention.ToneProfile(819, 234),
+            new Toybox.Attention.ToneProfile(1093, 340),
+            new Toybox.Attention.ToneProfile(1024, 149),
+            new Toybox.Attention.ToneProfile(910, 150),
+            new Toybox.Attention.ToneProfile(1024, 150),
+            new Toybox.Attention.ToneProfile(1093, 537)
+        ];
+        Toybox.Attention.playTone({ :toneProfile => profiles });
+        return Routine.DONE;
     }
 }

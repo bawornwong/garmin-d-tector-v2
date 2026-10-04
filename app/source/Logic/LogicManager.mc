@@ -36,6 +36,16 @@ class LogicManager {
     const EVENT_RANDOM_BATTLE = 1;
     const EVENT_DATA_STORM = 2;
     const EVENT_BOSS_BATTLE = 3;
+    // SaveRecord.pendingEvent is one byte. Keep an encounter in that byte
+    // until it is resolved, so a process exit during a battle or storm can
+    // reopen it. The storm variants also say whether its world move has
+    // already been applied, preventing a second move after relaunch.
+    const SAVE_EVENT_RANDOM_WAITING = 1;
+    const SAVE_EVENT_BOSS_WAITING = 2;
+    const SAVE_EVENT_RANDOM_ACTIVE = 3;
+    const SAVE_EVENT_STORM_STAY_ACTIVE = 4;
+    const SAVE_EVENT_STORM_MOVED_ACTIVE = 5;
+    const SAVE_EVENT_BOSS_ACTIVE = 6;
     var pendingEvent as Number = EVENT_NONE;
 
     function initialize(saved as SavedGame, db as Database) {
@@ -53,15 +63,21 @@ class LogicManager {
         return loadedApp != null;
     }
 
+    function savedEventIsActiveBattle() as Boolean {
+        var event = _saved.savedEvent();
+        return event == SAVE_EVENT_RANDOM_ACTIVE || event == SAVE_EVENT_BOSS_ACTIVE;
+    }
+
     const DEFAULT_NAME = "PLAYER";
 
     // The reset the original does from its MainMenu scene: the slot goes, and
     // what follows is a new game -- the character selection with its intro,
     // and CreateNewGame when a character is picked.
     function resetGame() as Void {
-        _saved.eraseSlot();
-        _saved.replaceRecord(_gm.freshRecord(DEFAULT_NAME));
-        _saved.commit();
+        var fresh = _gm.freshRecord(DEFAULT_NAME);
+        fresh.stepSync.gameGeneration = _saved.record.stepSync.gameGeneration;
+        _saved.replaceRecord(fresh);
+        if (!_saved.commit()) { return; }
         closeLoadedApp(Kaisa.SCREEN_CHAR_SELECTION);
         currentScreen = Kaisa.SCREEN_CHAR_SELECTION;
         charSelectionIndex = 0;
@@ -85,6 +101,7 @@ class LogicManager {
                 pageStatus();
             }
         } else if (currentScreen == Kaisa.SCREEN_MAIN_MENU) {
+            if (!Kaisa.MenuFeatures.visible(currentScreen, currentMainMenu)) { return; }
             if (currentMainMenu == Kaisa.MAIN_MENU_CAMP) {
                 _gm.audioMgr.playButtonA();
                 openApp(Kaisa.APP_CAMP);
@@ -116,13 +133,13 @@ class LogicManager {
             } else if (currentMainMenu == Kaisa.MAIN_MENU_DIGITS) {
                 _gm.audioMgr.playButtonA();
                 openApp(Kaisa.APP_CODE_INPUT);
+            } else if (currentMainMenu == Kaisa.MAIN_MENU_CONNECT) {
+                _gm.audioMgr.rejectUnavailable();
             }
         } else if (currentScreen == Kaisa.SCREEN_CONFIGURE_MENU) {
             if (configureMenuIndex == Kaisa.CONFIGURE_SOUND) {
-                // Toggle BEFORE the beep, so switching sound back on is
-                // confirmed by the beep itself and switching it off goes
-                // quiet immediately. Every other entry keeps the usual
-                // order.
+                // Button feedback is vibration only; this setting gates
+                // gameplay tones independently of menu input.
                 Kaisa.Prefs.toggle(Kaisa.Prefs.BIT_SOUND_OFF);
                 _gm.audioMgr.playButtonA();
             } else if (configureMenuIndex == Kaisa.CONFIGURE_VIBRATION) {
@@ -134,6 +151,9 @@ class LogicManager {
                 _gm.audioMgr.playButtonA();
                 if (configureMenuIndex == Kaisa.CONFIGURE_GRID) {
                     Kaisa.Prefs.toggle(Kaisa.Prefs.BIT_GRID_OFF);
+                } else if (configureMenuIndex == Kaisa.CONFIGURE_BG_STEPS) {
+                    BackgroundStepSetting.setEnabled(!BackgroundStepSetting.enabled());
+                    StepBackgroundSchedule.apply();
                 } else if (configureMenuIndex == Kaisa.CONFIGURE_RESET) {
                     resetGame();
                 }
@@ -157,11 +177,13 @@ class LogicManager {
                 currentScreen = Kaisa.SCREEN_GAMES_TRAVEL_MENU;
             }
         } else if (currentScreen == Kaisa.SCREEN_GAMES_REWARD_MENU) {
+            if (!Kaisa.MenuFeatures.visible(currentScreen, gamesRewardMenuIndex)) { return; }
             if (gamesRewardMenuIndex == 0) {
                 _gm.audioMgr.playButtonA();
                 openApp(Kaisa.APP_JACKPOT_BOX);
             }
         } else if (currentScreen == Kaisa.SCREEN_GAMES_TRAVEL_MENU) {
+            if (!Kaisa.MenuFeatures.visible(currentScreen, gamesTravelMenuIndex)) { return; }
             if (gamesTravelMenuIndex == 0) {
                 _gm.audioMgr.playButtonA();
                 openApp(Kaisa.APP_SPEED_RUNNER);
@@ -230,30 +252,28 @@ class LogicManager {
             if (dir == Kaisa.DIR_LEFT) { loadedApp.inputLeft(); }
             else { loadedApp.inputRight(); }
         } else if (currentScreen == Kaisa.SCREEN_CHARACTER) {
-            _gm.audioMgr.playButtonA();
+            _gm.audioMgr.playMenuMove(dir);
             openGameMenu();
         } else if (currentScreen == Kaisa.SCREEN_MAIN_MENU) {
-            _gm.audioMgr.playButtonA();
-            // NavigateMenu<T> walks the enum with Next()/Last(); MainMenu has
-            // seven members.
-            // Seven in the original, eight here: the reset is on the end.
-            currentMainMenu = (dir == Kaisa.DIR_LEFT)
-                ? Kaisa.Enums.last(currentMainMenu, 8)
-                : Kaisa.Enums.next(currentMainMenu, 8);
+            _gm.audioMgr.playMenuMove(dir);
+            currentMainMenu = Kaisa.MenuFeatures.advance(
+                currentScreen, currentMainMenu, delta);
         } else if (currentScreen == Kaisa.SCREEN_CONFIGURE_MENU) {
-            _gm.audioMgr.playButtonA();
-            configureMenuIndex = Kaisa.MathExt.circularAdd(configureMenuIndex, delta, 3, 0);
+            _gm.audioMgr.playMenuMove(dir);
+            configureMenuIndex = Kaisa.MathExt.circularAdd(configureMenuIndex, delta, 4, 0);
         } else if (currentScreen == Kaisa.SCREEN_GAMES_MENU) {
-            _gm.audioMgr.playButtonA();
+            _gm.audioMgr.playMenuMove(dir);
             gamesMenuIndex = Kaisa.MathExt.circularAdd(gamesMenuIndex, delta, 2, 0);
         } else if (currentScreen == Kaisa.SCREEN_GAMES_REWARD_MENU) {
-            _gm.audioMgr.playButtonA();
-            gamesRewardMenuIndex = Kaisa.MathExt.circularAdd(gamesRewardMenuIndex, delta, 2, 0);
+            _gm.audioMgr.playMenuMove(dir);
+            gamesRewardMenuIndex = Kaisa.MenuFeatures.advance(
+                currentScreen, gamesRewardMenuIndex, delta);
         } else if (currentScreen == Kaisa.SCREEN_GAMES_TRAVEL_MENU) {
-            _gm.audioMgr.playButtonA();
-            gamesTravelMenuIndex = Kaisa.MathExt.circularAdd(gamesTravelMenuIndex, delta, 3, 0);
+            _gm.audioMgr.playMenuMove(dir);
+            gamesTravelMenuIndex = Kaisa.MenuFeatures.advance(
+                currentScreen, gamesTravelMenuIndex, delta);
         } else if (currentScreen == Kaisa.SCREEN_CHAR_SELECTION) {
-            _gm.audioMgr.playButtonA();
+            _gm.audioMgr.playMenuMove(dir);
             charSelectionIndex = Kaisa.MathExt.circularAdd(charSelectionIndex, delta, 5, 0);
         }
     }
@@ -270,17 +290,14 @@ class LogicManager {
 
     // LogicManager.cs:256 EnqueueRegularEvent / EnqueueBossEvent.
     //
-    // The original holds the pending event as a delegate it assigns and adds a
-    // clean-up lambda to; Monkey C has no delegates, so the event is a kind
-    // (EVENT_* below) and triggerEvent dispatches on it. The clean-up the
-    // lambda does -- clearing the saved event and the flag -- happens there
-    // too, and in the same order.
+    // The original holds the pending event as a delegate; here it is an
+    // EVENT_* kind. On the watch the saved marker remains active through the
+    // event, so reopening the app can offer that event again from its start.
     function enqueueRegularEvent() as Void {
         if (loadedApp == null) { currentScreen = Kaisa.SCREEN_CHARACTER; }
         _gm.audioMgr.playSound("triggerEvent");
         isEventPending = true;
-        pendingEvent = (Kaisa.Rand.rangeFloat(0.0, 1.0) < 0.85)
-            ? EVENT_RANDOM_BATTLE : EVENT_DATA_STORM;
+        pendingEvent = kindForSavedEvent(_saved.savedEvent());
     }
 
     function enqueueBossEvent() as Void {
@@ -290,28 +307,78 @@ class LogicManager {
         pendingEvent = EVENT_BOSS_BATTLE;
     }
 
+    function kindForSavedEvent(savedEvent as Number) as Number {
+        if (savedEvent == SAVE_EVENT_RANDOM_ACTIVE) { return EVENT_RANDOM_BATTLE; }
+        if (savedEvent == SAVE_EVENT_STORM_STAY_ACTIVE
+                || savedEvent == SAVE_EVENT_STORM_MOVED_ACTIVE) {
+            return EVENT_DATA_STORM;
+        }
+        return (Kaisa.Rand.rangeFloat(0.0, 1.0) < 0.85)
+            ? EVENT_RANDOM_BATTLE : EVENT_DATA_STORM;
+    }
+
     function triggerEvent() as Void {
-        // The event runs first and the clean-up after, because that is the
-        // order the original's delegate chain has them in: the battle or the
-        // storm starts while the flag is still set.
+        var savedEvent = _saved.savedEvent();
         if (pendingEvent == EVENT_RANDOM_BATTLE) {
+            if (savedEvent == SAVE_EVENT_RANDOM_WAITING) {
+                _saved.setSavedEvent(SAVE_EVENT_RANDOM_ACTIVE);
+            }
+            if (!_saved.commit()) { return; }
             callRandomBattle(false);            // CallRandomBattleForEvent
         } else if (pendingEvent == EVENT_DATA_STORM) {
-            triggerDataStorm();
+            var moved = savedEvent == SAVE_EVENT_STORM_MOVED_ACTIVE;
+            if (savedEvent == SAVE_EVENT_RANDOM_WAITING) {
+                // Apply the effect once, in the same checkpoint as the
+                // active marker. Restarting the cut scene must not move the
+                // player to another area a second time.
+                var result = applyDataStorm();
+                moved = result[0] == 1;
+                _saved.setSavedEvent(moved ? SAVE_EVENT_STORM_MOVED_ACTIVE
+                                          : SAVE_EVENT_STORM_STAY_ACTIVE);
+            }
+            if (!_saved.commit()) { return; }
+            _gm.enqueueAnimation(new DataStorm(_gm,
+                _gm.characterSprites(_saved.playerChar()), moved));
         } else if (pendingEvent == EVENT_BOSS_BATTLE) {
+            if (savedEvent == SAVE_EVENT_BOSS_WAITING) {
+                _saved.setSavedEvent(SAVE_EVENT_BOSS_ACTIVE);
+            }
+            if (!_saved.commit()) { return; }
             callBossBattle();
+        } else {
+            return;
         }
-
-        _saved.setSavedEvent(0);
         isEventPending = false;
         pendingEvent = EVENT_NONE;
     }
 
-    // LogicManager.cs:809
-    function triggerDataStorm() as Void {
-        var result = applyDataStorm();
-        _gm.enqueueAnimation(new DataStorm(_gm,
-            _gm.characterSprites(_saved.playerChar()), result[0] == 1));
+    // A battle outcome or the final DataStorm frame consumes the encounter.
+    // The caller commits this marker with the battle result, or immediately
+    // at the end of the storm.
+    function finishEvent() as Void {
+        var savedEvent = _saved.savedEvent();
+        if (savedEvent != SAVE_EVENT_RANDOM_ACTIVE
+                && savedEvent != SAVE_EVENT_STORM_STAY_ACTIVE
+                && savedEvent != SAVE_EVENT_STORM_MOVED_ACTIVE
+                && savedEvent != SAVE_EVENT_BOSS_ACTIVE) { return; }
+        _saved.setSavedEvent(0);
+        _saved.record.stepSync.gateEpoch += 1;
+        _saved.record.stepSync.notifiedGateEpoch = -1;
+        _saved.touch();
+    }
+
+    function finishStorm() as Void {
+        var savedEvent = _saved.savedEvent();
+        if (savedEvent != SAVE_EVENT_STORM_STAY_ACTIVE
+                && savedEvent != SAVE_EVENT_STORM_MOVED_ACTIVE) { return; }
+        var oldEpoch = _saved.record.stepSync.gateEpoch;
+        var oldNotified = _saved.record.stepSync.notifiedGateEpoch;
+        finishEvent();
+        if (!_saved.commit()) {
+            _saved.setSavedEvent(savedEvent);
+            _saved.record.stepSync.gateEpoch = oldEpoch;
+            _saved.record.stepSync.notifiedGateEpoch = oldNotified;
+        }
     }
 
     // LogicManager.cs:29 ShakeDisabled -- when a step must not count: an app

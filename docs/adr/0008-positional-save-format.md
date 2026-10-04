@@ -4,7 +4,10 @@ Date: 2026-09-06
 
 ## Status
 
-Accepted
+Historical decision, amended by the current one-slot, version 3 save. See
+[README.md](../../README.md) and [watch-step-sync-design.md](../watch-step-sync-design.md)
+for the current format and background writer protocol. The four-slot picker
+described below was never retained in the watch UI.
 
 ## Context
 
@@ -26,3 +29,11 @@ State is held in RAM and committed at **checkpoints** — app exit, screen trans
 - Checkpointing is about flash wear, not latency: at 1 ms a write, the original's cadence would be affordable but would mean thousands of flash writes an hour.
 - Storage is nowhere near a constraint; slot count is a product choice, not a budget one.
 - **The `.prg` filename becomes part of the format.** Saves live in `\GARMIN\APPS\DATA` named after it, so it must stay byte-identical and at most 8 characters or every save is orphaned.
+
+## Current amendment
+
+The app uses one `slot0` save and resumes it directly. Version 3 prefixes the
+game record with a fixed watch-step header that the background service can
+read and update without loading the game. Version 2 records are migrated on
+read; version 1 records are refused. Config preferences have their own Storage
+key and survive a game reset.

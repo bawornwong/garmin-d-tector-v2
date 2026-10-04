@@ -820,6 +820,10 @@ class AttackCollision extends Routine {
 
     // The two local functions the outcomes share.
     function transformAttackIntoCollision(sb as SpriteBuilder) as Void {
+        // Both attacks meet at their leading edges. Keep the enemy's right
+        // edge at the contact point when its 24+ pixel sprite becomes 7 pixels;
+        // otherwise the whole collision stays left of the 32-pixel canvas.
+        if (sb == sbEnemyAttack) { sb.setX(sb.x + sb.width - 7); }
         sb.setSprite(Kaisa.Sprites.BATTLE_ATTACK_COLLISION);
         sb.setSize(7, 24);
     }
@@ -1552,7 +1556,8 @@ class UnlockDigimon extends Routine {
 }
 
 // port of Animations.cs:1229  RegularEvolution -- the Digimon blinks and comes
-// back as its evolved form.
+// back as its evolved form. A successful evolution then holds its pose, like
+// SummonDigimon, before the animation queue returns to battle.
 class RegularEvolution extends Routine {
     var gm as GameManager;
     var digimonBefore as Number;
@@ -1622,6 +1627,15 @@ class RegularEvolution extends Routine {
                 pc = 9;
                 return 0.25;
             case 9:
+                if (digimonBefore == digimonAfter) { return Routine.DONE; }
+                sbDigimon.setSprite(gm.digimonSprite(digimonAfter, gm.data.ACTION_CR));
+                pc = 10;
+                return 0.75;
+            case 10:
+                sbDigimon.setSprite(gm.digimonSprite(digimonAfter, gm.data.ACTION_BASE));
+                pc = 11;
+                return 0.15;
+            case 11:
                 return Routine.DONE;
         }
         return Routine.DONE;
@@ -3206,6 +3220,7 @@ class DataStorm extends Routine {
     var sbDigistorm as Array<SpriteBuilder?> = [null, null];
     var sbExclamation as SpriteBuilder?;
     var timeTryingToEscape as Number = 0;
+    var stormVibeFrames as Number = 0;
     var i as Number = 0;
     var j as Number = 0;
 
@@ -3223,6 +3238,10 @@ class DataStorm extends Routine {
         var f = Kaisa.Sprites.DIGISTORM[Kaisa.MathExt.floorToInt(n / 2.0) % 2];
         sbDigistorm[0].setSprite(f);
         sbDigistorm[1].setSprite(f);
+        stormVibeFrames += 1;
+        if (stormVibeFrames % 12 == 0) {
+            gm.audioMgr.vibrateStormPulse(stormVibeFrames / 12);
+        }
     }
 
     function stormMove(direction as Number) as Void {
@@ -3337,9 +3356,11 @@ class DataStorm extends Routine {
                 i += 1; pc = 17; return 0.0;
             case 19:
                 gm.audioMgr.stopSound();
+                gm.logicMgr.finishStorm();
                 return Routine.DONE;
             case 20:
                 gm.audioMgr.stopSound();
+                gm.logicMgr.finishStorm();
                 return Routine.DONE;
         }
         return Routine.DONE;

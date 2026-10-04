@@ -42,15 +42,17 @@ class SavedGame {
         _dirty = true;
     }
 
-    function eraseSlot() as Void {
-        _format.deleteSlot(_slot);
+    function eraseSlot() as Boolean {
+        if (!_format.deleteSlot(_slot)) { return false; }
         _dirty = false;
+        return true;
     }
 
-    function commit() as Void {
-        if (!_dirty) { return; }
-        _format.writeSlot(_slot, record);
+    function commit() as Boolean {
+        if (!_dirty) { return true; }
+        if (!_format.writeSlot(_slot, record)) { return false; }
         _dirty = false;
+        return true;
     }
 
     // --- the properties the ported logic reads, in SavedGame.cs order ---

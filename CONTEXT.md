@@ -1,6 +1,6 @@
 # Context
 
-Shared vocabulary for the D-Tector v2 → Garmin Venu 4 port. Terms only — no implementation detail, no decisions. Decisions live in [docs/adr](docs/adr/), the build plan in [SPEC.md](SPEC.md), and the reasoning behind both in the wayfinder map at `.scratch/d-tector-venu4/map.md`.
+Shared vocabulary for the D-Tector v2 → Garmin Venu 4 port. The current build, setup, and feature status are in [README.md](README.md). The [ADRs](docs/adr/) preserve the history of implementation decisions.
 
 ## The game
 
@@ -48,7 +48,7 @@ Shared vocabulary for the D-Tector v2 → Garmin Venu 4 port. Terms only — no 
 
 **Scheduled time** — an animation event's time on the *original's* millisecond timeline. Preserved exactly; several scheduled events may land in one tick.
 
-**Slot** — one saved game, 963 packed bytes under one Storage key.
+**Slot** — the one saved game under the `slot0` Storage key. Save version 3 includes a watch-step header; see [watch-step-sync-design.md](docs/watch-step-sync-design.md).
 
 **Golden trace** — the event-and-time log produced by running the original's own code outside Unity. The reference every ported animation is diffed against.
 
@@ -56,12 +56,12 @@ Shared vocabulary for the D-Tector v2 → Garmin Venu 4 port. Terms only — no 
 
 **Glyph** — one character's bitmap in a face, with its own advance.
 
-**Note** — one step of a sound: a frequency in hertz and a duration in milliseconds, the pair a `ToneProfile` takes. A note of frequency 0 is a **rest** — silence of that duration, played by waiting rather than by asking for a tone.
+**Note** — one extracted source-sound step: a frequency in hertz and a duration in milliseconds. A note of frequency 0 is a **rest**. These notes are retained for source comparison and simulator debug playback; the Venu 4 release uses Garmin's prerecorded tones.
 
-**Chunk** — the run of notes handed to `playTone` in one call, about 220 ms of them. The tone generator plays a chunk autonomously, so notes shorter than a tick keep their timing; the runner only schedules chunk boundaries. A note longer than a chunk is split across chunks at the same frequency, and a rest ends one.
+**Chunk** — a group of extracted notes handed to `playTone` during simulator debug playback. The Venu 4 release does not play these custom tone profiles.
 
 **Sound name** — the string a call site passes to `playSound`, such as `levelUp`. The identifier shared by the port's call sites, the extractor's table and the golden trace, the way a Digimon index is shared elsewhere. Never a filename.
 
-**Vibration event** — a sound name that also vibrates. Vibration has no call sites of its own: it rides on the sound already marking that moment, and a sound absent from the table is silent to the wrist.
+**Vibration event** — a named gameplay sound with an associated vibration cue. Menu input and event prompts also have their own vibration cues.
 
 **Duty cycle** — a vibration's strength, 0–100. Distinct from its length; some Garmin devices ignore it and vibrate at one strength regardless.

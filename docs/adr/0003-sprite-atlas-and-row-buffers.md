@@ -36,7 +36,9 @@ Row buffers are filled lazily and held in an LRU of 16, each holding a strong re
 - The `<bitmap>` resources must carry `dithering="none"` **and** an explicit `<palette>` — now a single `FFFFFF` entry, with the field left to the PNG's `tRNS` so it stays transparent. Without them the resource compiler quantises to 4 bpp and Floyd–Steinbergs the result, which dropped 10 of the 576 pixels of one 24 × 24 cell — isolated single ink pixels of a sprite's outline, invisible at a glance and fatal to the fidelity contract.
 - Sprites **composite** over what is beneath them, as the Unity original's transparent-backed `Image` components do. A baked two-colour atlas instead stamped a rectangle of screen colour over the background, which would have been wrong wherever the game overlaps sprites — every attack over a Digimon, every Digimon over map art.
 - `InvertColors`, which the source uses for menu highlights and every stat sign, is a different tint rather than a second set of assets. It is unreachable from black ink, since black multiplied by anything is black.
-- The original's user-configurable `ConfigActiveColor`/`ConfigBackgroundColor` are preserved: they are just the tint and the field fill.
+- The renderer can tint the ink and fill the field independently. The watch's
+  Config menu currently exposes the pixel grid, sound, vibration and reset;
+  it does not expose the original's colour controls.
 - A `BufferedBitmap` created **with** a `:palette` is itself palettised, so `drawBitmap2` refuses it as a source with the same `Source must not use a color palette`. Row buffers must be created with no palette option — which is also what preserves the atlas's alpha through the copy.
 - Alpha atlases are *smaller* in the `.prg`, not larger: the debug build fell from 652,140 to 424,684 bytes when the baked field became transparency.
 - Verified end to end on the device: `tools/verify_render.py` reads a captured frame back and matches all 576 pixels of a 24 × 24 cell against the atlas, both drawn normally and drawn inverted (LCD ink on a black box, which also proves the field composites).

@@ -48,7 +48,8 @@ module Kaisa {
         var _bytes as ByteArray?;
         var _byName as Dictionary? = null;
 
-        // Called once, same as GameData.load() -- see DTectorApp's startup.
+        // Decode on first note. Menu and watch builds never need this table,
+        // and callers must not depend on a separate startup call.
         function load() as Void {
             _bytes = []b;
             var i = 0;
@@ -87,6 +88,7 @@ module Kaisa {
         // (frequency Hz, duration ms) for note `n` of sound `soundIndex`;
         // freq 0 is a rest.
         function noteAt(soundIndex as Number, n as Number) as Array<Number> {
+            if (_bytes == null) { load(); }
             var off = (OFFSETS[soundIndex] + n) * 4;
             var bytes = _bytes as ByteArray;
             var freq = bytes.decodeNumber(Lang.NUMBER_FORMAT_UINT16,

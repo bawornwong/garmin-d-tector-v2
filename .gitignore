@@ -9,6 +9,7 @@ tools/__pycache__/
 # monkeyc build output; the packers' committed artefacts (data.bin, the
 # *_index.json files) are the ones that matter, not the compiled app
 build/dtector.prg
+build/dtector-simulator.prg
 build/dtector.prg.debug.xml
 build/gen/
 build/mir/

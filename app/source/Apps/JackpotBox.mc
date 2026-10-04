@@ -24,6 +24,7 @@ class JackpotBox extends DigiviceApp {
     var timeRemaining as Number = 12;
     var playerSelection as Array<Number> = [];
     var currentKey as Number = 0;
+    var _finishAfterKey as Boolean = false;
 
     var keypad as SpriteBuilder?;
     var keys as Array<SpriteBuilder> = [];
@@ -89,6 +90,11 @@ class JackpotBox extends DigiviceApp {
 
     // The original's Update() calls DrawScreen every frame.
     function tick(elapsedMs as Number) as Void {
+        if (_finishAfterKey) {
+            _finishAfterKey = false;
+            decideBattle();
+            return;
+        }
         drawScreen();
     }
 
@@ -113,11 +119,10 @@ class JackpotBox extends DigiviceApp {
 
     function inputKey(key as Number) as Void {
         playerSelection[currentKey] = key;
-        track(gm.runner.start(new JBDisplayChosenKey(self, key)));
         currentKey += 1;
-        if (currentKey == playerSelection.size()) {
-            decideBattle();
-        }
+        var lastKey = currentKey == playerSelection.size();
+        if (lastKey) { currentScreen = 2; } // Ignore more input during the final flash.
+        track(gm.runner.start(new JBDisplayChosenKey(self, key, lastKey)));
     }
 
     function track(f as Fiber) as Void {
@@ -264,6 +269,10 @@ class JackpotBox extends DigiviceApp {
 // port of JackpotBox.PADisplayPattern -- shows the pattern, wipes the screen,
 // then readies the player and starts the clock.
 class JBDisplayPattern extends Routine {
+    const FIRST_KEY_PAUSE_SECONDS = 0.20;
+    const KEY_ON_SECONDS = 0.65;
+    const KEY_OFF_SECONDS = 0.20;
+
     var app as JackpotBox;
     var hourglass as SpriteBuilder?;
     var rbBlackScreen as RectangleBuilder?;
@@ -305,18 +314,21 @@ class JBDisplayPattern extends Routine {
                 hourglass.dispose();
                 i = 0;
                 pc = 2;
-                return 0.0;
+                // Let the empty keypad settle before revealing the first key.
+                return FIRST_KEY_PAUSE_SECONDS;
             case 2:                                 // for each key of the pattern
                 if (i >= app.pattern.size()) { pc = 4; return 0.0; }
                 app.gm.audioMgr.playSound("beepLow");
                 app.keys[app.pattern[i]].setActive(true);
                 pc = 3;
-                return app.delay;
+                return KEY_ON_SECONDS;
             case 3:
                 app.keys[app.pattern[i]].setActive(false);
                 i += 1;
                 pc = 2;
-                return 0.0;
+                // Keep a blank frame between cues, even when the same key
+                // appears twice in a row.
+                return KEY_OFF_SECONDS;
             case 4:
                 rbBlackScreen = Kaisa.ScreenBuilder.buildRectangle("BlackScreen0", app.screen)
                     .setSize(32, 32);
@@ -362,11 +374,13 @@ class JBDisplayPattern extends Routine {
 class JBDisplayChosenKey extends Routine {
     var app as JackpotBox;
     var key as Number;
+    var lastKey as Boolean;
 
-    function initialize(appIn as JackpotBox, keyIn as Number) {
+    function initialize(appIn as JackpotBox, keyIn as Number, lastKeyIn as Boolean) {
         Routine.initialize();
         app = appIn;
         key = keyIn;
+        lastKey = lastKeyIn;
     }
 
     function step(rt as Fiber) as Float {
@@ -377,6 +391,7 @@ class JBDisplayChosenKey extends Routine {
                 return 0.25;
             case 1:
                 app.keys[key].setActive(false);
+                if (lastKey) { app._finishAfterKey = true; }
                 return Routine.DONE;
         }
         return Routine.DONE;
@@ -399,11 +414,13 @@ class JBTimeCount extends Routine {
                 pc = 1;
                 return 1.0;
             case 1:                                 // while (timeRemaining > -1)
+                if (app.currentScreen == 2) { return Routine.DONE; }
                 if (app.timeRemaining <= -1) { pc = 2; return 0.0; }
                 app.timeRemaining -= 1;
                 app.tbTimeCount.setText(app.timeRemaining.toString());
                 return 1.0;
             case 2:
+                if (app.currentScreen == 2) { return Routine.DONE; }
                 app.decideBattle();
                 app.tbTime.dispose();
                 app.tbTimeCount.dispose();

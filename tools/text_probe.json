@@ -1,5 +1,5 @@
 {
-  "_comment": "The fixed string set for the font-metrics check (SPEC section 7). Read by tools/gen_text_probe.py, which generates the scene the app draws, and by tools/verify_text.py, which computes what that scene must look like -- so the two can never drift. Boxes are game pixels; anchor 0/1/2 = upper left/centre/right.",
+  "_comment": "The fixed string set for the font-metrics check. Read by tools/gen_text_probe.py, which generates the scene the app draws, and by tools/verify_text.py, which computes what that scene must look like -- so the two can never drift. Boxes are game pixels; anchor 0/1/2 = upper left/centre/right.",
   "strings": [
     {"text": "AGUMON 12",   "face": "Big",     "x": 0, "y": 0,  "w": 32, "anchor": 0, "inverted": false,
      "why": "Big is monospaced, and its letters carry a 2 px vertical bearing its digits do not"},

@@ -1,37 +1,22 @@
 import Toybox.ActivityMonitor;
 import Toybox.Graphics;
 import Toybox.Lang;
+import Toybox.Sensor;
 import Toybox.System;
+import Toybox.Time;
 import Toybox.Timer;
 import Toybox.WatchUi;
 
-// Skeleton view (SPEC.md steps 1-5). Not the game -- there is no logic layer
-// and no animation runner yet (steps 4 and 7 of the order of work). What this
-// DOES prove, against the real production asset pipeline rather than a
-// throwaway prototype:
-//
-//   - the canvas draws at the right size and colour (#819376 field, 320x320
-//     centred in the 454x454 round display)
-//   - a real Digimon sprite, addressed by digimonDB.json index and cycled
-//     through its sprite actions, blits correctly through the row-buffer
-//     cache at 10x scale
-//   - the display list draws: nesting, container masks, inversion, flips,
-//     rectangles and their flick
-//   - bitmap text draws in all three faces with the packed metrics
-//   - the input adapter's twelve abstract events fire correctly for both
-//     the two physical buttons and the held-screen-half touch mapping
-//   - a save record round-trips through Storage using the real positional
-//     packed format
-//
-// The HUD text (event name, save status) uses the system font, not the
-// port's own bitmap-font renderer -- that is a build diagnostic overlay,
-// not in-game text.
+// Connect IQ host for the game: loads packed assets and the save, builds the
+// screen tree, routes input, advances the 20 fps runner, and draws each frame.
+// Debug builds also carry fixed-scene probes for verification.
 class DTectorView extends WatchUi.View {
     const CANVAS = 320;
     const SCALE = 10;
     const LCD = 0x819376;   // Preferences.BackgroundColor
     const INK = 0x000000;   // Preferences.ActiveColor
     const TICK_MS = 50;     // the 50 ms floor -> 20 fps
+    const DOUBLE_BACK_MS = 1500l;
 
     var _data as GameData?;
     var _atlas as AtlasCache?;
@@ -42,10 +27,10 @@ class DTectorView extends WatchUi.View {
     var _root as ContainerBuilder?;
     var _gm as GameManager?;
 
-    var _demoIndex as Number = 0;      // digimonDB.json index being shown
+    var _demoIndex as Number = 0;      // Digimon index used by verification probes
     var _frame as Number = 0;
-    var _lastEvent as String = "(none)";
     var _saveStatus as String = "";
+    var _firstBackAt as Number? = null;
 
     // Verification probes. Each builds a fixed scene that a tool can diff a
     // captured frame against; -1 / false give the animated demo instead.
@@ -83,22 +68,19 @@ class DTectorView extends WatchUi.View {
     // frame actually draws, in draw order, for when a rendering question needs
     // the frame rather than a guess. 0 is off.
     var _dumpFrames as Number = 0;
-    // The walk. The original counts shakes of the phone -- one step per six --
-    // through a ShakeDetector the watch has no equivalent of: it counts steps
-    // itself, all day, whether the app is open or not. So the port reads
-    // ActivityMonitor's step count and takes a game step for each new one,
-    // which is the same bargain the original strikes with the player (walk,
-    // and the distance falls) without asking them to shake a watch.
-    //
-    // -1 means "not sampled yet": the first tick learns the count rather than
-    // treating the day's steps as a burst.
-    var _lastSteps as Number = -1;
-    // A step at 20 fps is a step per 50 ms, which would spend a whole day's
-    // walk in a few seconds after a long spell with the app closed. The
-    // original's detector can only ever produce one step per shake, so the
-    // port caps a frame the same way.
-    const MAX_STEPS_PER_TICK = 1;
-    // ShakeDetector clears the walking flag after 150 idle frames.
+    var _stepSync as JourneyStepSync = new JourneyStepSync();
+    var _stepReader as GarminStepReader = new GarminStepReader();
+    var _shake as ShakeDetector = new ShakeDetector();
+    var _shakeRunning as Boolean = false;
+    var _pendingShakes as Number = 0;
+    var _shown as Boolean = false;
+    var _stepRefreshRequested as Boolean = true;
+    var _resumeStepSample as Boolean = true;
+    var _waitingForSave as Boolean = false;
+    var _reloadOnShow as Boolean = false;
+    var _historyDay as Number = 0;
+    var _historyAt as Number = 0;
+    // Clear the walking pose after 150 frames without a shake.
     const WALK_IDLE_FRAMES = 150;
     var _idleFrames as Number = 0;
     // The roll the animation probe pins Kaisa.Rand to, so an animation whose
@@ -114,12 +96,16 @@ class DTectorView extends WatchUi.View {
         _queue = q;
     }
 
+    function isProbeMode() as Boolean {
+        return _probeIndex >= 0 || _probeText || _probeScreens || _probeAnim >= 0
+            || _probeInputs.size() > 0 || _sliceApp > 0 || _dumpFrames > 0;
+    }
+
     function onLayout(dc as Dc) as Void {
         _data = new GameData();
         _data.load();
         _atlas = new AtlasCache();
         _atlas.load();
-        Kaisa.Sounds.load();
         Kaisa.Prefs.load();
         _save = new SaveFormat(_data);
 
@@ -128,8 +114,16 @@ class DTectorView extends WatchUi.View {
                                  origin, origin, SCALE, INK, LCD);
 
         _demoIndex = findDigimon("agumon");
-        proveSave();
-        buildScene();
+        if (!isProbeMode() && !_save.access.tryForeground()) {
+            _waitingForSave = true;
+            _root = new ContainerBuilder();
+            _root.setName("Root");
+            _root.setSize(Kaisa.Constants.SCREEN_WIDTH,
+                          Kaisa.Constants.SCREEN_HEIGHT).setTransparent(true);
+        } else {
+            inspectSave();
+            buildScene();
+        }
     }
 
     // Not a general lookup used by game logic (that would defeat ADR 7 --
@@ -162,6 +156,7 @@ class DTectorView extends WatchUi.View {
     // screen state machine, with input routed at the state machine rather than
     // at one app. What the original does in GameManager.Awake.
     function startGame(root as ContainerBuilder) as Void {
+        _stepSync = new JourneyStepSync();
         var db = new Database(_data);
         db.load();
         var record = _save.readSlot(0);
@@ -231,8 +226,19 @@ class DTectorView extends WatchUi.View {
             } else {
                 _gm.logicMgr.currentScreen = Kaisa.SCREEN_CHARACTER;
                 _gm.checkLeaverBuster();
-                _gm.checkPendingEvents();
+                if (record.wasV2 || record.stepSync.gameGeneration == 0l) {
+                    _stepSync.beginGame(record, _stepReader.read(true));
+                    saved.touch();
+                    _stepSync.flush(saved);
+                }
+                sampleWatchSteps(true);
+                if (!_stepSync.isBlocked()) { _gm.checkPendingEvents(); }
             }
+        }
+
+        if (isNewGame && record.wasV2 && !isProbeMode()) {
+            saved.touch();
+            _stepSync.flush(saved);
         }
 
         if (!isNewGame && _gm.worldMgr.getBossOfCurrentArea() < 0) {
@@ -691,7 +697,9 @@ class DTectorView extends WatchUi.View {
     (:debug)
     function walkShortcut() as Void {
         if (_gm.logicMgr.shakeDisabled()) { return; }
-        for (var i = 0; i < 50; i += 1) { _gm.takeAStep(); }
+        for (var i = 0; i < 50 && _gm.saved.savedEvent() == 0; i += 1) {
+            _gm.takeAStep();
+        }
         _gm.isCharacterWalking = true;
         System.println("WALK 50 -> distance " + _gm.worldMgr.currentDistance()
             + " steps " + _gm.worldMgr.totalSteps());
@@ -714,36 +722,59 @@ class DTectorView extends WatchUi.View {
     function logDispatch(where as String, event as Number) as Void {
     }
 
-    // ShakeDetector.Update, with the watch's own step count in place of the
-    // accelerometer: each new step is a step of the walk, and the character
-    // stops walking once none have arrived for a while.
-    function takeWalkedSteps() as Void {
-        var info = ActivityMonitor.getInfo();
-        var steps = (info != null && info.steps != null) ? info.steps : 0;
+    function requestStepRefresh() as Void {
+        _stepRefreshRequested = true;
+    }
 
-        if (_lastSteps < 0 || steps < _lastSteps) {
-            _lastSteps = steps;         // first sample, or the day rolled over
+    function sampleWatchSteps(fromResume as Boolean) as Void {
+        if (isProbeMode() || _gm == null || !_save.access.tryForeground()) {
+            _stepRefreshRequested = true;
             return;
         }
-
-        var walked = steps - _lastSteps;
-        if (walked <= 0) {
-            if (_idleFrames < WALK_IDLE_FRAMES) {
-                _idleFrames += 1;
-            } else {
-                _idleFrames = 0;
-                _gm.isCharacterWalking = false;
+        if (fromResume && !_gm.saved.isDirty()) {
+            // The background process can only change the fixed header. Keep
+            // the foreground model and import its latest source checkpoint.
+            var disk = _save.readSlot(0);
+            if (disk != null && disk.stepSync.gameGeneration
+                    == _gm.saved.record.stepSync.gameGeneration) {
+                _gm.saved.record.stepSync = disk.stepSync;
             }
-            return;
         }
+        var day = Time.today().value();
+        var now = System.getTimer();
+        var age = (now.toLong() - _historyAt.toLong()) & 0xffffffffl;
+        var history = fromResume || _historyDay != day || age >= 3600000l;
+        var reading = _stepReader.read(history);
+        if (history) { _historyDay = day; _historyAt = now; }
+        // Visible watch steps and deliberate shakes both count. Only a
+        // disabled background interval is checkpointed without travel.
+        var backgroundEnabled = BackgroundStepSetting.enabled();
+        var traveled = fromResume
+            ? _stepSync.reconcileResume(_gm, reading, backgroundEnabled)
+            : _stepSync.reconcile(_gm, reading, true);
+        logStepSample(reading, traveled);
+        _stepRefreshRequested = false;
+        // Keep the resume boundary until the disabled interval has a valid
+        // live checkpoint. Otherwise a later foreground sample could credit
+        // steps from the closed period when Garmin briefly has no reading.
+        _resumeStepSample = fromResume && (_stepSync.isBlocked()
+            || (!backgroundEnabled && (reading.day == null || reading.steps == null)));
+    }
 
-        if (walked > MAX_STEPS_PER_TICK) { walked = MAX_STEPS_PER_TICK; }
-        _lastSteps += walked;
-        _idleFrames = 0;
+    (:debug)
+    function logStepSample(reading as StepObservation, traveled as Number) as Void {
+        if (_frame < 80 || traveled > 0) {
+            System.println("STEP frame=" + _frame + " day=" + reading.day
+                + " count=" + reading.steps + " history=" + reading.history.size()
+                + " source=" + _gm.saved.record.stepSync.sourceTotal
+                + " credit=" + _gm.saved.record.stepSync.creditedSourceTotal
+                + " travel=" + traveled + " distance=" + _gm.worldMgr.currentDistance()
+                + " blocked=" + _stepSync.isBlocked());
+        }
+    }
 
-        if (_gm.logicMgr.shakeDisabled()) { return; }
-        for (var i = 0; i < walked; i += 1) { _gm.takeAStep(); }
-        _gm.isCharacterWalking = true;
+    (:release)
+    function logStepSample(reading as StepObservation, traveled as Number) as Void {
     }
 
     // port of InputManager.cs: the adapter's twelve abstract events go to
@@ -752,16 +783,37 @@ class DTectorView extends WatchUi.View {
     // which is what gm.LockInput does in the original.
     function dispatch(event as Number) as Void {
         if (_gm == null) { return; }
+        if (event != Kaisa.Input.EVT_B && event != Kaisa.Input.EVT_B_DOWN
+                && event != Kaisa.Input.EVT_B_UP) {
+            _firstBackAt = null;
+        }
         if (event == Kaisa.Input.EVT_WALK) {
             walkShortcut();
             return;
         }
         if (_gm.isInputLocked) {
+            _firstBackAt = null;
             logDispatch("DROPPED (locked)", event);
             return;
         }
         logDispatch("screen=" + _gm.logicMgr.currentScreen, event);
         var lm = _gm.logicMgr;
+        // Battle A can finish an event (the last attack or Escape). Read the
+        // watch counter while its active marker still blocks travel, so steps
+        // taken during the battle do not enter the next event's gate.
+        if (!isProbeMode() && event == Kaisa.Input.EVT_A
+                && (lm.loadedApp instanceof Battle)
+                && (lm.savedEventIsActiveBattle())) {
+            sampleWatchSteps(false);
+        }
+        if (event == Kaisa.Input.EVT_B) {
+            if (countBackPress(System.getTimer(), canDoubleBack())) {
+                // onStop releases the foreground step lease. Keep the game
+                // visible if its final checkpoint cannot be written.
+                if (isProbeMode() || _stepSync.flush(_gm.saved)) { System.exit(); }
+                return;
+            }
+        }
         if (event == Kaisa.Input.EVT_A) { lm.inputA(); }
         else if (event == Kaisa.Input.EVT_A_DOWN) { lm.inputADown(); }
         else if (event == Kaisa.Input.EVT_A_UP) { lm.inputAUp(); }
@@ -774,6 +826,30 @@ class DTectorView extends WatchUi.View {
         else if (event == Kaisa.Input.EVT_RIGHT) { lm.inputRight(); }
         else if (event == Kaisa.Input.EVT_RIGHT_DOWN) { lm.inputRightDown(); }
         else if (event == Kaisa.Input.EVT_RIGHT_UP) { lm.inputRightUp(); }
+        if (!canDoubleBack()) { _firstBackAt = null; }
+    }
+
+    function canDoubleBack() as Boolean {
+        return _gm != null
+            && _gm.logicMgr.currentScreen == Kaisa.SCREEN_CHARACTER
+            && !_gm.logicMgr.isEventPending && _gm.saved.savedEvent() == 0
+            && _gm.worldMgr.currentDistance() != 1;
+    }
+
+    // Called only for completed physical Back presses (EVT_B), never from
+    // onBack(), which the simulator also emits for unrelated touch gestures.
+    function countBackPress(now as Number, eligible as Boolean) as Boolean {
+        if (!eligible) { _firstBackAt = null; return false; }
+        if (_firstBackAt != null) {
+            var elapsed = (now.toLong() - (_firstBackAt as Number).toLong())
+                & 0xffffffffl;
+            if (elapsed <= DOUBLE_BACK_MS) {
+                _firstBackAt = null;
+                return true;
+            }
+        }
+        _firstBackAt = now;
+        return false;
     }
 
     // tools/verify_render.py knows this position and size.
@@ -788,40 +864,105 @@ class DTectorView extends WatchUi.View {
         root.addChild(sprite);
     }
 
-    function proveSave() as Void {
+    // Diagnostic only: inspecting a fresh slot must not create a real game
+    // with demo levels before the player has chosen a character.
+    (:debug)
+    function inspectSave() as Void {
         var existing = _save.readSlot(0);
         if (existing == null) {
-            var fresh = _save.createDefault("PLAYER");
-            fresh.digimonLevel[_demoIndex] = 4;
-            _save.writeSlot(0, fresh);
-            existing = _save.readSlot(0);
+            _saveStatus = "SAVE EMPTY";
+            return;
         }
-        // What this proves is the round trip -- the record comes back with the
-        // right name and the right positional array sizes. It deliberately
-        // does not assert particular values: the game now writes to the same
-        // slot at its own checkpoints.
-        var ok = (existing != null) && existing.name.equals("PLAYER")
-            && existing.digimonLevel.size() == _data.digimonCount();
+        var ok = existing.digimonLevel.size() == _data.digimonCount();
         _saveStatus = ok ? "SAVE OK (" + existing.digimonLevel.size() + " digimon)"
                          : "SAVE MISMATCH";
         System.println("SaveFormat: " + _saveStatus);
     }
 
+    (:release)
+    function inspectSave() as Void {
+    }
+
     function onShow() as Void {
+        _shown = true;
+        _firstBackAt = null;
+        _stepRefreshRequested = true;
+        _resumeStepSample = true;
         _timer = new Timer.Timer();
         _timer.start(method(:tick), TICK_MS, true);
+        if (!isProbeMode() && _gm != null) {
+            sampleWatchSteps(true);
+            startShakes();
+        }
     }
 
     function onHide() as Void {
+        _firstBackAt = null;
         if (_timer != null) { _timer.stop(); }
+        if (_gm != null) { _gm.audioMgr.tickEventReminder(false, 0); }
+        flushAndReleaseSteps();
+    }
+
+    function flushAndReleaseSteps() as Void {
+        if (_shown && !isProbeMode() && _gm != null) {
+            sampleWatchSteps(_resumeStepSample);
+        }
+        stopShakes();
+        _shown = false;
+        if (_save == null) { return; }
+        if (!isProbeMode() && _gm != null && !_stepSync.flush(_gm.saved)) {
+            _reloadOnShow = true;
+        }
+        _save.access.releaseForeground();
+    }
+
+    function startShakes() as Void {
+        if (_shakeRunning) { return; }
+        _shake.reset();
+        _pendingShakes = 0;
+        try {
+            Sensor.registerSensorDataListener(method(:onShakeData), {
+                :period => 1,
+                :accelerometer => { :enabled => true, :sampleRate => 25 }
+            });
+            _shakeRunning = true;
+        } catch (e) {
+            _shakeRunning = false;
+        }
+    }
+
+    function stopShakes() as Void {
+        if (_shakeRunning) {
+            try { Sensor.unregisterSensorDataListener(); } catch (e) { }
+        }
+        _shakeRunning = false;
+        _pendingShakes = 0;
+        _shake.reset();
+    }
+
+    function onShakeData(data as Sensor.SensorData) as Void {
+        var accel = data.accelerometerData;
+        if (accel == null) { return; }
+        _pendingShakes += _shake.count(accel);
+        if (_pendingShakes > 8) { _pendingShakes = 8; }
     }
 
     function tick() as Void {
         _frame += 1;
+        if (_waitingForSave && _save.access.tryForeground()) {
+            _waitingForSave = false;
+            inspectSave();
+            buildScene();
+            if (!isProbeMode()) { startShakes(); }
+        }
+        if (_reloadOnShow && _save.access.tryForeground()) {
+            _reloadOnShow = false;
+            buildScene();
+            if (!isProbeMode()) { startShakes(); }
+        }
         if (_queue != null) {
             var events = _queue.drain();
             for (var i = 0; i < events.size(); i += 1) {
-                _lastEvent = Kaisa.Input.eventName(events[i]);
                 dispatch(events[i]);
             }
         }
@@ -859,14 +1000,31 @@ class DTectorView extends WatchUi.View {
         if (_gm != null) {
             _gm.runner.advance(TICK_MS.toDouble());
             _gm.screenMgr.updateQueue();
+            _gm.audioMgr.tickEventReminder(
+                _gm.logicMgr.isEventPending && !_gm.isInputLocked, TICK_MS);
             // PlayerCharacter.UpdateSprite runs on a 0.5 s InvokeRepeating,
             // which is ten frames.
             if (_frame % 10 == 0) { _gm.playerChar.updateSprite(); }
             _gm.tickJackpot(TICK_MS);
-            takeWalkedSteps();
+            if (_stepRefreshRequested || _frame % 20 == 0) {
+                sampleWatchSteps(_resumeStepSample);
+            }
+            var shakes = _pendingShakes;
+            _pendingShakes = 0;
+            if (!isProbeMode() && _gm.saved.playerChar() != Kaisa.CHAR_NONE
+                    && !_gm.logicMgr.shakeDisabled() && !_stepSync.isBlocked()) {
+                for (var i = 0; i < shakes && _gm.saved.savedEvent() == 0; i += 1) {
+                    _gm.takeAStep();
+                    _idleFrames = 0;
+                    _gm.isCharacterWalking = true;
+                }
+            }
+            if (_idleFrames < WALK_IDLE_FRAMES) { _idleFrames += 1; }
+            else { _gm.isCharacterWalking = false; }
             _gm.screenMgr.updateDisplay();
             var app = _gm.logicMgr.loadedApp;
             if (app != null) { app.tick(TICK_MS); }
+            if (!canDoubleBack()) { _firstBackAt = null; }
         }
         advanceFlicks(_root, TICK_MS);
         WatchUi.requestUpdate();
@@ -891,20 +1049,12 @@ class DTectorView extends WatchUi.View {
         dumpFrameIfAsked();
         _renderer.draw(dc, _root);
         drawChrome(dc);
-
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(dc.getWidth() / 2, dc.getHeight() - 60, Graphics.FONT_XTINY,
-            "input: " + _lastEvent, Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(dc.getWidth() / 2, dc.getHeight() - 30, Graphics.FONT_XTINY,
-            _saveStatus, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // Real-device chrome around the emulated 32x32 canvas, entirely outside
     // the 320x320 rect the original's own pixels occupy: two button glyphs
-    // over the touch dead-zone either side of it -- which is already Left and
-    // Right, per InputAdapter's REGION_LEFT/RIGHT -- so a player can see
-    // where to tap instead of discovering it by feel, and the app's name
-    // above the canvas.
+    // in the Left and Right touch sectors, plus the app's name above the
+    // canvas.
     function drawChrome(dc as Dc) as Void {
         var midY = dc.getHeight() / 2;
         var origin = (dc.getWidth() - CANVAS) / 2;
@@ -916,14 +1066,14 @@ class DTectorView extends WatchUi.View {
         // centred line of text. Lower and smaller keeps the whole word inside
         // the part of the top margin the bezel doesn't cut into.
         dc.setColor(LCD, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(dc.getWidth() / 2, origin - 22, Graphics.FONT_XTINY,
+        dc.drawText(dc.getWidth() / 2,
+            origin - dc.getFontHeight(Graphics.FONT_XTINY) - 6,
+            Graphics.FONT_XTINY,
             "D-TECTOR", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // Just the chevron, faint: a hint of where to tap rather than a button
-    // asking to be pressed -- the whole dead-zone is already the hit target
-    // (InputAdapter's REGION_LEFT/RIGHT), fired on the plain tap, no hold or
-    // swipe required, so the glyph only needs to be found, not aimed at.
+    // asking to be pressed. The Left/Right sectors are larger than the glyphs.
     function drawSideButton(dc as Dc, cx as Number, cy as Number, pointLeft as Boolean) as Void {
         var tip = pointLeft ? cx - 9 : cx + 9;
         var back = pointLeft ? cx + 9 : cx - 9;

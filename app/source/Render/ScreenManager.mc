@@ -1,3 +1,4 @@
+import Toybox.Graphics;
 import Toybox.Lang;
 
 // port of ScreenManager.cs
@@ -20,6 +21,8 @@ class ScreenManager {
     var playingAnimations as Boolean = false;
     var _queue as Array<Routine> = [];
     var _playing as Fiber?;
+    var _configureGear as Graphics.BufferedBitmap?;
+    var _configureIcons as Array<Graphics.BufferedBitmap?> = [null, null, null, null, null];
 
     function initialize(gmIn as GameManager, rootIn as ContainerBuilder) {
         gm = gmIn;
@@ -69,16 +72,87 @@ class ScreenManager {
             .setAlignment(Kaisa.Text.ANCHOR_UPPER_CENTER));
     }
 
-    // The Configure submenu, laid out like every other menu in the game:
-    // `< subject >` up top with the navigation arrows either side, and the
-    // line underneath saying what it currently is.
-    //
-    // The other menus put a 32x32 SPRITE in that upper slot. The sheet has
-    // no icon for "sound" or "grid" -- these settings do not exist in the
-    // original, so nothing was ever drawn for them -- so the subject is set
-    // in the Big face instead, which is the closest the assets get to an
-    // icon. The ARROWS overlay is the same one the character selection
-    // uses, so left/right reads as navigation exactly as it does there.
+    // The added Config entry has no sprite in the source atlas. Draw its
+    // 16-pixel gear once and reuse the bitmap like the Maze's runtime sprite.
+    // White pixels are tinted to the current ink colour by Renderer.
+    function configureGear() as Graphics.BufferedBitmap? {
+        if (_configureGear != null) { return _configureGear; }
+        var rows = [0x0660, 0x0660, 0x1ff8, 0x381c,
+                    0xe7e7, 0xcc33, 0xc813, 0xc813,
+                    0xc813, 0xc813, 0xcc33, 0xe7e7,
+                    0x381c, 0x1ff8, 0x0660, 0x0660];
+        try {
+            _configureGear = Graphics.createBufferedBitmap({ :width => 16,
+                                                               :height => 16 }).get();
+        } catch (e) {
+            return null;
+        }
+        var dc = (_configureGear as Graphics.BufferedBitmap).getDc();
+        dc.setColor(0xFFFFFF, Graphics.COLOR_TRANSPARENT);
+        for (var y = 0; y < rows.size(); y += 1) {
+            for (var x = 0; x < 16; x += 1) {
+                if ((rows[y] & (0x8000 >> x)) != 0) {
+                    dc.fillRectangle(x, y, 1, 1);
+                }
+            }
+        }
+        return _configureGear;
+    }
+
+    // The added settings have no source sprites. Draw small monochrome
+    // icons once and reuse them like the main menu's bitmap art.
+    function configureIcon(index as Number) as Graphics.BufferedBitmap? {
+        if (index < 0 || index >= _configureIcons.size()) { return null; }
+        if (_configureIcons[index] != null) { return _configureIcons[index]; }
+        try {
+            _configureIcons[index] = Graphics.createBufferedBitmap({
+                :width => 16, :height => 16 }).get();
+        } catch (e) {
+            return null;
+        }
+        var dc = (_configureIcons[index] as Graphics.BufferedBitmap).getDc();
+        dc.setColor(0xFFFFFF, Graphics.COLOR_TRANSPARENT);
+        if (index == Kaisa.CONFIGURE_VIBRATION) {
+            // Watch body, straps and two vibration waves.
+            dc.fillRectangle(6, 1, 5, 2); dc.fillRectangle(6, 13, 5, 2);
+            dc.fillRectangle(4, 3, 9, 1); dc.fillRectangle(4, 12, 9, 1);
+            dc.fillRectangle(4, 4, 1, 8); dc.fillRectangle(12, 4, 1, 8);
+            dc.fillRectangle(7, 6, 3, 4);
+            dc.fillRectangle(2, 5, 1, 6); dc.fillRectangle(1, 6, 1, 4);
+            dc.fillRectangle(14, 5, 1, 6); dc.fillRectangle(15, 6, 1, 4);
+        } else if (index == Kaisa.CONFIGURE_SOUND) {
+            // Speaker and two sound waves.
+            dc.fillRectangle(2, 5, 4, 6); dc.fillRectangle(6, 4, 2, 8);
+            dc.fillRectangle(8, 3, 2, 10);
+            dc.fillRectangle(12, 5, 1, 6); dc.fillRectangle(14, 3, 1, 10);
+            dc.fillRectangle(15, 4, 1, 8);
+        } else if (index == Kaisa.CONFIGURE_GRID) {
+            for (var y = 0; y < 3; y += 1) {
+                for (var x = 0; x < 3; x += 1) {
+                    dc.fillRectangle(3 + x * 4, 3 + y * 4, 3, 3);
+                }
+            }
+        } else if (index == Kaisa.CONFIGURE_BG_STEPS) {
+            // Two footprints for steps counted while the app is closed.
+            dc.fillRectangle(3, 3, 4, 5); dc.fillRectangle(4, 2, 2, 1);
+            dc.fillRectangle(2, 8, 3, 3);
+            dc.fillRectangle(9, 7, 4, 5); dc.fillRectangle(10, 6, 2, 1);
+            dc.fillRectangle(11, 12, 3, 3);
+        } else {
+            // Circular restart arrow.
+            dc.fillRectangle(5, 2, 7, 1); dc.fillRectangle(3, 3, 2, 2);
+            dc.fillRectangle(12, 3, 2, 2); dc.fillRectangle(2, 5, 1, 6);
+            dc.fillRectangle(14, 5, 1, 5); dc.fillRectangle(3, 11, 2, 2);
+            dc.fillRectangle(5, 13, 6, 1); dc.fillRectangle(11, 12, 3, 1);
+            dc.fillRectangle(12, 10, 4, 1); dc.fillRectangle(13, 11, 1, 2);
+            dc.fillRectangle(14, 13, 1, 1);
+        }
+        return _configureIcons[index];
+    }
+
+    // Same carousel as the main menu: arrows at the sides, a central icon,
+    // and the subject along the bottom. The state is a small line above the
+    // icon so ON/OFF no longer takes the place of the subject's picture.
     function drawConfigureMenu() as Void {
         screenDisplay.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
         var sb = Kaisa.ScreenBuilder.buildSprite("Arrows", screenDisplay)
@@ -86,29 +160,25 @@ class ScreenManager {
         sb.name = "Disposable";
 
         var i = gm.logicMgr.configureMenuIndex;
-        var value = "NEW";          // the reset, read with its subject: NEW GAME
+        var state = "RESET";
         var subject = "GAME";
         if (i == Kaisa.CONFIGURE_VIBRATION) {
-            // "VIBE", not "VIBRATE": the latter sets 32 pixels wide in the
-            // Regular face, exactly the width of the screen, with no margin
-            // either side. In the Big face it is 42 and ran off both edges.
-            value = Kaisa.Prefs.vibrationOn() ? "ON" : "OFF";
+            state = Kaisa.Prefs.vibrationOn() ? "ON" : "OFF";
             subject = "VIBE";
         } else if (i == Kaisa.CONFIGURE_SOUND) {
-            value = Kaisa.Prefs.soundOn() ? "ON" : "OFF";
+            state = Kaisa.Prefs.soundOn() ? "ON" : "OFF";
             subject = "SOUND";
         } else if (i == Kaisa.CONFIGURE_GRID) {
-            value = Kaisa.Prefs.gridOn() ? "ON" : "OFF";
+            state = Kaisa.Prefs.gridOn() ? "ON" : "OFF";
             subject = "GRID";
+        } else if (i == Kaisa.CONFIGURE_BG_STEPS) {
+            state = BackgroundStepSetting.enabled() ? "ON" : "OFF";
+            subject = "BG STEP";
         }
-
-        // The value takes the slot the other menus fill with their icon --
-        // between the arrows, in the Big face. Widest is "OFF"/"NEW" at 18
-        // pixels, which centred spans columns 7..24 and so clears the arrows
-        // at 2-4 and 27-29.
-        drawMenuWord("CfgValue", Kaisa.Font.BIG, value, 10, 8);
-        // The subject sits on row 24, which is where MAIN_MENU's own sprites
-        // bake their labels ("MAP", "GAME"). Widest is "SOUND" at 25.
+        drawMenuWord("CfgState", Kaisa.Font.SMALL, state, 1, 5);
+        disposable(Kaisa.ScreenBuilder.buildSprite("CfgIcon", screenDisplay)
+            .setSize(16, 16).setPosition(8, 6).setTransparent(true)
+            .setRuntimeBitmap(configureIcon(i), 16, 16));
         drawMenuWord("CfgSubject", Kaisa.Font.REGULAR, subject, 24, 5);
     }
 
@@ -148,6 +218,13 @@ class ScreenManager {
             .setSize(32, 32);
         var next = _queue[0];
         _queue = _queue.slice(1, null);
+        if (next instanceof EncounterEnemy || next instanceof EncounterBoss
+                || next instanceof DataStorm || next instanceof StartGameAnimation
+                || next instanceof DisplayNewArea
+                || next instanceof TransitionToMap1
+                || next instanceof TransitionToMap3) {
+            gm.audioMgr.vibrateScene();
+        }
         _playing = gm.runner.start(next);
     }
 
@@ -186,15 +263,16 @@ class ScreenManager {
             screenDisplay.setSprite(gm.playerCharSprite());
         } else if (screen == Kaisa.SCREEN_MAIN_MENU) {
             if (gm.logicMgr.currentMainMenu == Kaisa.MAIN_MENU_CONFIGURE) {
-                // This entry is not in the original, so the sheet has no
-                // sprite for it -- and the neighbouring MAIN_MENU sprites
-                // bake their arrows in, so without the overlay this would be
-                // the one entry in the ring with none. The word goes on row
-                // 24, where those same sprites bake their labels.
+                // Added menu entry: match the original icon, arrows, and
+                // label positions with a small runtime gear in the centre.
                 screenDisplay.setSprite(Kaisa.Sprites.EMPTY_SPRITE);
                 var arr = Kaisa.ScreenBuilder.buildSprite("Arrows", screenDisplay)
                     .setSprite(Kaisa.Sprites.ARROWS).setTransparent(true);
                 arr.name = "Disposable";
+                var gear = Kaisa.ScreenBuilder.buildSprite("ConfigGear", screenDisplay)
+                    .setSize(16, 16).setPosition(8, 4).setTransparent(true)
+                    .setRuntimeBitmap(configureGear(), 16, 16);
+                gear.name = "Disposable";
                 drawMenuWord("Configure", Kaisa.Font.REGULAR, "CONFIG", 24, 5);
             } else {
                 screenDisplay.setSprite(Kaisa.Sprites.MAIN_MENU[gm.logicMgr.currentMainMenu]);

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Diff a captured frame of the text probe against the font metrics.
 
-The counterpart to tools/verify_render.py for text (SPEC section 7's second
-outstanding check). verify_render proves the device draws a cell where the
+The counterpart to tools/verify_render.py for text. verify_render proves the device draws a cell where the
 atlas says it is; this proves the text renderer places every glyph where the
 .fontsettings say it goes -- the advances, the vertical bearing, the line
 spacing, the three anchors, and the skipping of characters no face has.

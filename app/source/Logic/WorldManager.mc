@@ -174,12 +174,21 @@ class WorldManager {
     // interval is 300 to 500 steps, drawn when the previous one fires.
     function takeSteps(steps as Number) as Void {
         _saved.setStepsToNextEvent(_saved.stepsToNextEvent() - steps);
-        _saved.setSteps(_saved.steps() + steps);
+        addStatisticSteps(steps.toLong());
 
         if (_saved.stepsToNextEvent() <= 0 && currentDistance() > 1) {
             _saved.setStepsToNextEvent(Kaisa.Rand.rangeInt(3, 6) * 100);
             _saved.setSavedEvent(1);
         }
+    }
+
+    // Watch steps beyond a story gate still count, but cannot move the
+    // character or consume the next event interval.
+    function addStatisticSteps(steps as Long) as Void {
+        if (steps <= 0l) { return; }
+        var capacity = (2147483647 - _saved.steps()).toLong();
+        _saved.setSteps(steps >= capacity ? 2147483647
+                    : _saved.steps() + steps.toNumber());
     }
 
     // WorldManager.cs:166 -- reduces the distance and returns how much was

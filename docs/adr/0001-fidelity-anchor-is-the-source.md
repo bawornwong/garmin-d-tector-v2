@@ -4,7 +4,9 @@ Date: 2026-09-06
 
 ## Status
 
-Accepted
+Accepted as the default for game content and rules. The watch-step input
+decision below was later changed at the player's request; see
+[README.md](../../README.md) and [watch-step-sync-design.md](../watch-step-sync-design.md).
 
 ## Context
 
@@ -14,13 +16,14 @@ The clearest case: the toy counted real steps with a pedometer. The emulator, ru
 
 ## Decision
 
-**Where the toy and the source disagree, the source wins.** The port reproduces the emulator's behaviour, not the toy's.
-
-Shake is therefore a faithful translation of `ShakeDetector.cs` — low-pass filter, threshold 2.0 squared, five detections per step, active only inside the Status app — polling `Sensor.getInfo().accel` from the game timer. The watch's pedometer is not used.
+**The Unity source anchors content and game rules.** The initial input plan
+also copied its shake-to-step mapping. The watch version subsequently adopted
+the watch's recorded steps as its journey input: one recorded step is one
+game step, including steps recorded while the app is closed. This is an
+explicit input adaptation; the source's world distances and event rules remain.
 
 ## Consequences
 
-- Walking with the app closed does not advance distance, exactly as in the source.
-- Accelerometer polling costs nothing outside Status, where shake is the only place `ShakeDisabled()` returns false.
-- Every later "the real device did X" argument is settled the same way, without reopening the question.
-- If someone later wants toy-faithful behaviour, that is a different product and a different effort.
+- Source comparison remains the way to check translated game content and
+  rules. Watch input, steps, notifications, and sound are documented as
+  adaptations where the implementation differs.

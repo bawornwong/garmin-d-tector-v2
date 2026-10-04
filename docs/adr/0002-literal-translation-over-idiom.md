@@ -14,9 +14,9 @@ The game's behaviour is not separately specified anywhere. The source *is* the s
 
 ## Decision
 
-**Where a literal translation and an idiomatic one conflict, take the literal one.** Ported files sit at `source/logic/<original name>.mc`, one per original, each statement carrying a provenance comment (`// port of Logic/Models/Digimon.cs:119`).
+**Where a literal translation and an idiomatic one conflict, take the literal one.** Ported game logic lives under `app/source/Logic/`, with source references on the implementations where useful.
 
-Concretely: `C_Int`'s 30 operator overloads become named methods, so `a + b` becomes `a.add(b)` at every call site, because `C_Int` clamps *every* operation and a tidier `clamp()` at the end of an expression would miss mid-expression clamping. The 44 `audioMgr.PlaySound` calls stay as no-op calls rather than being deleted. Cleanups that change a result are content changes.
+Concretely: `C_Int`'s 30 operator overloads become named methods, so `a + b` becomes `a.add(b)` at every call site, because `C_Int` clamps *every* operation and a tidier `clamp()` at the end of an expression would miss mid-expression clamping. The source's `audioMgr.PlaySound` call sites remain; they now drive watch feedback. Cleanups that change a result are content changes.
 
 ## Consequences
 

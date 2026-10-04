@@ -14,7 +14,9 @@ import Toybox.System;
 // runtime rather than hardcoded, so this stays correct if the database
 // ever changes):
 //
-//   u8    version
+//   v3: 163-byte StepHeader, then the v2 game fields below without its
+//       leading version byte. The background service patches only this header.
+//   v2: u8 version, then the game fields below. readSlot migrates this layout.
 //   u8    nameLen, name[16]
 //   u8    gameChar
 //   u8    flags (cheatsUsed | insured<<1 | leaverBusterActive<<2 | defeated<<3)
@@ -52,8 +54,9 @@ import Toybox.System;
 // Bumped when the byte layout changes. Version 2 resized the world arrays:
 // `bosses` is now the assigned LIST per world (slots plus the biggest semiboss
 // group that can fill it) and `semibossGroup` is one entry per world, matching
-// what WorldManager.SetupWorlds actually writes.
-const VERSION = 2;
+// what WorldManager.SetupWorlds actually writes. Version 3 prefixes the
+// background-safe watch-step ledger and credit cursor.
+const VERSION = 3;
 // The cap on the saved lost-spirit list, which bounds the record's size. It
 // used to be 20 -- the ten human and ten animal spirits -- but a spirit is
 // lost whenever the player was fighting with one, whatever kind it is, and
@@ -64,6 +67,8 @@ const MAX_NAME = 16;
 
 class SaveRecord {
     var version as Number = VERSION;
+    var stepSync as StepState = new StepState();
+    var wasV2 as Boolean = false;
     var name as String = "";
     // -1 (GameChar.none) until the player chooses; stored as 0xFF, which no
     // real character uses, so a slot written before this still decodes.
@@ -97,9 +102,11 @@ class SaveRecord {
 
 class SaveFormat {
     var _data as GameData;
+    var access as StepAccess;
 
     function initialize(data as GameData) {
         _data = data;
+        access = new StepAccess();
     }
 
     function createDefault(playerName as String) as SaveRecord {
@@ -124,7 +131,10 @@ class SaveFormat {
 
     function encode(r as SaveRecord) as ByteArray {
         var b = []b;
-        addU8(b, r.version);
+        var header = new StepHeader();
+        header.fromRecord(r);
+        var prefix = header.encode();
+        for (var i = 0; i < prefix.size(); i += 1) { b.add(prefix[i]); }
         var nameBytes = stringBytes(r.name, MAX_NAME);
         addU8(b, nameBytes.size());
         for (var i = 0; i < MAX_NAME; i += 1) {
@@ -168,8 +178,15 @@ class SaveFormat {
     function decode(bytes as ByteArray, digimonCount as Number, areaTotal as Number,
                      bossTotal as Number, semibossTotal as Number) as SaveRecord {
         var r = new SaveRecord();
-        var o = 0;
-        r.version = bytes[o]; o += 1;
+        var o = 1;
+        r.wasV2 = bytes[0] == 2;
+        if (bytes[0] == VERSION) {
+            var header = new StepHeader();
+            if (!header.decode(bytes)) { throw new Lang.InvalidValueException("bad step header"); }
+            r.stepSync = header.sync;
+            o = STEP_HEADER_SIZE;
+        }
+        r.version = VERSION;
         var nameLen = bytes[o]; o += 1;
         r.name = bytesToString(bytes, o, nameLen);
         o += MAX_NAME;
@@ -217,23 +234,29 @@ class SaveFormat {
 
     // GameLoader's delete button: the slot goes, and the next launch finds no
     // game there.
-    function deleteSlot(slot as Number) as Void {
-        Storage.deleteValue("slot" + slot);
+    function deleteSlot(slot as Number) as Boolean {
+        if (!access.tryForeground()) { return false; }
+        try {
+            Storage.deleteValue("slot" + slot);
+            return true;
+        } catch (e) { return false; }
     }
 
-    function writeSlot(slot as Number, r as SaveRecord) as Void {
-        Storage.setValue("slot" + slot, encode(r));
+    function writeSlot(slot as Number, r as SaveRecord) as Boolean {
+        if (!access.tryForeground()) { return false; }
+        try {
+            Storage.setValue("slot" + slot, encode(r));
+            return true;
+        } catch (e) { return false; }
     }
 
-    // A slot written by an older layout is not readable: the arrays are sized
-    // from the packed data, so decoding it would run off the end of the blob.
-    // It is treated as absent, which is what the caller does with a missing
-    // save anyway -- and the version check happens before any of the
-    // length-dependent reads, so a stale slot costs one byte to reject.
+    // The version 2 payload is still decoded and upgraded by the foreground.
+    // Earlier or unknown layouts remain unreadable.
     function readSlot(slot as Number) as SaveRecord? {
+        if (!access.tryForeground()) { return null; }
         var bytes = Storage.getValue("slot" + slot) as ByteArray?;
         if (bytes == null) { return null; }
-        if (bytes.size() < 1 || bytes[0] != VERSION) {
+        if (bytes.size() < 1 || (bytes[0] != VERSION && bytes[0] != 2)) {
             System.println("SaveFormat: slot " + slot + " is version "
                 + (bytes.size() > 0 ? bytes[0] : -1) + ", expected " + VERSION);
             return null;
