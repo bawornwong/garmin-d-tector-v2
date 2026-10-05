@@ -453,7 +453,7 @@ class SwapDDock extends Routine {
         switch (pc) {
             case 0:
                 newDigimonSprite = gm.data.spriteRef(newDigimon, gm.data.ACTION_BASE);
-                newDigimonSpriteCr = gm.data.spriteRef(newDigimon, gm.data.ACTION_CR);
+                newDigimonSpriteCr = gm.digimonSprite(newDigimon, gm.data.ACTION_CR);
 
                 gm.audioMgr.playSound("changeDock");
 
