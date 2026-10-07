@@ -102,14 +102,17 @@ class JourneyStepSync {
             maybeCommit(saved, false);
             return 0;
         }
+        var hadEvent = saved.savedEvent() != 0;
         var travel = applyDelta(gm, delta, fromResume);
         sync.watchStepsCredited += delta;
         sync.creditedSourceTotal = sync.sourceTotal;
         saved.touch();
         _unflushed += delta;
-        var eventReached = saved.savedEvent() != 0;
-        if (!maybeCommit(saved, eventReached)) { return travel; }
-        if (eventReached) {
+        var eventPending = saved.savedEvent() != 0;
+        if (!maybeCommit(saved, eventPending)) { return travel; }
+        // Steps credited while an encounter is already in progress are
+        // statistics only; they must not close its Battle app and re-prompt.
+        if (eventPending && !hadEvent) {
             if (fromResume && gm.logicMgr.isAppLoaded()) {
                 gm.logicMgr.closeLoadedApp(Kaisa.SCREEN_CHARACTER);
             }

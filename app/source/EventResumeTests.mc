@@ -201,3 +201,71 @@ function escapingBossBattleClearsPendingEncounter(logger as Test.Logger) as Bool
         && saved.record.stepSync.gateEpoch == 8
         && !gm.logicMgr.isEventPending;
 }
+
+(:test)
+function watchStepsDuringEventBattleDoNotReopenEventPrompt(logger as Test.Logger) as Boolean {
+    var data = new GameData();
+    data.load();
+    var db = new Database(data);
+    db.load();
+    var format = new SaveFormat(data);
+    var rec = format.createDefault("EVENT");
+    rec.gameChar = Kaisa.CHAR_TAKUYA;
+    rec.pendingEvent = 3;
+    rec.currentDistance = 500;
+    var gm = new GameManager(data, db, new SavedGame(format, 0, rec));
+    gm.audioMgr.muted = true;
+    var screenMgr = new ScreenManager(gm, new ContainerBuilder());
+    gm.attachScreenManager(screenMgr);
+    var sync = new JourneyStepSync();
+    var reading = new StepObservation();
+    reading.day = 1700000000;
+    reading.steps = 100;
+    sync.reconcile(gm, reading, true);
+
+    gm.checkPendingEvents();
+    if (!gm.logicMgr.isEventPending) { return false; }
+    gm.logicMgr.inputA();
+    if (!(gm.logicMgr.loadedApp instanceof Battle)
+            || gm.logicMgr.isEventPending) { return false; }
+
+    reading.steps = 101;
+    sync.reconcile(gm, reading, true);
+    gm.runner.advance(20000.0d);
+    screenMgr.updateQueue();
+    return gm.logicMgr.loadedApp instanceof Battle
+        && !gm.logicMgr.isEventPending
+        && gm.saved.savedEvent() == 3
+        && gm.saved.currentDistance() == 500;
+}
+
+(:test)
+function watchStepReachingNewEventStillOpensPrompt(logger as Test.Logger) as Boolean {
+    var data = new GameData();
+    data.load();
+    var db = new Database(data);
+    db.load();
+    var format = new SaveFormat(data);
+    var rec = format.createDefault("EVENT");
+    rec.gameChar = Kaisa.CHAR_TAKUYA;
+    rec.currentDistance = 500;
+    rec.stepsToNextEvent = 1;
+    var gm = new GameManager(data, db, new SavedGame(format, 0, rec));
+    gm.audioMgr.muted = true;
+    var screenMgr = new ScreenManager(gm, new ContainerBuilder());
+    gm.attachScreenManager(screenMgr);
+    var sync = new JourneyStepSync();
+    var reading = new StepObservation();
+    reading.day = 1700000000;
+    reading.steps = 100;
+    sync.reconcile(gm, reading, true);
+
+    gm.logicMgr.loadedApp = new Status(gm, gm.logicMgr, screenMgr.screenDisplay);
+    gm.logicMgr.currentScreen = Kaisa.SCREEN_APP;
+    reading.steps = 101;
+    sync.reconcile(gm, reading, true);
+    return gm.logicMgr.loadedApp == null
+        && gm.logicMgr.isEventPending
+        && gm.saved.savedEvent() == gm.logicMgr.SAVE_EVENT_RANDOM_WAITING
+        && gm.saved.currentDistance() == 499;
+}
