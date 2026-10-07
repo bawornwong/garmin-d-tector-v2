@@ -23,6 +23,7 @@ class DTectorView extends WatchUi.View {
     var _save as SaveFormat?;
     var _queue as InputQueue?;
     var _timer as Timer.Timer?;
+    var _displayAwake as DisplayAwake = new DisplayAwake();
     var _renderer as Renderer?;
     var _root as ContainerBuilder?;
     var _gm as GameManager?;
@@ -782,6 +783,9 @@ class DTectorView extends WatchUi.View {
     // loaded app. Input is dropped entirely while an animation is playing,
     // which is what gm.LockInput does in the original.
     function dispatch(event as Number) as Void {
+        if (!isProbeMode() && event != Kaisa.Input.EVT_WALK) {
+            _displayAwake.input(System.getTimer());
+        }
         if (_gm == null) { return; }
         if (event != Kaisa.Input.EVT_B && event != Kaisa.Input.EVT_B_DOWN
                 && event != Kaisa.Input.EVT_B_UP) {
@@ -885,6 +889,7 @@ class DTectorView extends WatchUi.View {
 
     function onShow() as Void {
         _shown = true;
+        if (!isProbeMode()) { _displayAwake.show(System.getTimer()); }
         _firstBackAt = null;
         _stepRefreshRequested = true;
         _resumeStepSample = true;
@@ -897,6 +902,7 @@ class DTectorView extends WatchUi.View {
     }
 
     function onHide() as Void {
+        _displayAwake.hide();
         _firstBackAt = null;
         if (_timer != null) { _timer.stop(); }
         if (_gm != null) { _gm.audioMgr.tickEventReminder(false, 0); }
@@ -904,6 +910,7 @@ class DTectorView extends WatchUi.View {
     }
 
     function flushAndReleaseSteps() as Void {
+        _displayAwake.hide();
         if (_shown && !isProbeMode() && _gm != null) {
             sampleWatchSteps(_resumeStepSample);
         }
@@ -948,6 +955,7 @@ class DTectorView extends WatchUi.View {
     }
 
     function tick() as Void {
+        _displayAwake.tick(System.getTimer());
         _frame += 1;
         if (_waitingForSave && _save.access.tryForeground()) {
             _waitingForSave = false;

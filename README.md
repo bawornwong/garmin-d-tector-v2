@@ -15,6 +15,10 @@ The watch's **upper button is A** and **lower button is B**. Touch the four sect
 
 The sectors meet at the centre and are separated by diagonals. A touch keeps its starting sector until release, so holding works in games that need it. Swipes have no separate command. On the idle character screen, Left or Right opens the main menu; A pages through status. Hold the lower button for 1.5 seconds, or press Back twice within 1.5 seconds on that screen, to exit.
 
+Opening or returning to the game, pressing a game button, or touching a game sector requests **30 seconds of screen illumination** at the watch's configured brightness. After that, the normal display timeout applies. Garmin's display settings and AMOLED burn-in protection can limit illumination; if the firmware rejects a request, the game continues with the normal timeout until the view is shown again. Verify the duration on a physical Venu 4.
+
+Connect IQ provides no API to suppress phone/system notifications or toggle the watch's Do Not Disturb mode. To silence these while playing, hold the upper button to open the watch controls and enable **Do Not Disturb** before launching the game; disable it afterwards. This also affects the watch's display and vibration settings. The game's own **Detected** notification is only sent by its background service when the foreground save lease is inactive.
+
 ### Menus and games
 
 | Location | Available |
