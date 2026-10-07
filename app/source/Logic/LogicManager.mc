@@ -754,8 +754,9 @@ class LogicManager {
 
     // LogicManager.cs:682 ApplyReward. The C# has two `out object` parameters
     // whose type depends on the reward -- levels, distances, a boolean and an
-    // area for the data storm -- so the port returns [before, after] and the
-    // animation that consumes them knows which reward it is showing.
+    // area for the data storm -- so the port returns [before, after, objective].
+    // Keep the selected Digimon with the result: the original discards it,
+    // leaving Jackpot's reward animations with no Digimon to display.
     //
     // SOURCE BUG, reproduced: the LevelUp branch calls LevelDownPlayer, not
     // LevelUpPlayer. Only ForceLevelUp levels the player up.
@@ -772,7 +773,7 @@ class LogicManager {
             return distanceReward(1000, false);
         } else if (reward == Kaisa.REWARD_PUNISH_DIGIMON) {
             var r = punishDigimon(objective);
-            return [r[1], r[2]];
+            return [r[1], r[2], objective];
         } else if (reward == Kaisa.REWARD_REWARD_DIGIMON) {
             var rarity = randomRewardRarity();
             var rewarded;
@@ -783,13 +784,13 @@ class LogicManager {
                 rewarded = Kaisa.Tools.getRandomElement(
                     _db.getAllDigimonOfRarity(rarity, getPlayerLevel() + 20));
             }
-            if (rewarded == null) { return [-1, -1]; }
+            if (rewarded == null) { return [-1, -1, -1]; }
             var r = rewardDigimon(rewarded);
-            return [r[1], r[2]];
+            return [r[1], r[2], rewarded];
         } else if (reward == Kaisa.REWARD_UNLOCK_DIGICODE_OWNED) {
             var owned = Kaisa.Tools.getRandomElement(getAllUnlockedDigimon());
             if (owned != null) { setDigicodeUnlocked(owned, true); }
-            return [-1, -1];
+            return [-1, -1, (owned == null) ? -1 : owned];
         } else if (reward == Kaisa.REWARD_UNLOCK_DIGICODE_NOT_OWNED) {
             var rarity = randomRewardRarity();
             var chosen = Kaisa.Tools.getRandomElement(_db.getAllDigimonOfRarity(rarity, 100));
@@ -797,11 +798,12 @@ class LogicManager {
                 setDigimonUnlocked(chosen, true);
                 setDigicodeUnlocked(chosen, true);
             }
-            return [-1, -1];
+            return [-1, -1, (chosen == null) ? -1 : chosen];
         } else if (reward == Kaisa.REWARD_DATA_STORM) {
             // resultBefore is 1 when the player was moved; resultAfter is the
             // area they ended in.
-            return applyDataStorm();
+            var result = applyDataStorm();
+            return [result[0], result[1], -1];
         } else if (reward == Kaisa.REWARD_LOSE_SPIRIT_POWER_10) {
             return spiritPowerReward(-10);
         } else if (reward == Kaisa.REWARD_LOSE_SPIRIT_POWER_50) {
@@ -811,7 +813,7 @@ class LogicManager {
         } else if (reward == Kaisa.REWARD_GAIN_SPIRIT_POWER_MAX) {
             var before = spiritPower();
             setSpiritPower(Kaisa.Constants.MAX_SPIRIT_POWER);
-            return [before, spiritPower()];
+            return [before, spiritPower(), -1];
         } else if (reward == Kaisa.REWARD_LEVEL_DOWN) {
             if (getPlayerLevelProgression() < 0.5) { return levelChange(false); }
         } else if (reward == Kaisa.REWARD_FORCE_LEVEL_DOWN) {
@@ -823,26 +825,26 @@ class LogicManager {
             if (getPlayerLevelProgression() > 0.0) { return levelChange(true); }
         }
         // Reward.TriggerBattle calls CallRandomBattle, which waits on Battle.
-        return [-1, -1];
+        return [-1, -1, -1];
     }
 
     function distanceReward(amount as Number, increase as Boolean) as Array<Number> {
         var before = _gm.worldMgr.currentDistance();
         if (increase) { _gm.worldMgr.increaseDistance(amount); }
         else { _gm.worldMgr.reduceDistance(amount); }
-        return [before, _gm.worldMgr.currentDistance()];
+        return [before, _gm.worldMgr.currentDistance(), -1];
     }
 
     function spiritPowerReward(delta as Number) as Array<Number> {
         var before = spiritPower();
         setSpiritPower(before + delta);
-        return [before, spiritPower()];
+        return [before, spiritPower(), -1];
     }
 
     function levelChange(up as Boolean) as Array<Number> {
         var before = getPlayerLevel();
         if (up) { levelUpPlayer(); } else { levelDownPlayer(); }
-        return [before, getPlayerLevel()];
+        return [before, getPlayerLevel(), -1];
     }
 
     // The rarity ladder both Digimon rewards draw on.

@@ -181,6 +181,14 @@ class JackpotBox extends DigiviceApp {
         } else {
             var objective = (reward == Kaisa.REWARD_PUNISH_DIGIMON) ? friendlyDigimon : -1;
             var result = gm.logicMgr.applyReward(reward, objective);
+            objective = result[2];
+            // A selection with no eligible Digimon grants nothing. Show the
+            // empty-box reaction rather than a blank reward and celebration.
+            if (objective < 0 && (reward == Kaisa.REWARD_REWARD_DIGIMON
+                    || reward == Kaisa.REWARD_UNLOCK_DIGICODE_OWNED
+                    || reward == Kaisa.REWARD_UNLOCK_DIGICODE_NOT_OWNED)) {
+                reward = Kaisa.REWARD_EMPTY;
+            }
             gm.enqueueRewardAnimation(reward, objective, result[0], result[1]);
         }
 
