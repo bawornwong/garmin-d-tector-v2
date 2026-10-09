@@ -31,7 +31,11 @@ function mazeTapMovesOnceAndHoldRepeats(logger as Test.Logger) as Boolean {
     if (app.playerX != 1) { return false; }
     gm.runner.advance(100.0d);
     if (app.playerX != 1) { return false; }
-    gm.runner.advance(50.0d);
+    // The routine's 0.15-second Float is slightly above 150 ms when the
+    // scheduler promotes it to Double. Check either side of that boundary.
+    gm.runner.advance(49.0d);
+    if (app.playerX != 1) { return false; }
+    gm.runner.advance(2.0d);
     if (app.playerX != 2) { return false; }
     app.inputRightUp();
     gm.runner.advance(500.0d);

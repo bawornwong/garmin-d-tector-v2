@@ -121,10 +121,11 @@ class JourneyStepSync {
         return travel;
     }
 
-    // Kept separate from storage and UI so the gate accounting can be tested
-    // with a synthetic source delta.
+    // Convert physical steps once, keeping the durable source cursor and
+    // watchStepsCredited in actual Garmin steps. Only game credit is scaled.
     function applyDelta(gm as GameManager, delta as Long,
                         fromResume as Boolean) as Number {
+        delta *= StepMultiplierSetting.value().toLong();
         var saved = gm.saved;
         var travel = 0;
         var canTravel = saved.savedEvent() == 0 && !gm.logicMgr.isEventPending

@@ -22,7 +22,7 @@ class ScreenManager {
     var _queue as Array<Routine> = [];
     var _playing as Fiber?;
     var _configureGear as Graphics.BufferedBitmap?;
-    var _configureIcons as Array<Graphics.BufferedBitmap?> = [null, null, null, null, null];
+    var _configureIcons as Array<Graphics.BufferedBitmap?> = [null, null, null, null, null, null];
 
     function initialize(gmIn as GameManager, rootIn as ContainerBuilder) {
         gm = gmIn;
@@ -138,6 +138,12 @@ class ScreenManager {
             dc.fillRectangle(2, 8, 3, 3);
             dc.fillRectangle(9, 7, 4, 5); dc.fillRectangle(10, 6, 2, 1);
             dc.fillRectangle(11, 12, 3, 3);
+        } else if (index == Kaisa.CONFIGURE_STEP_MULTIPLIER) {
+            // Multiplication sign, distinct from the background footprints.
+            for (var i = 0; i < 10; i += 1) {
+                dc.fillRectangle(3 + i, 3 + i, 2, 2);
+                dc.fillRectangle(12 - i, 3 + i, 2, 2);
+            }
         } else {
             // Circular restart arrow.
             dc.fillRectangle(5, 2, 7, 1); dc.fillRectangle(3, 3, 2, 2);
@@ -174,12 +180,21 @@ class ScreenManager {
         } else if (i == Kaisa.CONFIGURE_BG_STEPS) {
             state = BackgroundStepSetting.enabled() ? "ON" : "OFF";
             subject = "BG STEP";
+        } else if (i == Kaisa.CONFIGURE_STEP_MULTIPLIER) {
+            state = "X" + StepMultiplierSetting.value();
+            subject = "STEP";
         }
         drawMenuWord("CfgState", Kaisa.Font.SMALL, state, 1, 5);
         disposable(Kaisa.ScreenBuilder.buildSprite("CfgIcon", screenDisplay)
             .setSize(16, 16).setPosition(8, 6).setTransparent(true)
             .setRuntimeBitmap(configureIcon(i), 16, 16));
-        drawMenuWord("CfgSubject", Kaisa.Font.REGULAR, subject, 24, 5);
+        if (i == Kaisa.CONFIGURE_STEP_MULTIPLIER) {
+            // Two lines with a one-pixel gap keep the full label readable.
+            drawMenuWord("CfgSubject", Kaisa.MenuFont.FACE, subject, 21, 5);
+            drawMenuWord("CfgMultiplier", Kaisa.MenuFont.FACE, "MULT", 27, 5);
+        } else {
+            drawMenuWord("CfgSubject", Kaisa.MenuFont.FACE, subject, 24, 5);
+        }
     }
 
     function startFlashRoutines() as Void {
@@ -273,7 +288,7 @@ class ScreenManager {
                     .setSize(16, 16).setPosition(8, 4).setTransparent(true)
                     .setRuntimeBitmap(configureGear(), 16, 16);
                 gear.name = "Disposable";
-                drawMenuWord("Configure", Kaisa.Font.REGULAR, "CONFIG", 24, 5);
+                drawMenuWord("Configure", Kaisa.MenuFont.FACE, "CONFIG", 24, 5);
             } else {
                 screenDisplay.setSprite(Kaisa.Sprites.MAIN_MENU[gm.logicMgr.currentMainMenu]);
             }

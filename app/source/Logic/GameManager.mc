@@ -111,7 +111,9 @@ class GameManager {
     // watch app is visible. The character screen's B button also handles
     // the final kilometre (LogicManager.inputB).
     function takeAStep() as Void {
-        takeModelStep();
+        // One physical shake earns the selected number of game steps, with
+        // the same first-gate limit used for Garmin walking credit.
+        (new JourneyStepSync()).applyDelta(self, 1l, false);
         if (saved.savedEvent() != 0 && !saved.commit()) { return; }
         checkPendingEvents();
     }

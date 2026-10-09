@@ -51,6 +51,14 @@ class LogicManager {
     function initialize(saved as SavedGame, db as Database) {
         _saved = saved;
         _db = db;
+        // Older saves can retain a D-Dock reference after its Digimon was
+        // erased. Repair those slots before menus or battles read them.
+        for (var i = 0; i < 4; i += 1) {
+            var digimonIndex = _saved.ddockDigimon(i);
+            if (digimonIndex >= 0 && !getDigimonUnlocked(digimonIndex)) {
+                _saved.setDDockDigimon(i, -1);
+            }
+        }
     }
 
     // GameManager builds the managers before it can hand them itself, so the
@@ -154,6 +162,8 @@ class LogicManager {
                 } else if (configureMenuIndex == Kaisa.CONFIGURE_BG_STEPS) {
                     BackgroundStepSetting.setEnabled(!BackgroundStepSetting.enabled());
                     StepBackgroundSchedule.apply();
+                } else if (configureMenuIndex == Kaisa.CONFIGURE_STEP_MULTIPLIER) {
+                    StepMultiplierSetting.advance();
                 } else if (configureMenuIndex == Kaisa.CONFIGURE_RESET) {
                     resetGame();
                 }
@@ -260,7 +270,8 @@ class LogicManager {
                 currentScreen, currentMainMenu, delta);
         } else if (currentScreen == Kaisa.SCREEN_CONFIGURE_MENU) {
             _gm.audioMgr.playMenuMove(dir);
-            configureMenuIndex = Kaisa.MathExt.circularAdd(configureMenuIndex, delta, 4, 0);
+            configureMenuIndex = Kaisa.MathExt.circularAdd(
+                configureMenuIndex, delta, Kaisa.CONFIGURE_RESET, 0);
         } else if (currentScreen == Kaisa.SCREEN_GAMES_MENU) {
             _gm.audioMgr.playMenuMove(dir);
             gamesMenuIndex = Kaisa.MathExt.circularAdd(gamesMenuIndex, delta, 2, 0);
@@ -661,6 +672,13 @@ class LogicManager {
             }
         } else {
             _saved.setDigimonLevel(digimonIndex, 0);
+            // Erasure, spirit loss and boost sacrifice all lock a Digimon.
+            // Its D-Dock references must disappear with its ownership.
+            for (var i = 0; i < 4; i += 1) {
+                if (_saved.ddockDigimon(i) == digimonIndex) {
+                    _saved.setDDockDigimon(i, -1);
+                }
+            }
         }
     }
 

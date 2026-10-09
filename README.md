@@ -15,7 +15,7 @@ The watch's **upper button is A** and **lower button is B**. Touch the four sect
 
 The sectors meet at the centre and are separated by diagonals. A touch keeps its starting sector until release, so holding works in games that need it. Swipes have no separate command. On the idle character screen, Left or Right opens the main menu; A pages through status. Hold the lower button for 1.5 seconds, or press Back twice within 1.5 seconds on that screen, to exit.
 
-Opening or returning to the game, pressing a game button, or touching a game sector requests **30 seconds of screen illumination** at the watch's configured brightness. After that, the normal display timeout applies. Garmin's display settings and AMOLED burn-in protection can limit illumination; if the firmware rejects a request, the game continues with the normal timeout until the view is shown again. Verify the duration on a physical Venu 4.
+The watch manages display brightness and inactivity timeout. The app does not issue backlight requests when opening, returning, receiving input, or waiting through an animation: repeated requests caused an unwanted brightness increase on the physical Venu 4. For longer waiting periods, adjust **Settings → Display & Brightness → Timeout** on the watch ([Garmin manual](https://www8.garmin.com/manuals/webhelp/GUID-2CF5620C-E585-4E0A-9CC3-9565533EEE4D/EN-US/GUID-A3426392-ACFC-465D-B773-263C6C92DCA3.html)). Connect IQ's documented display APIs do not provide a timeout-only extension or a way to read the current automatic brightness, so the app cannot guarantee a separate 30-second timeout while preserving it. Check the available timeout values and actual waiting behavior on a physical Venu 4.
 
 Connect IQ provides no API to suppress phone/system notifications or toggle the watch's Do Not Disturb mode. To silence these while playing, hold the upper button to open the watch controls and enable **Do Not Disturb** before launching the game; disable it afterwards. This also affects the watch's display and vibration settings. The game's own **Detected** notification is only sent by its background service when the foreground save lease is inactive.
 
@@ -26,17 +26,18 @@ Connect IQ provides no API to suppress phone/system notifications or toggle the 
 | Main menu | Map, Status, Game, Database, Digits (code entry), Camp, Connect, Config |
 | Game | Finder; Reward → Jackpot Box; Travel → Speed Runner, Digi Hunter, Maze |
 | Encounters | Battle and Data Storm events during the journey |
-| Config | Vibration, Sound, pixel grid, BG STEP, Reset |
+| Config | Vibration, Sound, pixel grid, BG STEP, STEP MULT, Reset |
 
 **Speed Runner controls:** Hold the left or right touch sector to move the rocket to that side. Releasing returns it to the centre lane. The top and bottom sectors remain B and A.
 
 **Entries without gameplay:** Connect stays visible and gives a rejection vibration when selected. Energy Wars and Digi Catch under Reward, and Asteroids under Travel are hidden. Their apps do not exist yet. Change the switches in [`MenuFeatures.mc`](app/source/Data/MenuFeatures.mc) and rebuild to show or hide them; their source references remain in place. Battle is reached through encounters rather than a direct menu entry.
 
-There is one automatically resumed save. **Config → Reset** starts over; the source game's separate save-slot picker and save naming screen are not part of this watch version. Sound, vibration, grid, and BG STEP preferences survive a game reset. Jackpot Box can legitimately award an empty box.
+There is one automatically resumed save. **Config → Reset** starts over; the source game's separate save-slot picker and save naming screen are not part of this watch version. Sound, vibration, grid, BG STEP, and step multiplier preferences survive a game reset. Jackpot Box can legitimately award an empty box.
 
 ### Steps, events, and alerts
 
 - While the app is open, deliberate wrist shakes and steps recorded by Garmin both advance the game.
+- **Config → STEP MULT** sets the Step Multiplier. Press A to cycle X1 → X2 → X3 → X4 → X5 → X1; the default is X1. Both shakes and Garmin walking steps (including background catch-up) earn multiplied game steps and travel. The watch's own step count is unchanged. Changing the setting applies to newly credited steps, without multiplying earlier credit again.
 - While the app is closed, only steps recorded by the watch are synced in the background and credited when the game opens again. Shakes are ignored. Steps recorded before that game's baseline do not count. **Config → BG STEP** turns this sync and its background wake events on or off; it defaults to ON. Steps recorded while it is OFF are skipped when the game next opens.
 - Walking advances toward the first event or boss gate reached. Steps beyond that gate still increase the step statistics but do not carry over as travel after the event. This prevents a long walk from skipping several encounters.
 - The app checks steps on opening and return. When closed, its background service requests a five-minute wake and Garmin's step event, which occurs at fixed 1,000-device-step multiples. These are opportunities to check the gate, not a guarantee of an alert at the exact step that reaches it.
@@ -87,6 +88,7 @@ python3 tools/pack_ui_sprites.py
 python3 tools/pack_data.py
 python3 tools/gen_wellknown.py
 python3 tools/pack_sounds.py
+python3 tools/pack_menu_font.py
 
 python3 tools/verify_worlds.py
 python3 tools/verify_gallery.py

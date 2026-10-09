@@ -38,6 +38,7 @@ module Kaisa {
         // [x, w, h, advance, offsetY] for one character, or null if this face
         // has no glyph for it. The caller has already uppercased.
         function glyph(face as Number, code as Number) as Array<Number>? {
+            if (face == Kaisa.MenuFont.FACE) { return Kaisa.MenuFont.glyph(code); }
             if (code < Kaisa.Font.FIRST_CODE || code > Kaisa.Font.LAST_CODE) { return null; }
             var table = Kaisa.Font.glyphs(face);
             var base = (code - Kaisa.Font.FIRST_CODE) * Kaisa.Font.FIELDS;
@@ -56,13 +57,15 @@ module Kaisa {
                 var g = glyph(face, chars[i].toNumber());
                 if (g != null) { w += g[3]; }
             }
-            return w;
+            // Menu art is centred by its ink, without a trailing gutter.
+            return (face == Kaisa.MenuFont.FACE && w > 0) ? w - 1 : w;
         }
 
         // The widest line of a (possibly multi-line) string, which is what
         // Unity's ContentSizeFitter reports as the component's width.
         function width(face as Number, text as String) as Number {
-            var upper = Kaisa.Font.CONVERT_CASE[face] ? text.toUpper() : text;
+            var upper = (face == Kaisa.MenuFont.FACE || Kaisa.Font.CONVERT_CASE[face])
+                ? text.toUpper() : text;
             var chars = upper.toCharArray();
             var best = 0;
             var w = 0;
@@ -75,7 +78,8 @@ module Kaisa {
                     if (g != null) { w += g[3]; }
                 }
             }
-            return (w > best) ? w : best;
+            var widest = (w > best) ? w : best;
+            return (face == Kaisa.MenuFont.FACE && widest > 0) ? widest - 1 : widest;
         }
     }
 }
@@ -105,8 +109,9 @@ class TextRenderer {
     function draw(dc as Dc, face as Number, text as String,
                   x as Number, y as Number, boxWidth as Number,
                   anchor as Number, scale as Number, tint as Number) as Void {
-        var upper = Kaisa.Font.CONVERT_CASE[face] ? text.toUpper() : text;
-        var lineSpacing = Kaisa.Font.LINE_SPACING[face];
+        var menuFace = face == Kaisa.MenuFont.FACE;
+        var upper = (menuFace || Kaisa.Font.CONVERT_CASE[face]) ? text.toUpper() : text;
+        var lineSpacing = menuFace ? Kaisa.MenuFont.LINE_SPACING : Kaisa.Font.LINE_SPACING[face];
         var lineY = y;
 
         var lines = splitLines(upper);
@@ -116,14 +121,21 @@ class TextRenderer {
             if (anchor == Kaisa.Text.ANCHOR_UPPER_RIGHT) {
                 penX = x + (boxWidth - lineWidth(face, line)) * scale;
             } else if (anchor == Kaisa.Text.ANCHOR_UPPER_CENTER) {
-                // Halved in DEVICE pixels, not game pixels. The scene canvas
-                // has m_PixelPerfect: 0, so Unity centres a line at the exact
-                // half of whatever is left over -- a line 3 game pixels wider
-                // than its box sits at -1.5 game pixels, not -1 or -2. At a
-                // 10x scale that half is a whole device pixel, so the port can
-                // land on it; rounding in game pixels instead shifted every
-                // odd-overflow line by one, which is how this was found.
-                penX = x + ((boxWidth - lineWidth(face, line)) * scale) / 2;
+                if (menuFace) {
+                    // Baked menu labels sit on whole game pixels. Half-pixel
+                    // placement cuts their strokes across the display grid.
+                    penX = x + Kaisa.MathExt.floorToInt(
+                        (boxWidth - lineWidth(face, line)) / 2.0) * scale;
+                } else {
+                    // Halved in DEVICE pixels, not game pixels. The scene canvas
+                    // has m_PixelPerfect: 0, so Unity centres a line at the exact
+                    // half of whatever is left over -- a line 3 game pixels wider
+                    // than its box sits at -1.5 game pixels, not -1 or -2. At a
+                    // 10x scale that half is a whole device pixel, so the port can
+                    // land on it; rounding in game pixels instead shifted every
+                    // odd-overflow line by one, which is how this was found.
+                    penX = x + ((boxWidth - lineWidth(face, line)) * scale) / 2;
+                }
             }
             drawLine(dc, face, line, penX, lineY, scale, tint);
             lineY += lineSpacing * scale;
@@ -151,7 +163,6 @@ class TextRenderer {
     function drawLine(dc as Dc, face as Number, line as String,
                       x as Number, y as Number, scale as Number,
                       tint as Number) as Void {
-        var cls = Kaisa.Font.ATLAS_CLASS[face];
         var chars = line.toCharArray();
         var penX = x;
         for (var i = 0; i < chars.size(); i += 1) {
@@ -162,8 +173,11 @@ class TextRenderer {
             var h = g[2];
             var advance = g[3];
             var offsetY = g[4];
-
-            var located = _atlas.locate(cls, sx, 0);
+            if (w == 0) { penX += advance * scale; continue; }
+            var menuFace = face == Kaisa.MenuFont.FACE;
+            var cls = menuFace ? g[6] : Kaisa.Font.ATLAS_CLASS[face];
+            var sy = menuFace ? g[5] : 0;
+            var located = _atlas.locate(cls, sx, sy);
             if (located != null) {
                 Render.blit(dc, located[0], located[1], located[2], w, h,
                             penX, y + offsetY * scale, scale, tint);

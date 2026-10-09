@@ -58,6 +58,8 @@ class StepBackground extends System.ServiceDelegate {
         var eventSteps = h.stepsToEvent;
         if (eventSteps < 1) { eventSteps = 1; }
         if (h.distance > 1 && eventSteps < needed) { needed = eventSteps; }
-        return sync.sourceTotal - sync.creditedSourceTotal >= needed.toLong();
+        var credit = (sync.sourceTotal - sync.creditedSourceTotal)
+            * StepMultiplierSetting.value().toLong();
+        return credit >= needed.toLong();
     }
 }
